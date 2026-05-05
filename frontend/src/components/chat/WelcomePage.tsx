@@ -3,6 +3,7 @@ import { RefreshCw, Sparkles } from "lucide-react";
 import { ChatInput } from "./ChatInput";
 import type { ChatInputProps } from "./ChatInput";
 import { ContactAdminDialog } from "../common/ContactAdminDialog";
+import { getWelcomeSuggestionButtonClass } from "./welcomeLayout";
 
 export interface Suggestion {
   icon: string;
@@ -58,7 +59,7 @@ export const WelcomePage = memo(function WelcomePage({
       className="welcome-root relative flex h-full flex-col items-center justify-center px-4"
     >
       {/* Greeting section */}
-      <div className="relative flex flex-col items-center mb-3 sm:mb-4 md:mb-5 xl:mb-6 2xl:mb-7 w-full max-w-[90vw]">
+      <div className="welcome-hero relative flex flex-col items-center mb-3 sm:mb-4 md:mb-5 xl:mb-6 2xl:mb-7 w-full max-w-[90vw]">
         {/* App icon (mobile only) */}
         <div className="sm:hidden relative mb-3">
           <img
@@ -97,7 +98,7 @@ export const WelcomePage = memo(function WelcomePage({
       {/* Suggestions with refresh */}
       {suggestions && suggestions.length > 0 && (
         <div className="welcome-suggestions relative w-[78%] sm:max-w-[44rem] md:max-w-[48rem] lg:max-w-[50rem] xl:max-w-[52rem] 2xl:max-w-[54rem] px-2 sm:px-4 sm:mt-2 md:mt-3 xl:mt-4 2xl:mt-4">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-3 xl:mb-4 2xl:mb-4">
+          <div className="welcome-suggestions-header flex items-center justify-between mb-2 sm:mb-3 md:mb-3 xl:mb-4 2xl:mb-4">
             <div
               className="flex items-center gap-1 text-xs sm:text-sm md:text-sm font-medium font-serif"
               style={{ color: "var(--theme-text-secondary)" }}
@@ -131,15 +132,13 @@ export const WelcomePage = memo(function WelcomePage({
           </div>
           <div
             key={animKey}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-2.5 xl:gap-3 2xl:gap-3"
+            className="welcome-suggestions-grid grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-2.5 xl:gap-3 2xl:gap-3"
           >
             {suggestions.map((suggestion, i) => (
               <button
                 key={suggestion.text}
                 onClick={() => handleSuggestionClick(suggestion.text)}
-                className={`welcome-card group relative flex items-center gap-2 sm:gap-3 md:gap-3 xl:gap-3.5 2xl:gap-3.5 rounded-xl border px-3 py-2 sm:px-4 sm:py-3 text-left cursor-pointer transition-all duration-300 overflow-hidden${
-                  i >= 2 ? " hidden sm:flex" : ""
-                }`}
+                className={getWelcomeSuggestionButtonClass(i)}
                 style={{
                   backgroundColor: "var(--theme-bg-card)",
                   borderColor: "var(--theme-border)",

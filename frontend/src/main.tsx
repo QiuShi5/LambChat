@@ -45,7 +45,6 @@ if (typeof window !== "undefined" && isMobileDevice()) {
   });
 
   document.addEventListener("focusin", scrollFocusedInputIntoView);
-  window.visualViewport?.addEventListener("resize", scrollFocusedInputIntoView);
 }
 
 registerLambChatPwa();
