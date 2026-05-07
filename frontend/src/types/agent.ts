@@ -86,4 +86,5 @@ export interface RoleModelAssignment {
   role_id: string;
   role_name: string;
   allowed_models: string[];
+  configured?: boolean;
 }

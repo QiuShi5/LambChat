@@ -91,6 +91,39 @@ class ModelListResponse(BaseModel):
     enabled_count: int = Field(0, description="Number of enabled models")
 
 
+class AvailableModel(BaseModel):
+    """Public model information safe for non-admin model selectors."""
+
+    id: Optional[str] = Field(None, description="Model ID")
+    value: str = Field(..., description="Model identifier")
+    provider: Optional[str] = Field(None, description="LLM provider")
+    label: str = Field(..., description="Display name for the model")
+    description: Optional[str] = Field(None, description="Model description")
+    profile: Optional[ModelProfile] = Field(None, description="Per-model profile settings")
+
+
+class AvailableModelListResponse(BaseModel):
+    """Response for listing models visible to the current user."""
+
+    models: list[AvailableModel] = Field(
+        default_factory=list, description="List of public model entries"
+    )
+    count: int = Field(0, description="Number of visible models")
+    enabled_count: int = Field(0, description="Number of visible enabled models")
+
+
+def to_available_model(model: ModelConfig) -> AvailableModel:
+    """Return a public model view without credentials or routing internals."""
+    return AvailableModel(
+        id=model.id,
+        value=model.value,
+        provider=model.provider,
+        label=model.label,
+        description=model.description,
+        profile=model.profile,
+    )
+
+
 def mask_api_key(model: ModelConfig) -> ModelConfig:
     """Return a copy of the model with the API key masked for safe display."""
     if model.api_key:

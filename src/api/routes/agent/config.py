@@ -169,12 +169,13 @@ async def get_role_models(
 
         raise NotFoundError(f"角色 '{role_id}' 不存在")
 
-    allowed_models = await storage.get_role_models(role_id) or []
+    allowed_models = await storage.get_role_models(role_id)
 
     return RoleModelAssignment(
         role_id=role_id,
         role_name=role.name,
-        allowed_models=allowed_models,
+        allowed_models=allowed_models or [],
+        configured=allowed_models is not None,
     )
 
 
@@ -200,6 +201,7 @@ async def update_role_models(
         role_id=role_id,
         role_name=role.name,
         allowed_models=assignment.allowed_models,
+        configured=True,
     )
 
 

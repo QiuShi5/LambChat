@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Cpu, Save, Globe, List, ChevronDown } from "lucide-react";
+import { Cpu, Save, List, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ModelPanelSkeleton } from "../../../skeletons";
 import { RoleSelector } from "../../AgentPanel/shared/RoleSelector";
@@ -77,7 +77,6 @@ export function RolesModelTab({
   const currentRoleModels = selectedRole
     ? localRoleModels[selectedRole] || []
     : [];
-  const isAllModels = currentRoleModels.length === 0;
 
   const toggleModel = (modelId: string) => {
     if (!selectedRole) return;
@@ -162,22 +161,15 @@ export function RolesModelTab({
 
             {/* Status indicator */}
             <div className="px-4 sm:px-5 pb-2.5 sm:pb-3">
-              {isAllModels ? (
-                <div className="glass-pill glass-pill--active">
-                  <Globe size={14} />
-                  <span>{t("agentConfig.allModelsAvailable")}</span>
-                </div>
-              ) : (
-                <div className="glass-pill glass-pill--info">
-                  <List size={14} />
-                  <span>
-                    {t("agentConfig.selectedModelsCount", {
-                      count: currentRoleModels.length,
-                      total: availableModels.length,
-                    })}
-                  </span>
-                </div>
-              )}
+              <div className="glass-pill glass-pill--info">
+                <List size={14} />
+                <span>
+                  {t("agentConfig.selectedModelsCount", {
+                    count: currentRoleModels.length,
+                    total: availableModels.length,
+                  })}
+                </span>
+              </div>
             </div>
 
             <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 space-y-1">

@@ -87,3 +87,6 @@ YubbChat/
 .codex
 scripts/
 docs/docs/.vitepress/
+.gitignore
+k8s/lambchat-secret.yaml
+k8s/lambchat.yaml

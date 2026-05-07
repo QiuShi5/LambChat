@@ -17,6 +17,7 @@ from pydantic import SecretStr
 
 from src.infra.logging import get_logger
 from src.kernel.config import settings
+from src.kernel.exceptions import AuthorizationError
 
 logger = get_logger(__name__)
 
@@ -270,34 +271,39 @@ class LLMClient:
                 from src.infra.agent.model_storage import get_model_storage
 
                 db_model = await get_model_storage().get(model_id)
-                if db_model:
-                    model = db_model.value
-                    if db_model.provider:
-                        explicit_provider = db_model.provider
-                    # 直接从 DB 配置获取所有覆盖参数
-                    if not api_key and db_model.api_key:
-                        api_key = db_model.api_key
-                        from src.infra.llm.models_service import set_cached_api_key
+                if not db_model:
+                    raise AuthorizationError("model_not_found")
+                if not db_model.enabled:
+                    raise AuthorizationError("model_disabled")
+                model = db_model.value
+                if db_model.provider:
+                    explicit_provider = db_model.provider
+                # 直接从 DB 配置获取所有覆盖参数
+                if not api_key and db_model.api_key:
+                    api_key = db_model.api_key
+                    from src.infra.llm.models_service import set_cached_api_key
 
-                        set_cached_api_key(db_model.value, db_model.api_key)
-                    if not api_base and db_model.api_base:
-                        api_base = db_model.api_base
-                    if db_model.temperature is not None:
-                        temperature = db_model.temperature
-                    if max_tokens is None and db_model.max_tokens is not None:
-                        max_tokens = db_model.max_tokens
-                    if profile is None and db_model.profile:
-                        raw = db_model.profile
-                        profile = (
-                            raw.model_dump()
-                            if hasattr(raw, "model_dump")
-                            else dict(raw)
-                            if isinstance(raw, dict)
-                            else None
-                        )
-                    # 已从 DB 获取完整配置，跳过缓存查找
-                    use_model_config = False
-                    logger.debug(f"[LLMClient] Resolved model_id={model_id} -> value={model}")
+                    set_cached_api_key(db_model.value, db_model.api_key)
+                if not api_base and db_model.api_base:
+                    api_base = db_model.api_base
+                if db_model.temperature is not None:
+                    temperature = db_model.temperature
+                if max_tokens is None and db_model.max_tokens is not None:
+                    max_tokens = db_model.max_tokens
+                if profile is None and db_model.profile:
+                    raw = db_model.profile
+                    profile = (
+                        raw.model_dump()
+                        if hasattr(raw, "model_dump")
+                        else dict(raw)
+                        if isinstance(raw, dict)
+                        else None
+                    )
+                # 已从 DB 获取完整配置，跳过缓存查找
+                use_model_config = False
+                logger.debug(f"[LLMClient] Resolved model_id={model_id} -> value={model}")
+            except AuthorizationError:
+                raise
             except Exception as e:
                 logger.warning(f"[LLMClient] Failed to resolve model_id={model_id}: {e}")
 

@@ -341,6 +341,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Failed to stop Feishu channels: {e}")
 
+        # Cancel remaining background tasks (e.g., lark_oapi ExpiringCache cron)
+        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+            logger.info(f"Cancelled {len(pending)} remaining background task(s)")
+
         logger.info("Shutting down...")
 
 

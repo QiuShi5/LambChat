@@ -12,7 +12,7 @@
 [![Redis](https://img.shields.io/badge/Redis-Latest-red.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[English](README.md) · [简体中文](README_CN.md) · [Contributing](CONTRIBUTING.md)
+[English](README.md) · [简体中文](README_CN.md) · [Documentation](https://yanyutin753.github.io/LambChat/en/) · [Contributing](CONTRIBUTING.md)
 
 </div>
 

@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { modelApi } from "../../../services/api/model";
-import type { ModelConfig } from "../../../services/api/model";
+import type { ModelOption } from "../../../services/api/model";
 import { GlassSelect } from "../../common/GlassSelect";
 
 interface ChannelModelSelectProps {
@@ -20,7 +20,7 @@ export function ChannelModelSelect({
   onChange,
 }: ChannelModelSelectProps) {
   const { t } = useTranslation();
-  const [models, setModels] = useState<ModelConfig[]>([]);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function ChannelModelSelect({
             : t("channel.defaultModel", "Default Model")
         }
         options={models.map((model) => ({
-          value: model.id!,
+          value: model.id,
           label: `${model.label} (${model.value})`,
         }))}
       />

@@ -192,8 +192,8 @@ export function ChatAppContent({
 
   const filteredModels = useMemo(() => {
     if (!availableModels) return null;
-    if (!agentAllowedModelIds || agentAllowedModelIds.length === 0)
-      return availableModels;
+    if (agentAllowedModelIds === null) return availableModels;
+    if (agentAllowedModelIds.length === 0) return [];
     return availableModels.filter((m) => agentAllowedModelIds.includes(m.id));
   }, [availableModels, agentAllowedModelIds]);
 

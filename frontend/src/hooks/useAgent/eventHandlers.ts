@@ -11,6 +11,7 @@ import type { Message, FormField } from "../../types";
 import { authFetch } from "../../services/api/fetch";
 import { sessionApi } from "../../services/api";
 import i18n from "../../i18n";
+import { translateBackendError } from "../../utils/backendErrors";
 import type {
   StreamEvent,
   EventData,
@@ -364,7 +365,9 @@ function handleError(
   ctx: EventHandlerContext,
   forceCancelled?: boolean,
 ): void {
-  const errorMsg = data.error || i18n.t("chat.unknownError");
+  const errorMsg = data.error
+    ? translateBackendError(data.error, i18n.t.bind(i18n))
+    : i18n.t("chat.unknownError");
   const isCancelled = forceCancelled || data.type === "CancelledError";
 
   ctx.setMessages((prev) =>

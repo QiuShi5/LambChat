@@ -19,6 +19,7 @@ import type {
   SummaryPart,
 } from "../../types";
 import i18n from "../../i18n";
+import { translateBackendError } from "../../utils/backendErrors";
 import type { EventData, SubagentStackItem } from "./types";
 import {
   addPartToDepth,
@@ -430,7 +431,9 @@ export function processMessageEvent(
     // ---- Error ----
 
     case "error": {
-      const errorMsg = data.error || i18n.t("chat.unknownError");
+      const errorMsg = data.error
+        ? translateBackendError(data.error, i18n.t.bind(i18n))
+        : i18n.t("chat.unknownError");
       const isCancelled = data.type === "CancelledError";
       result.parts = isStreaming ? clearAllLoadingStates(parts) : parts;
       result.cancelled = isCancelled;

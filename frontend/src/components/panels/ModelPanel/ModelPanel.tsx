@@ -89,10 +89,19 @@ export function ModelPanel() {
       setRoles(roleList || []);
 
       // 加载角色-models 映射
+      const allModelIds = (modelData.models || [])
+        .map((model: ModelConfig) => model.id || "")
+        .filter(Boolean);
       const roleModelPromises = (roleList || []).map(async (role) => {
         try {
           const assignment = await agentConfigApi.getRoleModels(role.id);
-          return { roleId: role.id, models: assignment.allowed_models };
+          return {
+            roleId: role.id,
+            models:
+              assignment.configured === false
+                ? allModelIds
+                : assignment.allowed_models,
+          };
         } catch {
           return { roleId: role.id, models: [] };
         }

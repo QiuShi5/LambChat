@@ -23,6 +23,7 @@ export interface ModelOption {
   provider?: string;
   label: string;
   description?: string;
+  profile?: ModelProfile;
 }
 
 export interface ModelConfig {
@@ -78,6 +79,12 @@ export interface ModelListResponse {
   enabled_count: number;
 }
 
+export interface AvailableModelListResponse {
+  models: ModelOption[];
+  count: number;
+  enabled_count: number;
+}
+
 export interface ModelResponse {
   model: ModelConfig;
   message?: string;
@@ -96,8 +103,8 @@ export const modelApi = {
   },
 
   /** 列出所有可用的模型（任何已认证用户） */
-  async listAvailable(): Promise<ModelListResponse> {
-    return authFetch<ModelListResponse>(
+  async listAvailable(): Promise<AvailableModelListResponse> {
+    return authFetch<AvailableModelListResponse>(
       `${API_BASE}/api/agent/models/available`,
     );
   },

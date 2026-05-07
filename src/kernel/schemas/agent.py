@@ -239,6 +239,7 @@ class RoleModelAssignment(BaseModel):
     allowed_models: list[str] = Field(
         default_factory=list, description="List of allowed model values"
     )
+    configured: bool = Field(True, description="Whether this role has an explicit model assignment")
 
 
 class RoleModelAssignmentUpdate(BaseModel):

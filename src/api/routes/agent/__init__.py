@@ -10,13 +10,15 @@ import json
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from src.agents.core.base import AgentFactory
 from src.api.deps import get_current_user_optional, get_current_user_required
+from src.api.routes.chat import validate_agent_model_access
 from src.infra.logging import get_logger
 from src.kernel.config import settings
+from src.kernel.exceptions import AuthorizationError
 from src.kernel.schemas.agent import (
     AgentRequest,
     ToolInfo,
@@ -270,7 +272,6 @@ async def list_agents(
     # 获取用户角色的可用 agents 映射（使用角色ID作为key）
     role_agent_map = {}
     role_ids = []  # 用户角色ID列表
-    all_allowed_models: list[str] = []
     if user_roles:
         from src.infra.role.manager import get_role_manager
 
@@ -281,33 +282,26 @@ async def list_agents(
             role = await role_manager.get_role_by_name(role_name)
             if role:
                 role_agents = await storage.get_role_agents(role.id)
-                role_models = await storage.get_role_models(role.id)
-                return role.id, role_agents, role_models, role_name
+                return role.id, role_agents, role_name
             return None
 
         role_results = await asyncio.gather(*[_fetch_role(rn) for rn in user_roles])
         for result in role_results:
             if result is not None:
-                rid, role_agents, role_models, role_name = result
+                rid, role_agents, role_name = result
                 role_ids.append(rid)
                 role_agent_map[rid] = role_agents
-                # 合并角色的 allowed_models（union）
-                if role_models is not None:
-                    all_allowed_models.extend(role_models)
                 logger.info(
-                    f"[Agents API] role_name={role_name}, role_id={rid}, role_agents={role_agents}, role_models={role_models}"
+                    f"[Agents API] role_name={role_name}, role_id={rid}, role_agents={role_agents}"
                 )
 
-        # 去重并保持顺序
-        seen = set()
-        unique_models = []
-        for m in all_allowed_models:
-            if m not in seen:
-                seen.add(m)
-                unique_models.append(m)
-        all_allowed_models = unique_models
-
     logger.info(f"[Agents API] final role_ids={role_ids}, role_agent_map={role_agent_map}")
+
+    from src.infra.agent.model_access import resolve_user_allowed_model_ids
+
+    allowed_model_ids = await resolve_user_allowed_model_ids(
+        optional_user.model_copy(update={"roles": user_roles})
+    )
 
     # 获取过滤后的 agents
     agents = await AgentFactory.get_filtered_agents(
@@ -320,7 +314,7 @@ async def list_agents(
         "agents": agents,
         "count": len(agents),
         "default_agent": default_agent,
-        "allowed_model_ids": all_allowed_models if all_allowed_models else None,
+        "allowed_model_ids": allowed_model_ids,
     }
 
 
@@ -371,9 +365,15 @@ async def chat_stream(
 
     # Pass all agent_options to the agent
     agent_options = request_body.agent_options or {}
+    request_body.agent_options = agent_options
     logger.info(f"[API] request.agent_options: {request_body.agent_options}")
     logger.info(f"[API] agent_options to pass: {agent_options}")
     logger.info(f"[API] disabled_tools: {request_body.disabled_tools}")
+
+    try:
+        await validate_agent_model_access(agent_options, user)
+    except AuthorizationError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     async def event_generator():
         try:

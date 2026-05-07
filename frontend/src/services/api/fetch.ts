@@ -10,6 +10,7 @@ import {
   refreshAccessToken,
   clearAuthState,
 } from "./tokenManager";
+import { translateBackendError } from "../../utils/backendErrors";
 
 // ============================================
 // 带认证的 fetch 封装
@@ -95,7 +96,7 @@ export async function authFetch<T>(
       errorMessage =
         errorData.detail || `Request failed: ${response.statusText}`;
     }
-    throw new Error(errorMessage);
+    throw new Error(translateBackendError(errorMessage, i18n.t.bind(i18n)));
   }
 
   // 处理空响应

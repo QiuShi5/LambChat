@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import pytest
+
+from src.api.routes.chat import validate_agent_model_access
+from src.kernel.exceptions import AuthorizationError
+from src.kernel.schemas.model import ModelConfig
+from src.kernel.schemas.user import TokenPayload
+
+
+class _ModelStorage:
+    async def get(self, model_id: str) -> ModelConfig | None:
+        if model_id == "allowed-enabled":
+            return ModelConfig(
+                id=model_id,
+                value="openai/gpt-allowed",
+                label="Allowed",
+                enabled=True,
+            )
+        if model_id == "blocked-enabled":
+            return ModelConfig(
+                id=model_id,
+                value="openai/gpt-blocked",
+                label="Blocked",
+                enabled=True,
+            )
+        return None
+
+    async def get_by_value(self, value: str) -> ModelConfig | None:
+        if value == "openai/gpt-allowed":
+            return ModelConfig(
+                id="allowed-enabled",
+                value=value,
+                label="Allowed",
+                enabled=True,
+            )
+        if value == "openai/gpt-blocked":
+            return ModelConfig(
+                id="blocked-enabled",
+                value=value,
+                label="Blocked",
+                enabled=True,
+            )
+        return None
+
+
+class _AgentConfigStorage:
+    async def get_role_models(self, role_id: str) -> list[str] | None:
+        if role_id == "role-user":
+            return ["allowed-enabled"]
+        if role_id == "role-empty":
+            return []
+        return None
+
+
+class _Role:
+    id = "role-user"
+
+
+class _EmptyRole:
+    id = "role-empty"
+
+
+class _RoleManager:
+    async def get_role_by_name(self, role_name: str) -> _Role | None:
+        if role_name == "user":
+            return _Role()
+        if role_name == "empty":
+            return _EmptyRole()
+        return None
+
+
+@pytest.mark.asyncio
+async def test_validate_agent_model_access_rejects_model_id_outside_user_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.infra.agent.model_storage.get_model_storage",
+        lambda: _ModelStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.agent.config_storage.get_agent_config_storage",
+        lambda: _AgentConfigStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.role.manager.get_role_manager",
+        lambda: _RoleManager(),
+    )
+    user = TokenPayload(sub="user-1", username="tester", roles=["user"])
+
+    with pytest.raises(AuthorizationError, match="model_not_allowed"):
+        await validate_agent_model_access(
+            {"model_id": "blocked-enabled"},
+            user,
+        )
+
+
+@pytest.mark.asyncio
+async def test_validate_agent_model_access_allows_role_model_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.infra.agent.model_storage.get_model_storage",
+        lambda: _ModelStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.agent.config_storage.get_agent_config_storage",
+        lambda: _AgentConfigStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.role.manager.get_role_manager",
+        lambda: _RoleManager(),
+    )
+    user = TokenPayload(sub="user-1", username="tester", roles=["user"])
+
+    await validate_agent_model_access(
+        {"model_id": "allowed-enabled"},
+        user,
+    )
+
+
+@pytest.mark.asyncio
+async def test_validate_agent_model_access_selects_role_default_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.infra.agent.model_storage.get_model_storage",
+        lambda: _ModelStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.agent.config_storage.get_agent_config_storage",
+        lambda: _AgentConfigStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.role.manager.get_role_manager",
+        lambda: _RoleManager(),
+    )
+    user = TokenPayload(sub="user-1", username="tester", roles=["user"])
+    agent_options = {}
+
+    await validate_agent_model_access(agent_options, user)
+
+    assert agent_options["model_id"] == "allowed-enabled"
+    assert agent_options["model"] == "openai/gpt-allowed"
+
+
+@pytest.mark.asyncio
+async def test_validate_agent_model_access_rejects_when_role_allows_no_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "src.infra.agent.model_storage.get_model_storage",
+        lambda: _ModelStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.agent.config_storage.get_agent_config_storage",
+        lambda: _AgentConfigStorage(),
+    )
+    monkeypatch.setattr(
+        "src.infra.role.manager.get_role_manager",
+        lambda: _RoleManager(),
+    )
+    user = TokenPayload(sub="user-1", username="tester", roles=["empty"])
+
+    with pytest.raises(AuthorizationError, match="model_not_allowed"):
+        await validate_agent_model_access(
+            {"model_id": "allowed-enabled"},
+            user,
+        )

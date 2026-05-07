@@ -34,6 +34,53 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
+async def validate_agent_model_access(
+    agent_options: dict | None,
+    user: TokenPayload,
+) -> None:
+    """Validate per-request model selection against enabled models and role access."""
+    if agent_options is None:
+        agent_options = {}
+
+    model_id = agent_options.get("model_id")
+    selected_model = agent_options.get("model")
+
+    from src.infra.agent.model_storage import get_model_storage
+
+    storage = get_model_storage()
+    from src.infra.agent.model_access import resolve_user_allowed_model_ids
+
+    allowed_model_ids = await resolve_user_allowed_model_ids(user)
+
+    if not model_id and not selected_model:
+        if allowed_model_ids is None:
+            return
+        for allowed_model_id in allowed_model_ids:
+            model = await storage.get(allowed_model_id)
+            if not model:
+                model = await storage.get_by_value(allowed_model_id)
+            if model and model.enabled:
+                agent_options["model_id"] = model.id or allowed_model_id
+                agent_options["model"] = model.value
+                return
+        raise AuthorizationError("model_disabled")
+
+    model = None
+    if isinstance(model_id, str) and model_id:
+        model = await storage.get(model_id)
+    elif isinstance(selected_model, str) and selected_model:
+        model = await storage.get_by_value(selected_model)
+
+    if not model or not model.enabled:
+        raise AuthorizationError("model_disabled")
+
+    allowed_model_set = set(allowed_model_ids or [])
+    if allowed_model_ids is not None and (
+        model.id not in allowed_model_set and model.value not in allowed_model_set
+    ):
+        raise AuthorizationError("model_not_allowed")
+
+
 async def _update_session_config(
     session_id: str,
     run_id: str,
@@ -210,6 +257,9 @@ async def chat_stream(
 
     try:
         await resolve_persona_request(request, user)
+        if request.agent_options is None:
+            request.agent_options = {}
+        await validate_agent_model_access(request.agent_options, user)
     except NotFoundError:
         raise HTTPException(status_code=404, detail="角色预设不存在")
     except AuthorizationError as e:

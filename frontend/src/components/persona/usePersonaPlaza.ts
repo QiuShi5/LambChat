@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { personaPresetApi } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { usePersonaPresets } from "../../hooks/usePersonaPresets";
 import { Permission } from "../../types";
+import { translateBackendError } from "../../utils/backendErrors";
 import type {
   PersonaPreset,
   PersonaPresetCreate,
@@ -30,18 +30,6 @@ function readPersonaPresetId(): string | null {
 export interface PersonaRouteState {
   personaPresetId?: string;
   personaSnapshot?: PersonaPresetSnapshot;
-}
-
-const BACKEND_ERROR_MAP: Record<string, string> = {
-  persona_preset_not_found: "personaPresets.presetNotFound",
-  persona_preset_no_edit_permission: "personaPresets.noEditPermission",
-  persona_preset_no_delete_permission: "personaPresets.noDeletePermission",
-  persona_preset_no_admin_permission: "personaPresets.noAdminPermission",
-};
-
-function translateBackendError(message: string, t: TFunction): string {
-  const i18nKey = BACKEND_ERROR_MAP[message];
-  return i18nKey ? t(i18nKey, i18nKey) : message;
 }
 
 const PAGE_SIZE = 12;

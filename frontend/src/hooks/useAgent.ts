@@ -40,6 +40,7 @@ import {
 } from "./useAgent/sseConnection";
 import { createOptimisticMessagesForSend } from "./useAgent/optimisticMessages";
 import { resolvePersonaEnabledSkills } from "./useAgent/personaRequestConfig";
+import { translateBackendError } from "../utils/backendErrors";
 
 export function useAgent(options?: UseAgentOptions): UseAgentReturn {
   const { hasAnyPermission } = useAuth();
@@ -663,7 +664,9 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
           return;
         }
         const errorMessage =
-          err instanceof Error ? err.message : i18n.t("chat.unknownError");
+          err instanceof Error
+            ? translateBackendError(err.message, i18n.t.bind(i18n))
+            : i18n.t("chat.unknownError");
         setError(errorMessage);
         setMessages((prev) =>
           prev.map((m) =>

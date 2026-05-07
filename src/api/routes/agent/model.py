@@ -16,12 +16,14 @@ from src.api.deps import require_permissions
 from src.infra.agent.model_storage import get_model_storage
 from src.infra.logging import get_logger
 from src.kernel.schemas.model import (
+    AvailableModelListResponse,
     ModelConfig,
     ModelConfigCreate,
     ModelConfigUpdate,
     ModelListResponse,
     ModelResponse,
     mask_api_key,
+    to_available_model,
 )
 from src.kernel.schemas.user import TokenPayload
 from src.kernel.types import Permission
@@ -52,21 +54,28 @@ async def list_models(
     )
 
 
-@router.get("/available", response_model=ModelListResponse)
+@router.get("/available", response_model=AvailableModelListResponse)
 async def list_available_models(
-    _: TokenPayload = Depends(require_permissions(Permission.AGENT_READ.value)),
+    user: TokenPayload = Depends(require_permissions(Permission.AGENT_READ.value)),
 ):
-    """获取所有可用的模型配置（任何已认证用户，仅返回启用的模型）"""
+    """获取当前用户可用模型（仅启用模型，按角色授权过滤，返回公开字段）"""
     logger.info("[Model] list_available_models called")
     storage = get_model_storage()
     models = await storage.list_models(include_disabled=False)
-    counts = await storage.count()
-    logger.info(f"[Model] Found {len(models)} models, counts={counts}")
 
-    return ModelListResponse(
-        models=[mask_api_key(m) for m in models],
-        count=counts["total"],
-        enabled_count=counts["enabled"],
+    from src.infra.agent.model_access import resolve_user_allowed_model_ids
+
+    allowed_model_ids = await resolve_user_allowed_model_ids(user)
+    if allowed_model_ids is not None:
+        allowed_set = set(allowed_model_ids)
+        models = [m for m in models if m.id in allowed_set or m.value in allowed_set]
+
+    logger.info(f"[Model] Found {len(models)} visible models for user_id={user.sub}")
+
+    return AvailableModelListResponse(
+        models=[to_available_model(m) for m in models],
+        count=len(models),
+        enabled_count=len(models),
     )
 
 
@@ -244,7 +253,7 @@ async def delete_model(
     from src.infra.agent.config_storage import get_agent_config_storage
 
     agent_storage = get_agent_config_storage()
-    affected = await agent_storage.remove_model_from_all_roles(model_value)
+    affected = await agent_storage.remove_model_from_all_roles(model_id)
     if affected:
         logger.info(f"[Model] Removed deleted model '{model_id}' from {affected} role(s)")
 
