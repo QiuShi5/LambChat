@@ -56,11 +56,18 @@ export function GlassSelect({
     if (!open || !ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const vw = window.innerWidth;
+    const vh = window.innerHeight;
     const w = Math.max(rect.width, 160);
     const left = Math.max(16, Math.min(rect.left, vw - w - 16));
+
+    const spaceBelow = vh - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+    const preferBelow = spaceBelow >= 200 || spaceBelow >= spaceAbove;
+
     setDropdownStyle({
       position: "fixed",
-      top: rect.bottom + 4,
+      top: preferBelow ? rect.bottom + 4 : undefined,
+      bottom: preferBelow ? undefined : vh - rect.top + 4,
       left,
       width: w,
       zIndex: 9999,
@@ -104,7 +111,9 @@ export function GlassSelect({
                   opt.value === value ? "active" : ""
                 } ${opt.disabled ? "disabled" : ""}`}
               >
-                <Check size={14} className="glass-select-option-check" />
+                {opt.value === value && (
+                  <Check size={14} className="glass-select-option-check" />
+                )}
                 <span className="glass-select-option-label">{opt.label}</span>
               </button>
             ))}

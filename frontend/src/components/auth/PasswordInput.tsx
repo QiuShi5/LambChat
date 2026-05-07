@@ -29,13 +29,13 @@ export function PasswordInput({
   return (
     <div className="relative [&_::-ms-reveal]:hidden [&_::-webkit-credentials-auto-fill-button]:hidden">
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400 dark:text-stone-500 sm:pl-3.5">
-        <Lock size={16} />
+        <Lock size={15} />
       </div>
       <input
         type={visible ? "text" : "password"}
         value={value}
         onChange={onChange}
-        className={`auth-input w-full rounded-xl py-2.5 pl-10 pr-10 text-sm transition-all sm:py-3 sm:pl-11 sm:pr-4 ${className}`}
+        className={`auth-input w-full rounded-xl py-2.5 pl-10 pr-10 text-sm transition-all sm:py-2.5 sm:pl-10 sm:pr-10 md:py-3 md:pl-11 md:pr-4 ${className}`}
         placeholder={placeholder}
         autoComplete={autoComplete}
       />

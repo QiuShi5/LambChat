@@ -162,6 +162,51 @@ html.dark .blog-float-dot {
   position: relative;
 }
 
+@media (max-width: 639px) {
+  .blog-hero {
+    isolation: isolate;
+  }
+
+  .blog-hero-glow-main {
+    width: 34rem;
+    height: 26rem;
+    opacity: 0.9;
+  }
+
+  .blog-hero-glow-blue {
+    top: 54%;
+    left: -8rem;
+    width: 18rem;
+    height: 18rem;
+    opacity: 0.85;
+  }
+
+  .blog-hero-glow-violet {
+    right: -7rem;
+    bottom: 7%;
+    width: 16rem;
+    height: 16rem;
+    opacity: 0.8;
+  }
+
+  .blog-hero-float {
+    display: none;
+  }
+
+  .blog-hero-title {
+    text-wrap: balance;
+  }
+
+  .blog-tech-pill {
+    background-color: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(10px);
+  }
+
+  html.dark .blog-tech-pill {
+    background-color: rgba(41, 37, 36, 0.46);
+  }
+}
+
 .blog-ornament-diamond {
   width: 6px;
   height: 6px;

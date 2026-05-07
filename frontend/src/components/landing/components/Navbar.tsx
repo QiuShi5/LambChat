@@ -32,7 +32,7 @@ export function Navbar({
         scrolled ? "blog-nav-scrolled" : ""
       }`}
     >
-      <div className="max-wfull mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
+      <div className="max-w-full mx-auto px-4 sm:px-8 h-14 flex items-center justify-between">
         <div
           className="flex items-center gap-2.5 cursor-pointer group"
           onClick={() => navigate("/")}

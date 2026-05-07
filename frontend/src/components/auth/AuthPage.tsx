@@ -316,15 +316,19 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
   }
 
   return (
-    <div className="auth-shell min-h-screen overflow-y-auto overflow-x-hidden">
+    <div className="auth-shell min-h-[100svh] min-h-[100dvh] overflow-y-auto overflow-x-hidden">
+      <div className="auth-crosshatch" aria-hidden="true" />
+
       {/* Subtle background gradient */}
       <div className="auth-atmosphere" aria-hidden="true">
-        <div className="absolute -top-20 -right-20 w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(251,191,36,0.04)_0%,transparent_60%)] dark:bg-[radial-gradient(circle,rgba(251,191,36,0.025)_0%,transparent_60%)]" />
+        <div className="auth-glow-main absolute -top-24 left-1/2 -translate-x-1/2 w-[720px] h-[520px] bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.065)_0%,rgba(251,146,60,0.025)_42%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.04)_0%,rgba(251,146,60,0.018)_42%,transparent_70%)]" />
+        <div className="auth-glow-blue absolute top-[34%] left-[4%] w-[360px] h-[360px] bg-[radial-gradient(circle,rgba(56,189,248,0.04)_0%,transparent_62%)] dark:bg-[radial-gradient(circle,rgba(56,189,248,0.028)_0%,transparent_62%)]" />
+        <div className="auth-glow-violet absolute bottom-[10%] right-[8%] w-[300px] h-[300px] bg-[radial-gradient(circle,rgba(168,85,247,0.035)_0%,transparent_60%)] dark:bg-[radial-gradient(circle,rgba(168,85,247,0.022)_0%,transparent_60%)]" />
       </div>
 
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 dark:bg-stone-950/90 border-b border-stone-100/60 dark:border-stone-800/40 transition-shadow duration-300">
-        <div className="max-wfull mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
+        <div className="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-8">
           <Link to="/" className="flex items-center gap-2.5 group">
             <img
               src="/icons/icon.svg"
@@ -343,30 +347,30 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
       </nav>
 
       {/* Main content */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-6 sm:px-6">
-        <div className="w-full max-w-[350px] sm:max-w-[420px] lg:max-w-[450px] 2xl:max-w-[480px]">
+      <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] items-center justify-center px-4 py-20 sm:px-6 sm:py-24">
+        <div className="w-full max-w-[22.5rem] sm:max-w-[420px] lg:max-w-[450px] 2xl:max-w-[480px]">
           {/* Title area */}
-          <div className="mb-6 text-center">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-serif tracking-[-0.03em] leading-[0.95] text-stone-900 dark:text-stone-50 mb-2">
+          <div className="mb-5 text-center sm:mb-6">
+            <h1 className="text-[2.65rem] sm:text-4xl lg:text-5xl font-extrabold font-serif tracking-[-0.045em] sm:tracking-[-0.03em] leading-[0.9] sm:leading-[0.95] text-stone-900 dark:text-stone-50 mb-2">
               {APP_NAME}
             </h1>
-            <p className="text-[13px] sm:text-[13px] lg:text-sm text-stone-500 dark:text-stone-400">
+            <p className="mx-auto max-w-[18rem] text-xs leading-relaxed text-stone-500 dark:text-stone-400 sm:text-[13px] lg:text-sm">
               {mode === "login" ? t("auth.loginHint") : t("auth.registerHint")}
             </p>
           </div>
 
           {/* Form card */}
-          <div className="auth-panel rounded-2xl p-5 sm:p-6 lg:p-8 2xl:p-10">
+          <div className="auth-panel rounded-[1.35rem] p-4 shadow-stone-200/50 sm:rounded-2xl sm:p-6 lg:p-8 2xl:p-10 dark:shadow-stone-950/40">
             {/* OAuth buttons */}
             {oauthProviders.length > 0 && (
               <div className="mb-4 sm:mb-5 lg:mb-6 2xl:mb-8">
-                <div className="flex items-center justify-center gap-2.5 sm:gap-3">
+                <div className="flex items-center justify-center gap-2 sm:gap-3">
                   {oauthProviders.map((provider) => (
                     <Fragment key={provider.id}>
                       <button
                         type="button"
                         onClick={() => handleOAuthLogin(provider.id)}
-                        className="flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white p-3 text-sm font-medium text-stone-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-stone-50 hover:shadow-md active:translate-y-0 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:bg-stone-700 dark:hover:shadow-lg sm:gap-2.5"
+                        className="flex h-11 min-w-12 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white/85 px-3 text-sm font-medium text-stone-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-md active:translate-y-0 dark:border-stone-700 dark:bg-stone-800/70 dark:text-stone-200 dark:hover:bg-stone-800 dark:hover:shadow-lg sm:h-auto sm:gap-2.5 sm:p-3"
                       >
                         {provider.id === "google" && (
                           <svg
@@ -433,7 +437,7 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
               {/* Error */}
               {error && (
                 <div>
-                  <div className="flex items-center gap-2 rounded-lg border border-red-200/60 bg-red-50/80 px-3 py-2 text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400">
+                  <div className="flex items-center gap-2 rounded-lg border border-red-200/60 bg-red-50/80 px-2.5 py-1.5 text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-400 sm:px-3 sm:py-2">
                     <AlertCircle size={14} className="flex-shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -453,22 +457,22 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
 
               {/* Account input */}
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
+                <label className="mb-0.5 block text-[11px] font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
                   {t("auth.account")}
                 </label>
                 <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400 dark:text-stone-500 sm:pl-3.5">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-stone-400 dark:text-stone-500 sm:pl-3.5">
                     {mode === "login" ? (
-                      <AtSign size={16} />
+                      <AtSign size={14} />
                     ) : (
-                      <User size={16} />
+                      <User size={14} />
                     )}
                   </div>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="auth-input w-full rounded-xl py-2.5 pl-10 pr-3 text-sm transition-all sm:py-3 sm:pl-11 sm:pr-4"
+                    className="auth-input w-full rounded-xl py-2.5 pl-10 pr-3 text-sm transition-all sm:py-2.5 sm:pl-10 sm:pr-3 md:py-3 md:pl-11 md:pr-4"
                     placeholder={
                       mode === "login"
                         ? t("auth.usernameOrEmailPlaceholder")
@@ -487,18 +491,18 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
               {/* Email (register only) */}
               {mode === "register" && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
+                  <label className="mb-0.5 block text-[11px] font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
                     {t("auth.email")}
                   </label>
                   <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-stone-400 dark:text-stone-500 sm:pl-3.5">
-                      <Mail size={16} />
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-stone-400 dark:text-stone-500 sm:pl-3.5">
+                      <Mail size={14} />
                     </div>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="auth-input w-full rounded-xl py-2.5 pl-10 pr-3 text-sm transition-all sm:py-3 sm:pl-11 sm:pr-4"
+                      className="auth-input w-full rounded-xl py-2.5 pl-10 pr-3 text-sm transition-all sm:py-2.5 sm:pl-10 sm:pr-3 md:py-3 md:pl-11 md:pr-4"
                       placeholder={t("auth.emailPlaceholder")}
                       autoComplete="email"
                     />
@@ -508,7 +512,7 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
 
               {/* Password */}
               <div>
-                <label className="mb-1 block text-xs font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
+                <label className="mb-0.5 block text-[11px] font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
                   {t("auth.password")}
                 </label>
                 <PasswordInput
@@ -526,7 +530,7 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
               {/* Confirm password (register only) */}
               {mode === "register" && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
+                  <label className="mb-0.5 block text-[11px] font-medium text-stone-700 dark:text-stone-300 sm:mb-1.5 sm:text-sm">
                     {t("auth.confirmPassword")}
                   </label>
                   <PasswordInput
@@ -563,7 +567,7 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
               <button
                 type="submit"
                 disabled={isSubmitting || isRedirecting}
-                className="auth-primary-button w-full rounded-xl py-3 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 lg:py-3.5 2xl:py-4"
+                className="auth-primary-button min-h-12 w-full rounded-xl py-3 text-sm font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 lg:py-3.5 2xl:py-4"
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   {isSubmitting && (
@@ -616,13 +620,13 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
             )}
 
             {/* Terms */}
-            <p className="mt-3 text-center text-[10px] text-stone-400 dark:text-stone-500 sm:mt-3 sm:text-xs lg:mt-4 2xl:mt-5">
+            <p className="mt-3 text-center text-[10px] text-stone-400 dark:text-stone-500 sm:text-xs">
               {t("auth.termsHint")}
             </p>
           </div>
 
           {/* Footer */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 text-[10px] text-stone-400 dark:text-stone-500 sm:mt-4 sm:gap-x-3 sm:text-xs lg:mt-6 2xl:mt-8">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 text-[10px] text-stone-400 dark:text-stone-500 sm:gap-x-3 sm:text-xs lg:mt-6">
             <a
               href={GITHUB_URL}
               target="_blank"
