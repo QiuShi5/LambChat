@@ -96,9 +96,9 @@ export function FeedbackButtons({
           title={t("feedback.alreadySubmitted") || "Feedback submitted"}
         >
           {submittedFeedback === "up" ? (
-            <ThumbsUp size={12} className="fill-current" />
+            <ThumbsUp size={16} className="fill-current" />
           ) : (
-            <ThumbsDown size={12} className="fill-current" />
+            <ThumbsDown size={16} className="fill-current" />
           )}
         </span>
       </div>

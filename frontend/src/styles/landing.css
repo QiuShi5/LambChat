@@ -110,8 +110,7 @@ html.dark .blog-hero {
 }
 
 .blog-crosshatch {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px);
+  background-image: none;
   background-size: 48px 48px;
 }
 html.dark .blog-crosshatch {

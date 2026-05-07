@@ -45,7 +45,7 @@ html.dark body {
   background: #0c0a09;
 }
 
-/* Auth crosshatch background (matches landing page) */
+/* Auth crosshatch background (dark mode only; light mode stays clean) */
 .auth-crosshatch {
   position: absolute;
   inset: 0;
@@ -57,8 +57,7 @@ html.dark body {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(0, 0, 0, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.018) 1px, transparent 1px);
+  background-image: none;
   background-size: 48px 48px;
 }
 
