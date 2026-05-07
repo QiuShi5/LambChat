@@ -887,15 +887,11 @@ export default function DocumentPreview({
         </Suspense>
       ) : resolvedImageFile || imageUrl ? (
         <>
-          <div className="flex items-center justify-center p-4 sm:p-8 bg-stone-50 dark:bg-stone-800/50 min-h-[200px] overflow-auto">
+          <div className="flex items-center justify-center p-4 sm:p-8 bg-stone-50 dark:bg-stone-800/50 h-full overflow-auto">
             <img
               src={imageUrl || `data:image/${ext};base64,${data?.content}`}
               alt={fileName}
-              className={`rounded-lg shadow-lg object-contain cursor-pointer hover:opacity-90 transition-opacity ${
-                isFullscreen
-                  ? "max-w-full max-h-full"
-                  : "w-full max-w-fit max-h-[50vh] sm:max-h-[60vh]"
-              }`}
+              className={`rounded-lg shadow-lg object-contain cursor-pointer hover:opacity-90 transition-opacity max-w-full max-h-full`}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowImageViewer(true);

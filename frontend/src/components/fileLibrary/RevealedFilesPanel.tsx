@@ -8,6 +8,7 @@ import { projectApi } from "../../services/api/project";
 import DocumentPreview from "../documents/DocumentPreview";
 import { ImageViewer, VideoViewer } from "../common";
 import { DelayedUnmount } from "../common/DelayedUnmount";
+import { getFileExtension, isImageFile, isVideoFile } from "../documents/utils";
 import { Toolbar } from "./components/Toolbar";
 import { SessionGroup } from "./components/SessionGroup";
 import { EmptyState } from "./components/EmptyState";
@@ -81,11 +82,12 @@ export function RevealedFilesPanel() {
         });
         return;
       }
-      if (file.file_type === "image" && file.url) {
+      const ext = getFileExtension(file.file_name);
+      if (file.url && (file.file_type === "image" || isImageFile(ext))) {
         setImageViewerSrc(getFullUrl(file.url) ?? file.url);
         return;
       }
-      if (file.file_type === "video" && file.url) {
+      if (file.url && (file.file_type === "video" || isVideoFile(ext))) {
         setVideoViewerSrc(getFullUrl(file.url) ?? file.url);
         return;
       }

@@ -19,6 +19,7 @@ import { AssistantAvatar } from "./AssistantAvatar";
 import { ShareButton } from "./ShareButton";
 import { CollapsiblePill } from "../../common/CollapsiblePill";
 import { useSettingsContext } from "../../../contexts/SettingsContext";
+import { useAuth } from "../../../hooks/useAuth";
 import { ModelIconImg } from "../../agent/modelIcon.tsx";
 import { shouldCloseTokenDetailsPopover } from "./tokenDetailsPopoverGuards";
 import { resolveTokenUsageModelDetails } from "./tokenUsageModel";
@@ -254,6 +255,7 @@ export const ChatMessage = memo(function ChatMessage({
 }: ChatMessageProps) {
   const { t } = useTranslation();
   const { availableModels } = useSettingsContext();
+  const { isAuthenticated } = useAuth();
   const isUser = message.role === "user";
   const isStreaming = message.isStreaming && !message.content;
   const modelDetails = resolveTokenUsageModelDetails({
@@ -440,7 +442,7 @@ export const ChatMessage = memo(function ChatMessage({
               />
             )}
             {/* Feedback buttons */}
-            {sessionId && (message.runId || runId) && (
+            {isAuthenticated && sessionId && (message.runId || runId) && (
               <FeedbackButtons
                 sessionId={sessionId}
                 runId={message.runId || runId!}

@@ -8,14 +8,68 @@ export function getFileExtension(fileName: string): string {
   return fileName.split(".").pop()?.toLowerCase() || "";
 }
 
-// Check if file is binary (video, audio, archive, etc.)
+// Check if file is binary (video, audio, archive, image, font, etc.)
 export function isBinaryFile(ext: string): boolean {
   return (
     isVideoFile(ext) ||
     isAudioFile(ext) ||
     isArchiveFile(ext) ||
-    isExecutableFile(ext)
+    isExecutableFile(ext) ||
+    isImageFile(ext) ||
+    isFontFile(ext)
   );
+}
+
+// Check if file is font
+export function isFontFile(ext: string): boolean {
+  const fontExts = [
+    "ttf",
+    "otf",
+    "woff",
+    "woff2",
+    "eot",
+    // Apple
+    "ttc",
+    "dfont",
+    // Other
+    "pfb",
+    "pfa",
+  ];
+  return fontExts.includes(ext);
+}
+
+// Check if file is a document (office suite, PDF, ebook, etc.)
+export function isDocumentFile(ext: string): boolean {
+  return (
+    isPdfFile(ext) ||
+    isWordFile(ext) ||
+    isExcelFile(ext) ||
+    isPptFile(ext) ||
+    isEbookFile(ext) ||
+    isDataFile(ext)
+  );
+}
+
+// Check if file is ebook
+export function isEbookFile(ext: string): boolean {
+  const ebookExts = ["epub", "mobi", "azw", "azw3", "kf8", "ibooks", "fb2"];
+  return ebookExts.includes(ext);
+}
+
+// Check if file is data / database
+export function isDataFile(ext: string): boolean {
+  const dataExts = [
+    "db",
+    "sqlite",
+    "sqlite3",
+    "mdb",
+    "accdb",
+    "jsonl",
+    "ndjson",
+    "parquet",
+    "arrow",
+  ];
+  return dataExts.includes(ext);
 }
 
 // Check if file is video
@@ -31,6 +85,29 @@ export function isVideoFile(ext: string): boolean {
     "m4v",
     "mpeg",
     "mpg",
+    // Windows
+    "wmv",
+    "asf",
+    "dvr-ms",
+    // Apple/iOS
+    "m4v",
+    "3gp",
+    "3g2",
+    // Android
+    "3gp",
+    "3g2",
+    "ogv",
+    // Other
+    "ts",
+    "mts",
+    "m2ts",
+    "vob",
+    "divx",
+    "rm",
+    "rmvb",
+    "f4v",
+    "h264",
+    "hevc",
   ];
   return videoExts.includes(ext);
 }
@@ -47,6 +124,31 @@ export function isAudioFile(ext: string): boolean {
     "wma",
     "aiff",
     "opus",
+    // Apple/iOS
+    "caf",
+    "m4r",
+    "m4p",
+    "aif",
+    // Android
+    "amr",
+    "mid",
+    "midi",
+    "imy",
+    // Windows
+    "wma",
+    "wax",
+    "asf",
+    // Other
+    "ape",
+    "alac",
+    "wv",
+    "tak",
+    "dsd",
+    "dsf",
+    "dff",
+    "spx",
+    "ra",
+    "rm",
   ];
   return audioExts.includes(ext);
 }
@@ -63,19 +165,117 @@ export function isArchiveFile(ext: string): boolean {
     "xz",
     "iso",
     "dmg",
+    // Windows
+    "cab",
+    "msi",
+    // Apple/macOS/iOS
+    "ipa",
+    "pkg",
+    "sit",
+    "sitx",
+    // Android
+    "apk",
+    "aab",
+    // Linux
+    "deb",
+    "rpm",
+    "snap",
+    // Other
+    "zst",
+    "lz4",
+    "lz",
+    "tgz",
+    "tbz2",
+    "txz",
+    "shar",
+    "lzma",
+    "arj",
+    "ace",
   ];
   return archiveExts.includes(ext);
 }
 
 // Check if file is executable
 export function isExecutableFile(ext: string): boolean {
-  const execExts = ["exe", "dll", "so", "app", "dmg", "deb", "rpm", "msi"];
+  const execExts = [
+    // Windows
+    "exe",
+    "dll",
+    "msi",
+    "bat",
+    "cmd",
+    "ps1",
+    "vbs",
+    "wsf",
+    "cpl",
+    "scr",
+    // Linux
+    "so",
+    "deb",
+    "rpm",
+    // Apple/macOS/iOS
+    "app",
+    "dmg",
+    "ipa",
+    "kext",
+    "dylib",
+    "framework",
+    // Android
+    "apk",
+    "dex",
+    // Other
+    "bin",
+    "com",
+    "run",
+    "out",
+  ];
   return execExts.includes(ext);
 }
 
 // Check if file is an image
 export function isImageFile(ext: string): boolean {
-  const imageExts = ["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp", "ico"];
+  const imageExts = [
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "svg",
+    "webp",
+    "bmp",
+    "ico",
+    // Apple/iOS
+    "heic",
+    "heif",
+    "tiff",
+    "tif",
+    // Android
+    "webp",
+    "avif",
+    // Windows
+    "wmf",
+    "emf",
+    "dib",
+    // RAW formats (camera)
+    "raw",
+    "cr2",
+    "cr3",
+    "nef",
+    "arw",
+    "dng",
+    "orf",
+    "rw2",
+    // Other
+    "avif",
+    "jxl",
+    "tga",
+    "pcx",
+    "psd",
+    "psb",
+    "eps",
+    "ico",
+    "icns",
+    "cur",
+  ];
   return imageExts.includes(ext);
 }
 
@@ -86,7 +286,7 @@ export function isPdfFile(ext: string): boolean {
 
 // Check if file is Word document
 export function isWordFile(ext: string): boolean {
-  const wordExts = ["doc", "docx"];
+  const wordExts = ["doc", "docx", "dot", "dotx", "docm", "dotm"];
   return wordExts.includes(ext);
 }
 
@@ -97,18 +297,29 @@ export function isLegacyDocFile(ext: string): boolean {
 
 // Check if file is Excel spreadsheet
 export function isExcelFile(ext: string): boolean {
-  const excelExts = ["xls", "xlsx", "csv"];
+  const excelExts = [
+    "xls",
+    "xlsx",
+    "csv",
+    "xlsm",
+    "xlt",
+    "xltx",
+    "xlsb",
+    "xlam",
+    "ods",
+  ];
   return excelExts.includes(ext);
 }
 
 // Check if file is PowerPoint presentation (any format)
 export function isPptFile(ext: string): boolean {
-  return ext === "ppt" || ext === "pptx";
+  const pptExts = ["ppt", "pptx", "pot", "potx", "pps", "ppsx", "pptm", "odp"];
+  return pptExts.includes(ext);
 }
 
 // Check if file is PowerPoint Open XML format (.pptx)
 export function isPptxFile(ext: string): boolean {
-  return ext === "pptx";
+  return ext === "pptx" || ext === "pptm";
 }
 
 // Check if file is legacy PowerPoint format (.ppt)
@@ -131,6 +342,14 @@ const FILE_LINK_EXTENSIONS = new Set([
   "webp",
   "bmp",
   "ico",
+  "heic",
+  "heif",
+  "avif",
+  "tiff",
+  "tif",
+  "psd",
+  "tga",
+  "icns",
   // Documents
   "pdf",
   "doc",
@@ -140,6 +359,12 @@ const FILE_LINK_EXTENSIONS = new Set([
   "csv",
   "ppt",
   "pptx",
+  "odt",
+  "ods",
+  "odp",
+  "rtf",
+  "epub",
+  "mobi",
   // Web
   "html",
   "htm",
@@ -154,14 +379,23 @@ const FILE_LINK_EXTENSIONS = new Set([
   "c",
   "h",
   "css",
+  "scss",
   "json",
   "xml",
   "txt",
   "vue",
+  "svelte",
   "go",
   "rs",
   "rb",
   "php",
+  "swift",
+  "kt",
+  "dart",
+  "lua",
+  "r",
+  "pl",
+  "sql",
   "yaml",
   "yml",
   "toml",
@@ -170,8 +404,13 @@ const FILE_LINK_EXTENSIONS = new Set([
   "sh",
   "bash",
   "zsh",
+  "fish",
+  "ps1",
   "md",
   "markdown",
+  "tex",
+  "graphql",
+  "proto",
   // Diagrams
   "excalidraw",
   "exdraw",
@@ -181,12 +420,43 @@ const FILE_LINK_EXTENSIONS = new Set([
   "mov",
   "avi",
   "mkv",
+  "flv",
+  "wmv",
+  "3gp",
+  "3g2",
+  "ts",
+  "mts",
   "mp3",
   "wav",
   "ogg",
   "flac",
   "aac",
   "m4a",
+  "wma",
+  "opus",
+  "aiff",
+  "amr",
+  "caf",
+  // Archives
+  "zip",
+  "rar",
+  "7z",
+  "tar",
+  "gz",
+  "apk",
+  "ipa",
+  "dmg",
+  // Fonts
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+  // Data
+  "db",
+  "sqlite",
+  "sqlite3",
+  "jsonl",
+  "parquet",
 ]);
 
 export interface FileLinkInfo {
@@ -224,7 +494,8 @@ export function isPreviewableFile(ext: string): boolean {
     isMarkdownFile(ext) ||
     isExcalidrawFile(ext) ||
     isVideoFile(ext) ||
-    isAudioFile(ext)
+    isAudioFile(ext) ||
+    isEbookFile(ext)
   );
 }
 
@@ -258,6 +529,50 @@ export function isCodeFile(ext: string): boolean {
     "sh",
     "bash",
     "zsh",
+    // More web/frontend
+    "html",
+    "htm",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "styl",
+    "svelte",
+    "astro",
+    // More backend
+    "cs",
+    "vb",
+    "swift",
+    "kt",
+    "kts",
+    "scala",
+    "dart",
+    "lua",
+    "r",
+    "pl",
+    "sql",
+    "graphql",
+    "gql",
+    "proto",
+    "thrift",
+    // Config/data
+    "env",
+    "conf",
+    "properties",
+    "gradle",
+    "cmake",
+    "makefile",
+    "dockerfile",
+    // Shell
+    "fish",
+    "ps1",
+    "bat",
+    "cmd",
+    // Other
+    "tex",
+    "log",
+    "diff",
+    "patch",
   ];
   return codeExts.includes(ext);
 }
