@@ -6,7 +6,7 @@ import { getFullUrl } from "../../services/api";
 import type { RevealedFileItem } from "../../services/api";
 import { projectApi } from "../../services/api/project";
 import DocumentPreview from "../documents/DocumentPreview";
-import { ImageViewer } from "../common/ImageViewer";
+import { ImageViewer, VideoViewer } from "../common";
 import { DelayedUnmount } from "../common/DelayedUnmount";
 import { Toolbar } from "./components/Toolbar";
 import { SessionGroup } from "./components/SessionGroup";
@@ -34,6 +34,7 @@ export function RevealedFilesPanel() {
   >([]);
   const [previewFile, setPreviewFile] = useState<RevealedFileItem | null>(null);
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
+  const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
 
   /* ── Data ── */
   useEffect(() => {
@@ -84,6 +85,10 @@ export function RevealedFilesPanel() {
         setImageViewerSrc(getFullUrl(file.url) ?? file.url);
         return;
       }
+      if (file.file_type === "video" && file.url) {
+        setVideoViewerSrc(getFullUrl(file.url) ?? file.url);
+        return;
+      }
       setPreviewFile(file);
     },
     [buildFileNavigationState, navigate],
@@ -97,6 +102,7 @@ export function RevealedFilesPanel() {
   );
   const handlePreviewClose = useCallback(() => setPreviewFile(null), []);
   const handleImageViewerClose = useCallback(() => setImageViewerSrc(null), []);
+  const handleVideoViewerClose = useCallback(() => setVideoViewerSrc(null), []);
 
   return (
     <>
@@ -177,6 +183,7 @@ export function RevealedFilesPanel() {
               previewFile.url ? getFullUrl(previewFile.url) : undefined
             }
             fileSize={previewFile.file_size}
+            mimeType={previewFile.mime_type ?? undefined}
             onClose={handlePreviewClose}
           />
         )}
@@ -189,6 +196,16 @@ export function RevealedFilesPanel() {
           alt={previewFile?.file_name || ""}
           isOpen={!!imageViewerSrc}
           onClose={handleImageViewerClose}
+        />
+      )}
+
+      {/* Video fullscreen viewer */}
+      {videoViewerSrc && (
+        <VideoViewer
+          src={videoViewerSrc}
+          isOpen={!!videoViewerSrc}
+          onClose={handleVideoViewerClose}
+          title={previewFile?.file_name || undefined}
         />
       )}
     </>

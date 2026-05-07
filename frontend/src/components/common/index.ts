@@ -15,6 +15,7 @@ export { DeleteProjectDialog } from "./DeleteProjectDialog";
 export { AboutDialog } from "./AboutDialog";
 
 export { ImageViewer } from "./ImageViewer";
+export { VideoViewer } from "./VideoViewer";
 
 export {
   AttachmentCard,

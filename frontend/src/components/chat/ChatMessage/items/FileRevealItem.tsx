@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { clsx } from "clsx";
 import { ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { LoadingSpinner, ImageViewer } from "../../../common";
+import { LoadingSpinner, ImageViewer, VideoViewer } from "../../../common";
 import { getFileTypeInfo } from "../../../documents/utils";
 import { getFullUrl } from "../../../../services/api";
 import {
@@ -91,6 +91,7 @@ export function FileRevealItem({
 }) {
   const { t } = useTranslation();
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
+  const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
 
   const parsed = useMemo(() => {
@@ -289,6 +290,14 @@ export function FileRevealItem({
           onClose={() => setImageViewerSrc(null)}
         />
       )}
+      {videoViewerSrc && (
+        <VideoViewer
+          src={videoViewerSrc}
+          isOpen={!!videoViewerSrc}
+          onClose={() => setVideoViewerSrc(null)}
+          title={fileName || undefined}
+        />
+      )}
 
       {canPreview && parsed.s3Url && success ? (
         <div
@@ -311,7 +320,10 @@ export function FileRevealItem({
             <div
               className="relative group cursor-pointer"
               style={{ aspectRatio: isImage ? "16/10" : "16/9" }}
-              onClick={() => isImage && setImageViewerSrc(parsed.s3Url)}
+              onClick={() => {
+                if (isImage) setImageViewerSrc(parsed.s3Url);
+                else if (isVideo) setVideoViewerSrc(parsed.s3Url);
+              }}
             >
               {!mediaLoaded && (
                 <div className="absolute inset-0">
@@ -341,9 +353,9 @@ export function FileRevealItem({
                   />
                 )
               )}
-              {isImage && (
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-white/90 dark:bg-stone-800/90 shadow-lg">
+              {(isImage || isVideo) && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-white/90 dark:bg-stone-800/90 shadow-lg pointer-events-auto cursor-pointer">
                     <ExternalLink
                       size={16}
                       className="text-stone-600 dark:text-stone-300"

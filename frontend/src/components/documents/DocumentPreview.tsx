@@ -178,7 +178,7 @@ export default function DocumentPreview({
   const fileName = path.split("/").pop() || path;
   const ext = getFileExtension(fileName);
   const binaryFile = isBinaryFile(ext);
-  const imageFile = isImageFile(fileName);
+  const imageFile = isImageFile(ext);
   const pdfFile = isPdfFile(ext);
   const wordFile = isWordFile(ext);
   const legacyDocFile = isLegacyDocFile(ext);
@@ -194,6 +194,15 @@ export default function DocumentPreview({
   const videoFile = isVideoFile(ext);
   const audioFile = isAudioFile(ext);
 
+  // MIME-based fallback: override type detection when extension is inconclusive
+  const mime = mimeType?.toLowerCase();
+  const resolvedImageFile = imageFile || !!mime?.startsWith("image/");
+  const resolvedVideoFile = videoFile || !!mime?.startsWith("video/");
+  const resolvedAudioFile = audioFile || !!mime?.startsWith("audio/");
+  const resolvedPdfFile = pdfFile || mime === "application/pdf";
+  const resolvedBinaryFile =
+    binaryFile && !resolvedVideoFile && !resolvedAudioFile;
+
   // Memoize language detection for performance
   const language = useMemo(() => detectLanguage(fileName), [fileName]);
 
@@ -201,7 +210,7 @@ export default function DocumentPreview({
   const hasTextContent = useMemo(() => {
     return !!(
       data?.content &&
-      !binaryFile &&
+      !resolvedBinaryFile &&
       !wordFile &&
       !excelFile &&
       !pptFile &&
@@ -210,7 +219,7 @@ export default function DocumentPreview({
     );
   }, [
     data?.content,
-    binaryFile,
+    resolvedBinaryFile,
     wordFile,
     excelFile,
     pptFile,
@@ -280,7 +289,7 @@ export default function DocumentPreview({
           setResolvedUrl(url);
 
           // 图片文件直接使用签名 URL
-          if (imageFile) {
+          if (resolvedImageFile) {
             setImageUrl(url);
             setData({ content: "", path });
             setLoading(false);
@@ -288,7 +297,7 @@ export default function DocumentPreview({
           }
 
           // PDF 文件使用 iframe 嵌入
-          if (pdfFile) {
+          if (resolvedPdfFile) {
             setPdfUrl(url);
             setData({ content: "", path });
             setLoading(false);
@@ -296,7 +305,7 @@ export default function DocumentPreview({
           }
 
           // 视频文件直接使用签名 URL
-          if (videoFile) {
+          if (resolvedVideoFile) {
             setVideoUrl(url);
             setData({ content: "", path });
             setLoading(false);
@@ -304,7 +313,7 @@ export default function DocumentPreview({
           }
 
           // 音频文件直接使用签名 URL
-          if (audioFile) {
+          if (resolvedAudioFile) {
             setAudioUrl(url);
             setData({ content: "", path });
             setLoading(false);
@@ -361,7 +370,7 @@ export default function DocumentPreview({
 
           // 其他文件获取内容
           // 根据文件类型处理内容
-          if (binaryFile) {
+          if (resolvedBinaryFile) {
             // 二进制文件，只设置路径用于下载
             setData({ content: "", path });
           } else if (wordFile || excelFile) {
@@ -400,7 +409,7 @@ export default function DocumentPreview({
 
     loadContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, content, s3Key, signedUrl, externalImageUrl]);
+  }, [path, content, s3Key, signedUrl, externalImageUrl, mimeType]);
 
   // Revoke blob URLs on change or unmount to prevent memory leaks
   useEffect(() => {
@@ -751,7 +760,11 @@ export default function DocumentPreview({
             </p>
           </div>
         </div>
-      ) : binaryFile && !imageFile && !pdfFile && !videoFile && !audioFile ? (
+      ) : resolvedBinaryFile &&
+        !resolvedImageFile &&
+        !resolvedPdfFile &&
+        !resolvedVideoFile &&
+        !resolvedAudioFile ? (
         <div className="flex flex-col items-center justify-center py-16 sm:py-20 gap-4 px-4">
           <div
             className={`flex items-center justify-center w-20 h-20 rounded-2xl ${fileInfo.bg}`}
@@ -777,7 +790,7 @@ export default function DocumentPreview({
             {t("documents.downloadFile")}
           </button>
         </div>
-      ) : pdfFile ? (
+      ) : resolvedPdfFile ? (
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -789,7 +802,7 @@ export default function DocumentPreview({
             {pdfUrl && <PdfPreview url={pdfUrl} />}
           </div>
         </Suspense>
-      ) : videoFile && videoUrl ? (
+      ) : resolvedVideoFile && videoUrl ? (
         <div className="flex items-center justify-center h-full bg-gradient-to-b from-stone-900 to-stone-950 min-h-[400px] p-4 sm:p-8">
           <div className="relative w-full max-w-4xl mx-auto">
             <video
@@ -804,7 +817,7 @@ export default function DocumentPreview({
             </video>
           </div>
         </div>
-      ) : audioFile && audioUrl ? (
+      ) : resolvedAudioFile && audioUrl ? (
         <div className="flex items-center justify-center h-full min-h-[400px] p-4 sm:p-8">
           <div className="w-full max-w-lg mx-auto flex flex-col items-center gap-6">
             <div
@@ -872,7 +885,7 @@ export default function DocumentPreview({
         >
           <ExcelPreview arrayBuffer={arrayBuffer} fileName={fileName} t={t} />
         </Suspense>
-      ) : imageFile || imageUrl ? (
+      ) : resolvedImageFile || imageUrl ? (
         <>
           <div className="flex items-center justify-center p-4 sm:p-8 bg-stone-50 dark:bg-stone-800/50 min-h-[200px] overflow-auto">
             <img
@@ -881,7 +894,7 @@ export default function DocumentPreview({
               className={`rounded-lg shadow-lg object-contain cursor-pointer hover:opacity-90 transition-opacity ${
                 isFullscreen
                   ? "max-w-full max-h-full"
-                  : "max-w-full max-h-[50vh] sm:max-h-[60vh]"
+                  : "w-full max-w-fit max-h-[50vh] sm:max-h-[60vh]"
               }`}
               onClick={(e) => {
                 e.stopPropagation();

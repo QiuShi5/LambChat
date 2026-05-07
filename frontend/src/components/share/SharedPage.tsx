@@ -28,6 +28,11 @@ import { RevealPreviewHost } from "../chat/ChatMessage/items/RevealPreviewHost";
 import { PersistentToolPanelHost } from "../chat/ChatMessage/items/persistentToolPanelState";
 import { AttachmentPreviewHost } from "../chat/AttachmentPreviewHost";
 import type { RevealPreviewRequest } from "../chat/ChatMessage/items/revealPreviewData";
+import {
+  getActiveRevealPreviewState,
+  setActiveRevealPreviewState as setSingletonPreviewState,
+  subscribeActiveRevealPreviewState,
+} from "../chat/ChatMessage/items/activeRevealPreviewStore";
 import { getLatestAutoPreviewTarget } from "../chat/ChatMessage/autoPreviewEligibility";
 import {
   createActiveRevealPreviewState,
@@ -251,6 +256,17 @@ export function SharedPage() {
     activePreviewStateRef.current = activePreviewState;
   }, [activePreviewState]);
 
+  // Sync singleton store changes (e.g. from FileTreeView clicks) into local state
+  useEffect(() => {
+    const syncPreviewState = () => {
+      const singletonState = getActiveRevealPreviewState();
+      if (singletonState !== activePreviewStateRef.current) {
+        setActivePreviewState(singletonState);
+      }
+    };
+    return subscribeActiveRevealPreviewState(syncPreviewState);
+  }, []);
+
   const handleOpenPreview = useCallback(
     (
       preview: RevealPreviewRequest,
@@ -271,7 +287,9 @@ export function SharedPage() {
         dismissedPreviewKeysRef.current.delete(preview.previewKey);
       }
 
-      setActivePreviewState(createActiveRevealPreviewState(preview, source));
+      const newState = createActiveRevealPreviewState(preview, source);
+      setActivePreviewState(newState);
+      setSingletonPreviewState(newState);
       return true;
     },
     [],
@@ -283,6 +301,7 @@ export function SharedPage() {
       dismissedPreviewKeysRef.current.add(currentPreview.request.previewKey);
     }
     setActivePreviewState(null);
+    setSingletonPreviewState(null);
   }, []);
 
   const handlePreviewInteraction = useCallback(() => {
