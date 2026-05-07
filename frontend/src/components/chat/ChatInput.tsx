@@ -17,6 +17,7 @@ import { openAttachmentPreview } from "./attachmentPreviewStore";
 import { MentionPopup } from "./MentionPopup";
 import { ChatInputToolbar } from "./ChatInputToolbar";
 import { ChatInputSelectors } from "./ChatInputSelectors";
+import { getMentionPopupFixedPlacement } from "./chatInputViewport";
 import type { FeaturePanel } from "../selectors/FeatureMenu";
 import type {
   ToolState,
@@ -160,7 +161,10 @@ export const ChatInput = memo(function ChatInput({
   const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
   const [contactAdminOpen, setContactAdminOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [mentionPopupPlacement, setMentionPopupPlacement] =
+    useState<ReturnType<typeof getMentionPopupFixedPlacement>>(null);
   const { hasPermission } = useAuth();
 
   const uploadCategories = (
@@ -189,7 +193,6 @@ export const ChatInput = memo(function ChatInput({
     scheduleTextareaResize,
   });
 
-  const mentionPresets = onUsePersonaPreset ? personaPresets : [];
   const {
     mention,
     moveHighlight: moveMentionHighlight,
@@ -197,7 +200,7 @@ export const ChatInput = memo(function ChatInput({
     setResultCount: setMentionResultCount,
     resetMention,
     dismissMention,
-  } = useMentionState(input, cursorPosition, mentionPresets);
+  } = useMentionState(input, cursorPosition, !!onUsePersonaPreset);
 
   const mentionSearch = useMentionSearch(mention.query, mention.isActive);
 
@@ -206,6 +209,47 @@ export const ChatInput = memo(function ChatInput({
       setMentionResultCount(mentionSearch.presets.length);
     }
   }, [mention.isActive, mentionSearch.presets.length, setMentionResultCount]);
+
+  useEffect(() => {
+    if (!mention.isActive) {
+      setMentionPopupPlacement(null);
+      return;
+    }
+
+    const updateMentionPopupPlacement = () => {
+      const container = containerRef.current;
+      setMentionPopupPlacement(
+        getMentionPopupFixedPlacement({
+          inputRect: container?.getBoundingClientRect() ?? null,
+          viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+        }),
+      );
+    };
+
+    updateMentionPopupPlacement();
+    window.addEventListener("resize", updateMentionPopupPlacement);
+    window.addEventListener("scroll", updateMentionPopupPlacement, true);
+    window.visualViewport?.addEventListener(
+      "resize",
+      updateMentionPopupPlacement,
+    );
+    window.visualViewport?.addEventListener(
+      "scroll",
+      updateMentionPopupPlacement,
+    );
+    return () => {
+      window.removeEventListener("resize", updateMentionPopupPlacement);
+      window.removeEventListener("scroll", updateMentionPopupPlacement, true);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateMentionPopupPlacement,
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        updateMentionPopupPlacement,
+      );
+    };
+  }, [mention.isActive]);
 
   const personaAvatar = useMemo(() => {
     if (!selectedPersonaPresetId) return null;
@@ -393,6 +437,7 @@ export const ChatInput = memo(function ChatInput({
         }
       >
         <div
+          ref={containerRef}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -422,6 +467,7 @@ export const ChatInput = memo(function ChatInput({
               onHover={setMentionHighlight}
               onClose={dismissMention}
               onLoadMore={mentionSearch.loadMore}
+              placement={mentionPopupPlacement ?? undefined}
             />
           )}
           {attachments.length > 0 && (

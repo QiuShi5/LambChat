@@ -244,16 +244,16 @@
 
 /* Mention popup */
 .mention-popup-anchor {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  margin-bottom: 6px;
-  z-index: 50;
+  position: fixed;
+  left: var(--mention-popup-left, 0);
+  bottom: var(--mention-popup-bottom, 0);
+  width: var(--mention-popup-width, 100%);
+  z-index: 320;
 }
 
 .mention-popup {
   display: flex;
+  max-height: var(--mention-popup-max-height, 220px);
   border-radius: 0.75rem;
   border: 1px solid var(--theme-border);
   background: var(--theme-bg-card);
@@ -276,7 +276,7 @@
 .mention-popup-list {
   margin: 0.25rem;
   padding: 0.25rem;
-  max-height: 13rem;
+  max-height: calc(var(--mention-popup-max-height, 220px) - 0.5rem);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -385,7 +385,7 @@
 }
 
 .mention-popup-list {
-  max-height: 280px;
+  max-height: calc(var(--mention-popup-max-height, 220px) - 0.5rem);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -414,7 +414,9 @@
 
 @media (max-width: 639px) {
   .mention-popup-list {
-    max-height: 200px;
+    max-height: calc(
+      min(var(--mention-popup-max-height, 180px), 180px) - 0.5rem
+    );
   }
 
   .mention-popup-item {
@@ -434,10 +436,7 @@
   html[data-mobile-keyboard="true"]
     .chat-input-container[data-mention-active]
     .mention-popup-anchor {
-    bottom: auto;
-    top: 100%;
-    margin-bottom: 0;
-    margin-top: 6px;
+    bottom: var(--mention-popup-bottom, 0);
   }
 
   html[data-mobile-keyboard="true"]
@@ -452,10 +451,7 @@
   html[data-mobile-keyboard="true"]
     .chat-input-container[data-mention-active]
     .mention-popup-anchor {
-    bottom: auto;
-    top: 100%;
-    margin-bottom: 0;
-    margin-top: 6px;
+    bottom: var(--mention-popup-bottom, 0);
   }
 
   html[data-mobile-keyboard="true"]

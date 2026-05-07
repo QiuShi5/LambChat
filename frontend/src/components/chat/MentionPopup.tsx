@@ -19,6 +19,12 @@ interface MentionPopupProps {
   onHover: (index: number) => void;
   onClose: () => void;
   onLoadMore?: () => void;
+  placement?: {
+    left: number;
+    width: number;
+    bottom: number;
+    maxHeight: number;
+  } | null;
 }
 
 function SkeletonItems() {
@@ -94,6 +100,7 @@ export function MentionPopup({
   onHover,
   onClose,
   onLoadMore,
+  placement,
 }: MentionPopupProps) {
   const { t } = useTranslation();
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -128,7 +135,20 @@ export function MentionPopup({
   }, [onClose]);
 
   return (
-    <div ref={anchorRef} className="mention-popup-anchor">
+    <div
+      ref={anchorRef}
+      className="mention-popup-anchor"
+      style={
+        placement
+          ? ({
+              "--mention-popup-left": `${placement.left}px`,
+              "--mention-popup-width": `${placement.width}px`,
+              "--mention-popup-bottom": `${placement.bottom}px`,
+              "--mention-popup-max-height": `${placement.maxHeight}px`,
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
       <div className="mention-popup">
         <div className="mention-popup-content">
           {isLoading && presets.length === 0 ? (

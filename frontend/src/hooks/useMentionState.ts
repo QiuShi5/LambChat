@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { PersonaPreset } from "../types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface MentionState {
   isActive: boolean;
@@ -8,10 +7,20 @@ export interface MentionState {
   highlightedIndex: number;
 }
 
-function detectMention(
+interface MentionMatch {
+  atIndex: number;
+  query: string;
+}
+
+interface DismissedMention {
+  input: string;
+  atIndex: number;
+}
+
+export function findMentionMatch(
   input: string,
   cursorPosition: number,
-): { atIndex: number; query: string } | null {
+): MentionMatch | null {
   if (cursorPosition <= 0) return null;
 
   const textBefore = input.substring(0, cursorPosition);
@@ -31,43 +40,70 @@ function detectMention(
   return null;
 }
 
+export function getMentionState({
+  input,
+  cursorPosition,
+  enabled,
+  highlightedIndex,
+  dismissedMention,
+}: {
+  input: string;
+  cursorPosition: number;
+  enabled: boolean;
+  highlightedIndex: number;
+  dismissedMention: DismissedMention | null;
+}): MentionState {
+  if (!enabled) {
+    return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
+  }
+
+  const match = findMentionMatch(input, cursorPosition);
+  if (!match) {
+    return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
+  }
+
+  if (
+    dismissedMention &&
+    dismissedMention.input === input &&
+    dismissedMention.atIndex === match.atIndex
+  ) {
+    return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
+  }
+
+  return {
+    isActive: true,
+    query: match.query,
+    atIndex: match.atIndex,
+    highlightedIndex,
+  };
+}
+
 export function useMentionState(
   input: string,
   cursorPosition: number,
-  presets: PersonaPreset[],
+  enabled: boolean,
 ) {
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const dismissCountRef = useRef(0);
-  const dismissedAtRef = useRef<{ input: string; atIndex: number } | null>(
-    null,
-  );
+  const dismissedAtRef = useRef<DismissedMention | null>(null);
   const resultCountRef = useRef(0);
 
-  const mention: MentionState = useMemo(() => {
-    if (presets.length === 0) {
-      return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
+  useEffect(() => {
+    if (!findMentionMatch(input, cursorPosition)) {
+      dismissedAtRef.current = null;
     }
+  }, [input, cursorPosition]);
 
-    const detected = detectMention(input, cursorPosition);
-    if (!detected) {
-      return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
-    }
-
-    if (
-      dismissedAtRef.current &&
-      dismissedAtRef.current.input === input &&
-      dismissedAtRef.current.atIndex === detected.atIndex
-    ) {
-      return { isActive: false, query: "", atIndex: -1, highlightedIndex: 0 };
-    }
-
-    return {
-      isActive: true,
-      query: detected.query,
-      atIndex: detected.atIndex,
-      highlightedIndex,
-    };
-  }, [input, cursorPosition, presets.length, highlightedIndex]);
+  const mention: MentionState = useMemo(
+    () =>
+      getMentionState({
+        input,
+        cursorPosition,
+        enabled,
+        highlightedIndex,
+        dismissedMention: dismissedAtRef.current,
+      }),
+    [input, cursorPosition, enabled, highlightedIndex],
+  );
 
   const moveHighlight = useCallback((direction: "up" | "down") => {
     const len = resultCountRef.current;
@@ -85,12 +121,11 @@ export function useMentionState(
   }, []);
 
   const dismissMention = useCallback(() => {
-    const detected = detectMention(input, cursorPosition);
-    if (detected) {
-      dismissedAtRef.current = { input, atIndex: detected.atIndex };
+    const match = findMentionMatch(input, cursorPosition);
+    if (match) {
+      dismissedAtRef.current = { input, atIndex: match.atIndex };
     }
     setHighlightedIndex(0);
-    dismissCountRef.current += 1;
   }, [input, cursorPosition]);
 
   const setResultCount = useCallback((count: number) => {
