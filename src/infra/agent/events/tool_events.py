@@ -6,6 +6,8 @@ import json
 import uuid
 from typing import Any
 
+import orjson
+
 from src.infra.agent.events.binary_uploads import upload_binary_blocks
 from src.infra.agent.events.tool_outputs import (
     detect_tool_error,
@@ -73,14 +75,20 @@ class ToolEventMixin:
         result: Any = raw
         if isinstance(raw, str) and raw and raw[0] in ("{", "["):
             try:
-                parsed = json.loads(raw)
-                if isinstance(parsed, dict):
-                    result = parsed
-                elif isinstance(parsed, list):
-                    normalized = normalize_content(parsed)
-                    result = normalized if isinstance(normalized, dict) else str(normalized)
-            except (json.JSONDecodeError, TypeError):
-                pass
+                parsed = orjson.loads(raw)
+            except orjson.JSONDecodeError:
+                try:
+                    parsed = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    parsed = None
+            except TypeError:
+                parsed = None
+
+            if isinstance(parsed, dict):
+                result = parsed
+            elif isinstance(parsed, list):
+                normalized = normalize_content(parsed)
+                result = normalized if isinstance(normalized, dict) else str(normalized)
 
         if isinstance(result, dict) and "blocks" in result:
             await upload_binary_blocks(result, self._base_url)

@@ -4,6 +4,8 @@ from typing import Any
 import pytest
 
 from src.infra.agent import AgentEventProcessor
+from src.infra.agent.events.buffers import TextChunkBuffer
+from src.infra.agent.events.tool_outputs import detect_tool_error
 
 
 class FakePresenter:
@@ -61,6 +63,42 @@ class FakePresenter:
                 "thinking_id": thinking_id,
                 "depth": depth,
                 "agent_id": agent_id,
+            },
+        }
+
+    def present_agent_call(
+        self,
+        agent_id: str,
+        agent_name: str,
+        input_message: str,
+        depth: int = 1,
+    ) -> dict[str, Any]:
+        return {
+            "event": "agent:call",
+            "data": {
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "input": input_message,
+                "depth": depth,
+            },
+        }
+
+    def present_agent_result(
+        self,
+        agent_id: str,
+        result: str,
+        success: bool = True,
+        depth: int = 1,
+        error: str | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "event": "agent:result",
+            "data": {
+                "agent_id": agent_id,
+                "result": result,
+                "success": success,
+                "depth": depth,
+                "error": error,
             },
         }
 
@@ -143,3 +181,38 @@ async def test_reasoning_content_chunk_emits_thinking_event() -> None:
             },
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_subagent_context_cache_is_invalidated_by_task_lifecycle() -> None:
+    presenter = FakePresenter()
+    processor = AgentEventProcessor(presenter)
+    processor.checkpoint_to_agent["parent"] = ("agent-1", "worker")
+
+    assert processor._get_agent_context("parent|child") == ("agent-1", 1)
+    assert processor._agent_context_cache["parent|child"] == ("agent-1", 1)
+
+    await processor.process_event(
+        {
+            "event": "on_tool_start",
+            "name": "task",
+            "run_id": "task-run",
+            "data": {"input": {"subagent_type": "worker", "description": "do work"}},
+            "metadata": {"checkpoint_ns": "parent"},
+        }
+    )
+
+    assert processor._agent_context_cache == {}
+
+
+def test_text_chunk_buffer_consume_ready_flushes_previous_key_without_losing_current() -> None:
+    buffer = TextChunkBuffer(flush_size=10)
+
+    assert buffer.append("hello", (0, None, "chunk-1")) is False
+    assert buffer.consume_ready((0, None, "chunk-2")) == ("hello", (0, None, "chunk-1"))
+    assert buffer.append("world", (0, None, "chunk-2")) is False
+    assert buffer.consume() == ("world", (0, None, "chunk-2"))
+
+
+def test_detect_tool_error_detects_string_error_prefix() -> None:
+    assert detect_tool_error(None, "Error: failed to run") == (True, "Error: failed to run")

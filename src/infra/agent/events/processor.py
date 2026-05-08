@@ -5,6 +5,7 @@ This module keeps the public `AgentEventProcessor` entry point while delegating
 the heavier event-specific work to focused helper modules.
 """
 
+import logging
 from io import StringIO
 
 from src.infra.agent.events.binary_uploads import upload_binary_blocks
@@ -27,6 +28,8 @@ from src.infra.logging import get_logger
 from src.infra.writer.present import Presenter
 
 logger = get_logger(__name__)
+
+_CONTEXT_EVENT_TYPES = frozenset(("on_chat_model_stream", "on_tool_start", "on_tool_end"))
 
 
 class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
@@ -53,6 +56,7 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
         "_base_url",
         "_chunk_buffer",
         "_summary_chunk_buffer",
+        "_agent_context_cache",
     )
 
     _CHUNK_FLUSH_SIZE = 200
@@ -75,6 +79,7 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
         self._presenter_emit = presenter.emit
         self._chunk_buffer = TextChunkBuffer(self._CHUNK_FLUSH_SIZE)
         self._summary_chunk_buffer = TextChunkBuffer(self._CHUNK_FLUSH_SIZE)
+        self._agent_context_cache: dict[str, tuple[str | None, int]] = {}
 
     @property
     def output_text(self) -> str:
@@ -97,6 +102,7 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
         self._output_buffer = StringIO()
         self.checkpoint_to_agent.clear()
         self.thinking_ids.clear()
+        self._agent_context_cache.clear()
         self._chunk_buffer.clear()
         self._summary_chunk_buffer.clear()
 
@@ -117,12 +123,19 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
                     await self._handle_task_error(event)
                     return
 
+        if evt_type == "on_chat_model_end":
+            await self.flush()
+            self._handle_token_usage(event)
+            return
+
+        if evt_type not in _CONTEXT_EVENT_TYPES:
+            return
+
         metadata = event.get("metadata", {})
         checkpoint_ns = self._get_checkpoint_ns(metadata)
-        lc_source = self._get_lc_source(metadata)
         current_agent_id, current_depth = self._get_agent_context(checkpoint_ns)
 
-        if current_depth:
+        if current_depth and logger.isEnabledFor(logging.DEBUG):
             logger.debug(
                 "[Subagent] %s/%s: agent=%s, depth=%d, ns=%s",
                 evt_type,
@@ -132,14 +145,9 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
                 checkpoint_ns[:60] if checkpoint_ns else "N/A",
             )
 
-        is_summarization = lc_source == "summarization"
-
         match evt_type:
-            case "on_chat_model_end":
-                await self.flush()
-                self._handle_token_usage(event)
             case "on_chat_model_stream":
-                if is_summarization:
+                if self._get_lc_source(metadata) == "summarization":
                     await self._handle_summary_stream(event, current_agent_id, current_depth)
                 else:
                     await self._handle_chat_stream(event, current_agent_id, current_depth)

@@ -24,6 +24,13 @@ class StreamEventMixin:
 
     async def _flush_chunk_buffer(self) -> None:
         text, key = self._chunk_buffer.consume()
+        await self._emit_text_flush(text, key)
+
+    async def _flush_summary_chunk_buffer(self) -> None:
+        text, key = self._summary_chunk_buffer.consume()
+        await self._emit_summary_flush(text, key)
+
+    async def _emit_text_flush(self, text: str, key: BufferKey | None) -> None:
         if not text or key is None:
             return
 
@@ -37,8 +44,7 @@ class StreamEventMixin:
             )
         )
 
-    async def _flush_summary_chunk_buffer(self) -> None:
-        text, key = self._summary_chunk_buffer.consume()
+    async def _emit_summary_flush(self, text: str, key: BufferKey | None) -> None:
         if not text or key is None:
             return
 
@@ -52,31 +58,37 @@ class StreamEventMixin:
             )
         )
 
-    async def _append_text_chunk(
+    def _buffer_text_chunk(
         self,
         text: str,
         depth: int,
         agent_id: str | None,
         text_id: str | None,
-    ) -> None:
+    ) -> list[tuple[str, BufferKey | None]] | None:
         key: BufferKey = (depth, agent_id, text_id)
-        if self._chunk_buffer.key_changed(key):
-            await self._flush_chunk_buffer()
+        ready_flushes = []
+        ready = self._chunk_buffer.consume_ready(key)
+        if ready is not None:
+            ready_flushes.append(ready)
         if self._chunk_buffer.append(text, key):
-            await self._flush_chunk_buffer()
+            ready_flushes.append(self._chunk_buffer.consume())
+        return ready_flushes or None
 
-    async def _append_summary_chunk(
+    def _buffer_summary_chunk(
         self,
         text: str,
         depth: int,
         agent_id: str | None,
         summary_id: str | None,
-    ) -> None:
+    ) -> list[tuple[str, BufferKey | None]] | None:
         key: BufferKey = (depth, agent_id, summary_id)
-        if self._summary_chunk_buffer.key_changed(key):
-            await self._flush_summary_chunk_buffer()
+        ready_flushes = []
+        ready = self._summary_chunk_buffer.consume_ready(key)
+        if ready is not None:
+            ready_flushes.append(ready)
         if self._summary_chunk_buffer.append(text, key):
-            await self._flush_summary_chunk_buffer()
+            ready_flushes.append(self._summary_chunk_buffer.consume())
+        return ready_flushes or None
 
     def _handle_token_usage(self, event: StreamEvent) -> None:
         response = event.get("data", {}).get("output")
@@ -127,7 +139,15 @@ class StreamEventMixin:
         summary_id = chunk.id
 
         if isinstance(content, str) and content:
-            await self._append_summary_chunk(content, current_depth, current_agent_id, summary_id)
+            ready_flushes = self._buffer_summary_chunk(
+                content,
+                current_depth,
+                current_agent_id,
+                summary_id,
+            )
+            if ready_flushes:
+                for ready in ready_flushes:
+                    await self._emit_summary_flush(*ready)
             return
 
         if isinstance(content, list):
@@ -136,12 +156,15 @@ class StreamEventMixin:
                     continue
                 text = block.get("text", "")
                 if text:
-                    await self._append_summary_chunk(
+                    ready_flushes = self._buffer_summary_chunk(
                         text,
                         current_depth,
                         current_agent_id,
                         summary_id,
                     )
+                    if ready_flushes:
+                        for ready in ready_flushes:
+                            await self._emit_summary_flush(*ready)
 
     async def _handle_chat_stream(
         self,
@@ -160,7 +183,15 @@ class StreamEventMixin:
         if isinstance(content, str) and content:
             if current_depth == 0:
                 self._output_buffer.write(content)
-            await self._append_text_chunk(content, current_depth, current_agent_id, chunk_id)
+            ready_flushes = self._buffer_text_chunk(
+                content,
+                current_depth,
+                current_agent_id,
+                chunk_id,
+            )
+            if ready_flushes:
+                for ready in ready_flushes:
+                    await self._emit_text_flush(*ready)
             return
 
         if isinstance(content, str) and not content:
@@ -201,9 +232,12 @@ class StreamEventMixin:
                         self.thinking_ids[current_agent_id] = None
                         if current_depth == 0:
                             self._output_buffer.write(text)
-                        await self._append_text_chunk(
+                        ready_flushes = self._buffer_text_chunk(
                             text,
                             current_depth,
                             current_agent_id,
                             chunk_id,
                         )
+                        if ready_flushes:
+                            for ready in ready_flushes:
+                                await self._emit_text_flush(*ready)

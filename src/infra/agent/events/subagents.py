@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 
 class SubagentEventMixin:
     checkpoint_to_agent: dict[str, tuple[str, str]]
+    _agent_context_cache: dict[str, tuple[str | None, int]]
     _presenter_emit: Any
     presenter: Any
 
@@ -27,22 +29,32 @@ class SubagentEventMixin:
         if not checkpoint_ns or "|" not in checkpoint_ns:
             return None, 0
 
+        cached = self._agent_context_cache.get(checkpoint_ns)
+        if cached is not None:
+            return cached
+
         first_segment, _, _ = checkpoint_ns.partition("|")
         agent_info = self.checkpoint_to_agent.get(first_segment)
         if agent_info:
-            logger.debug(
-                "Found subagent: segment=%s, agent_id=%s",
-                first_segment[:30],
-                agent_info[0],
-            )
-            return agent_info[0], 1
+            result = (agent_info[0], 1)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "Found subagent: segment=%s, agent_id=%s",
+                    first_segment[:30],
+                    agent_info[0],
+                )
+            self._agent_context_cache[checkpoint_ns] = result
+            return result
 
-        logger.debug(
-            "Subagent not found: segment=%s, known=%s",
-            first_segment[:30],
-            list(self.checkpoint_to_agent.keys())[:3],
-        )
-        return None, 1
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "Subagent not found: segment=%s, known=%s",
+                first_segment[:30],
+                list(self.checkpoint_to_agent.keys())[:3],
+            )
+        result = (None, 1)
+        self._agent_context_cache[checkpoint_ns] = result
+        return result
 
     async def _handle_task_start(self, event: StreamEvent) -> None:
         data = event.get("data", {})
@@ -69,6 +81,7 @@ class SubagentEventMixin:
             logger.debug("Overwriting existing checkpoint_to_agent entry: %s", checkpoint_ns[:60])
 
         self.checkpoint_to_agent[checkpoint_ns] = (instance_id, subagent_type)
+        self._agent_context_cache.clear()
 
         logger.info(
             "[Subagent] Task started: id=%s, ns=%s, depth=%d, total=%d",
@@ -90,6 +103,7 @@ class SubagentEventMixin:
     def _resolve_agent_info(self, event: StreamEvent) -> tuple[str, int]:
         checkpoint_ns = self._get_checkpoint_ns(event.get("metadata", {}))
         agent_info = self.checkpoint_to_agent.pop(checkpoint_ns, None)
+        self._agent_context_cache.clear()
         if agent_info:
             return agent_info[0], checkpoint_ns.count("|") + 1 if checkpoint_ns else 1
         return "unknown", 1

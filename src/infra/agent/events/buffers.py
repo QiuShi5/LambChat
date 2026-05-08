@@ -21,6 +21,12 @@ class TextChunkBuffer:
     def key_changed(self, key: BufferKey) -> bool:
         return self.has_pending and self.key is not None and self.key != key
 
+    def consume_ready(self, key: BufferKey) -> tuple[str, BufferKey | None] | None:
+        """Consume pending text when appending a different stream key requires a flush."""
+        if self.key_changed(key):
+            return self.consume()
+        return None
+
     def append(self, text: str, key: BufferKey) -> bool:
         """Append text and return whether size threshold asks for a flush."""
         if not text:

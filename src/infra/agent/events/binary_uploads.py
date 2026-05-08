@@ -15,16 +15,7 @@ async def upload_binary_blocks(result: dict, base_url: str) -> None:
     if not isinstance(blocks, list):
         return
 
-    if not any(isinstance(block, dict) and block.get("base64") for block in blocks):
-        return
-
-    try:
-        from src.infra.storage.s3.service import get_or_init_storage
-
-        storage = await get_or_init_storage()
-    except Exception as exc:
-        logger.warning("Failed to initialize storage for binary upload: %s", exc)
-        return
+    storage = None
 
     for block in blocks:
         if not isinstance(block, dict):
@@ -33,6 +24,15 @@ async def upload_binary_blocks(result: dict, base_url: str) -> None:
         b64_data = block.get("base64")
         if not b64_data or not isinstance(b64_data, str):
             continue
+
+        if storage is None:
+            try:
+                from src.infra.storage.s3.service import get_or_init_storage
+
+                storage = await get_or_init_storage()
+            except Exception as exc:
+                logger.warning("Failed to initialize storage for binary upload: %s", exc)
+                return
 
         try:
             raw_bytes = base64.b64decode(b64_data)

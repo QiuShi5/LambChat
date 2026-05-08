@@ -7,6 +7,7 @@ from src.infra.agent.events.types import TOOL_ERROR_INDICATORS
 
 MCP_MEDIA_TYPES = frozenset(("image", "file"))
 MCP_SKIP_KEYS = frozenset(("id",))
+TOOL_ERROR_PREFIXES = tuple(TOOL_ERROR_INDICATORS)
 
 
 def extract_tool_output(out: Any) -> Any:
@@ -71,26 +72,26 @@ def detect_tool_error(out: Any, raw: Any) -> tuple[bool, str | None]:
 
     if isinstance(raw, str) and raw:
         first_line = raw.lstrip()[:200].lower()
-        if any(first_line.startswith(marker) for marker in TOOL_ERROR_INDICATORS):
+        if first_line.startswith(TOOL_ERROR_PREFIXES):
             return True, raw
 
     return False, None
 
 
+def _get_status_attr(obj: Any) -> str | None:
+    status = getattr(obj, "status", None)
+    if status and isinstance(status, str):
+        return status
+    return None
+
+
 def get_tool_status(out: Any) -> str | None:
     """Find ToolMessage.status through common LangGraph wrappers."""
-
-    def check(obj: Any) -> str | None:
-        status = getattr(obj, "status", None)
-        if status and isinstance(status, str):
-            return status
-        return None
-
     if out is None:
         return None
 
     if not isinstance(out, (dict, list, str)):
-        status = check(out)
+        status = _get_status_attr(out)
         if status:
             return status
         update = getattr(out, "update", None)
@@ -102,7 +103,7 @@ def get_tool_status(out: Any) -> str | None:
         for item in out:
             if isinstance(item, (dict, str)):
                 continue
-            status = check(item)
+            status = _get_status_attr(item)
             if status:
                 return status
         return None
