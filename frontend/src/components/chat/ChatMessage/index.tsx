@@ -281,11 +281,6 @@ export const ChatMessage = memo(function ChatMessage({
           content={message.content}
           attachments={message.attachments}
           isLastMessage={isLastMessage}
-          onFork={
-            onForkMessage && !message.isStreaming
-              ? () => void onForkMessage(message.id)
-              : undefined
-          }
         />
       </div>
     );
