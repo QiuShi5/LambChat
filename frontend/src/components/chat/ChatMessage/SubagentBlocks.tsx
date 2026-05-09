@@ -60,6 +60,7 @@ function formatSubagentName(agentName: string): string {
     .join(" ");
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function buildSubagentPanelState(data: SubagentPanelData) {
   const effectiveStatus =
     data.status ||
