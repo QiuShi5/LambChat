@@ -474,6 +474,8 @@
     "goodAfternoon": "下午好，{{name}}",
     "goodEvening": "晚上好，{{name}}",
     "goodMorning": "早上好，{{name}}",
+    "helpDocs": "帮助文档",
+    "keyboardShortcuts": "键盘快捷键",
     "mentionNoResults": "没有匹配的角色",
     "message": {
       "allFiles": "全部文件",
@@ -549,6 +551,8 @@
     "noPermissionHint": "您没有发送消息的权限",
     "outline": "大纲",
     "placeholder": "@ 选择角色，或输入消息...",
+    "placeholderWithHintCtrl": "@ 选择角色，或输入消息…  Enter 换行，Ctrl+Enter 发送",
+    "placeholderWithHintShift": "@ 选择角色，或输入消息…  Enter 发送，Shift+Enter 换行",
     "queueFull": "排队已满，请稍后再试",
     "queueStart": "任务开始处理",
     "queued": "排队中 (第 {{position}} 位)...",
@@ -1906,6 +1910,21 @@
     "title": "分享会话",
     "userMessage": "（用户消息：{{message}}）",
     "visibility": "访问权限"
+  },
+  "shortcut": {
+    "categoryChat": "对话",
+    "categoryDialog": "弹窗",
+    "categoryGeneral": "通用",
+    "closeDialog": "关闭弹窗",
+    "confirm": "确认提交",
+    "historyDown": "下一条历史",
+    "historyUp": "上一条历史",
+    "newChat": "新建对话",
+    "newChatAlt": "新建对话（备选）",
+    "newline": "换行",
+    "search": "搜索对话",
+    "selectPersona": "选择角色",
+    "send": "发送消息"
   },
   "sidebar": {
     "addToFavorites": "添加到收藏",

@@ -475,6 +475,8 @@
     "goodAfternoon": "こんにちは、{{name}}",
     "goodEvening": "こんばんは、{{name}}",
     "goodMorning": "おはようございます、{{name}}",
+    "helpDocs": "ヘルプドキュメント",
+    "keyboardShortcuts": "キーボードショートカット",
     "mentionNoResults": "一致するペルソナがありません",
     "message": {
       "allFiles": "すべてのファイル",
@@ -550,6 +552,8 @@
     "noPermissionHint": "メッセージを送信する権限がありません",
     "outline": "アウトライン",
     "placeholder": "@ でペルソナを選択、またはメッセージを入力...",
+    "placeholderWithHintCtrl": "@ でペルソナを選択、またはメッセージを入力…  Enter で改行、Ctrl+Enter で送信",
+    "placeholderWithHintShift": "@ でペルソナを選択、またはメッセージを入力…  Enter で送信、Shift+Enter で改行",
     "queueFull": "待ち行列が満杯です。しばらくしてからお試しください",
     "queueStart": "タスクの処理を開始しました",
     "queued": "順番待ち中 ({{position}}番目)...",
@@ -1903,6 +1907,21 @@
     "title": "セッションを共有",
     "userMessage": "（ユーザーメッセージ：{{message}}）",
     "visibility": "アクセス制御"
+  },
+  "shortcut": {
+    "categoryChat": "チャット",
+    "categoryDialog": "ダイアログ",
+    "categoryGeneral": "一般",
+    "closeDialog": "ダイアログを閉じる",
+    "confirm": "送信を確認",
+    "historyDown": "次の履歴",
+    "historyUp": "前の履歴",
+    "newChat": "新しいチャット",
+    "newChatAlt": "新しいチャット（代替）",
+    "newline": "改行",
+    "search": "チャットを検索",
+    "selectPersona": "ペルソナを選択",
+    "send": "メッセージを送信"
   },
   "sidebar": {
     "addToFavorites": "お気に入りに追加",

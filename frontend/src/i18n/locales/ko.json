@@ -475,6 +475,8 @@
     "goodAfternoon": "좋은 오후에요, {{name}}",
     "goodEvening": "좋은 저녁이에요, {{name}}",
     "goodMorning": "좋은 아침이에요, {{name}}",
+    "helpDocs": "도움말 문서",
+    "keyboardShortcuts": "키보드 단축키",
     "mentionNoResults": "일치하는 페르소나가 없습니다",
     "message": {
       "allFiles": "모든 파일",
@@ -550,6 +552,8 @@
     "noPermissionHint": "메시지를 보낼 권한이 없습니다",
     "outline": "개요",
     "placeholder": "@로 페르소나를 선택하거나 메시지를 입력하세요...",
+    "placeholderWithHintCtrl": "@로 페르소나를 선택하거나 메시지를 입력…  Enter로 줄바꿈, Ctrl+Enter로 전송",
+    "placeholderWithHintShift": "@로 페르소나를 선택하거나 메시지를 입력…  Enter로 전송, Shift+Enter로 줄바꿈",
     "queueFull": "대기열이 가득 찼습니다. 잠시 후 다시 시도해 주세요",
     "queueStart": "작업 처리를 시작했습니다",
     "queued": "대기 중 ({{position}}번째)...",
@@ -1903,6 +1907,21 @@
     "title": "세션 공유",
     "userMessage": "(사용자 메시지: {{message}})",
     "visibility": "접근 제어"
+  },
+  "shortcut": {
+    "categoryChat": "채팅",
+    "categoryDialog": "대화상자",
+    "categoryGeneral": "일반",
+    "closeDialog": "대화상자 닫기",
+    "confirm": "전송 확인",
+    "historyDown": "다음 기록",
+    "historyUp": "이전 기록",
+    "newChat": "새 채팅",
+    "newChatAlt": "새 채팅 (대체)",
+    "newline": "줄바꿈",
+    "search": "채팅 검색",
+    "selectPersona": "페르소나 선택",
+    "send": "메시지 전송"
   },
   "sidebar": {
     "addToFavorites": "즐겨찾기에 추가",

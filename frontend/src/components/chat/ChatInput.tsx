@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { Ban } from "lucide-react";
+import { Ban, X, CircleHelp, Keyboard, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { uploadApi, getFullUrl } from "../../services/api";
 import { AttachmentCard } from "../common/AttachmentCard";
@@ -44,6 +45,41 @@ const FILE_CATEGORY_PERMISSIONS: Record<FileCategory, Permission> = {
   audio: Permission.FILE_UPLOAD_AUDIO,
   document: Permission.FILE_UPLOAD_DOCUMENT,
 };
+
+function ShortcutRow({
+  label,
+  keys,
+  macKeys,
+}: {
+  label: string;
+  keys: string[];
+  macKeys?: string[];
+}) {
+  const isMac =
+    typeof navigator !== "undefined" &&
+    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+  const displayKeys = isMac && macKeys ? macKeys : keys;
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span>{label}</span>
+      <div className="flex gap-1">
+        {displayKeys.map((key) => (
+          <kbd
+            key={key}
+            className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+            style={{
+              backgroundColor: "var(--theme-bg-hover, rgba(128,128,128,0.1))",
+              border: "1px solid var(--theme-border)",
+              color: "var(--theme-text-secondary)",
+            }}
+          >
+            {key}
+          </kbd>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export interface ChatInputProps {
   onSend: (
@@ -165,6 +201,23 @@ export const ChatInput = memo(function ChatInput({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
   const [contactAdminOpen, setContactAdminOpen] = useState(false);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const [shortcutDialogOpen, setShortcutDialogOpen] = useState(false);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!helpMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        helpMenuRef.current &&
+        !helpMenuRef.current.contains(e.target as Node)
+      ) {
+        setHelpMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [helpMenuOpen]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -649,16 +702,213 @@ export const ChatInput = memo(function ChatInput({
         onToggleAgentOption={onToggleAgentOption}
       />
 
-      <div className="hidden sm:flex mx-auto max-w-3xl lg:max-w-4xl xl:max-w-5xl mt-3 px-2 justify-center">
-        <span
-          className="text-xs font-serif"
-          style={{ color: "var(--theme-text-secondary)" }}
+      {createPortal(
+        <div
+          ref={helpMenuRef}
+          className="hidden sm:block fixed bottom-2 right-2 z-50"
         >
-          {localStorage.getItem("newlineModifier") === "ctrl"
-            ? t("chat.sendHintCtrl")
-            : t("chat.sendHintShift")}
-        </span>
-      </div>
+          <button
+            type="button"
+            aria-label="Help"
+            aria-expanded={helpMenuOpen}
+            onClick={() => setHelpMenuOpen((v) => !v)}
+            className="flex items-center justify-center w-[26px] h-[26px] text-xs rounded-full transition-all hover:scale-110"
+            style={{
+              backgroundColor: "var(--theme-bg-card)",
+              border: "1px solid var(--theme-border)",
+              color: "var(--theme-text-secondary)",
+            }}
+          >
+            ?
+          </button>
+          {helpMenuOpen && (
+            <div
+              role="menu"
+              className="absolute bottom-full right-0 mb-2 w-[200px] rounded-xl p-1 shadow-lg"
+              style={{
+                backgroundColor: "var(--theme-bg-card)",
+                border: "1px solid var(--theme-border)",
+              }}
+            >
+              <a
+                href="https://yanyutin753.github.io/LambChat/"
+                target="_blank"
+                rel="noopener noreferrer"
+                role="menuitem"
+                onClick={() => setHelpMenuOpen(false)}
+                className="flex gap-2.5 items-center w-full px-3 py-2 text-[13px] rounded-lg cursor-pointer transition-colors no-underline"
+                style={{ color: "var(--theme-text)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "var(--theme-bg-hover, rgba(128,128,128,0.08))";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <CircleHelp
+                  size={16}
+                  className="shrink-0"
+                  style={{ color: "var(--theme-text-secondary)" }}
+                />
+                <span className="flex-1">{t("chat.helpDocs", "帮助文档")}</span>
+                <ExternalLink
+                  size={12}
+                  style={{ color: "var(--theme-text-secondary)", opacity: 0.5 }}
+                />
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setHelpMenuOpen(false);
+                  setShortcutDialogOpen(true);
+                }}
+                className="flex gap-2.5 items-center w-full px-3 py-2 text-[13px] rounded-lg cursor-pointer transition-colors"
+                style={{ color: "var(--theme-text)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "var(--theme-bg-hover, rgba(128,128,128,0.08))";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                <Keyboard
+                  size={16}
+                  className="shrink-0"
+                  style={{ color: "var(--theme-text-secondary)" }}
+                />
+                <span>{t("chat.keyboardShortcuts", "键盘快捷键")}</span>
+              </button>
+            </div>
+          )}
+          {shortcutDialogOpen && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center"
+              onClick={() => setShortcutDialogOpen(false)}
+            >
+              <div
+                className="absolute inset-0"
+                style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+              />
+              <div
+                className="relative w-full max-w-md mx-4 rounded-2xl p-5 shadow-xl"
+                style={{
+                  backgroundColor: "var(--theme-bg-card)",
+                  border: "1px solid var(--theme-border)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3
+                    className="text-base font-semibold"
+                    style={{ color: "var(--theme-text)" }}
+                  >
+                    {t("chat.keyboardShortcuts", "键盘快捷键")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShortcutDialogOpen(false)}
+                    className="p-1 rounded-lg transition-colors cursor-pointer"
+                    style={{ color: "var(--theme-text-secondary)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        "var(--theme-bg-hover, rgba(128,128,128,0.08))";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div
+                  className="space-y-3 text-[13px]"
+                  style={{ color: "var(--theme-text-secondary)" }}
+                >
+                  <div
+                    className="pb-2 mb-1 text-[11px] font-medium uppercase tracking-wider"
+                    style={{
+                      color: "var(--theme-text-secondary)",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {t("shortcut.categoryChat", "对话")}
+                  </div>
+                  <ShortcutRow
+                    label={t("shortcut.send", "发送消息")}
+                    keys={["Enter"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.newline", "换行")}
+                    keys={
+                      localStorage.getItem("newlineModifier") === "ctrl"
+                        ? ["Ctrl", "Enter"]
+                        : ["Shift", "Enter"]
+                    }
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.historyUp", "上一条历史")}
+                    keys={["↑"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.historyDown", "下一条历史")}
+                    keys={["↓"]}
+                  />
+                  <div
+                    className="pt-2 pb-2 mt-1 text-[11px] font-medium uppercase tracking-wider"
+                    style={{
+                      color: "var(--theme-text-secondary)",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {t("shortcut.categoryGeneral", "通用")}
+                  </div>
+                  <ShortcutRow
+                    label={t("shortcut.newChat", "新建对话")}
+                    keys={["Ctrl", "N"]}
+                    macKeys={["⌘", "N"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.newChatAlt", "新建对话 (备选)")}
+                    keys={["Ctrl", "Shift", "O"]}
+                    macKeys={["⌘", "Shift", "O"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.search", "搜索对话")}
+                    keys={["Ctrl", "K"]}
+                    macKeys={["⌘", "K"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.selectPersona", "选择角色")}
+                    keys={["@"]}
+                  />
+                  <div
+                    className="pt-2 pb-2 mt-1 text-[11px] font-medium uppercase tracking-wider"
+                    style={{
+                      color: "var(--theme-text-secondary)",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {t("shortcut.categoryDialog", "弹窗")}
+                  </div>
+                  <ShortcutRow
+                    label={t("shortcut.closeDialog", "关闭弹窗")}
+                    keys={["Esc"]}
+                  />
+                  <ShortcutRow
+                    label={t("shortcut.confirm", "确认提交")}
+                    keys={["Ctrl", "Enter"]}
+                    macKeys={["⌘", "Enter"]}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
 
       {imageViewerSrc && (
         <ImageViewer

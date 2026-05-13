@@ -474,6 +474,8 @@
     "goodAfternoon": "Good afternoon, {{name}}",
     "goodEvening": "Good evening, {{name}}",
     "goodMorning": "Good morning, {{name}}",
+    "helpDocs": "Help Docs",
+    "keyboardShortcuts": "Keyboard Shortcuts",
     "mentionNoResults": "No matching personas",
     "message": {
       "allFiles": "All files",
@@ -549,6 +551,8 @@
     "noPermissionHint": "You don't have permission to send messages",
     "outline": "Outline",
     "placeholder": "@ to select a persona, or type a message...",
+    "placeholderWithHintCtrl": "@ to select a persona, or type a message…  Enter for newline, Ctrl+Enter to send",
+    "placeholderWithHintShift": "@ to select a persona, or type a message…  Enter to send, Shift+Enter for newline",
     "queueFull": "Queue is full, please try again later",
     "queueStart": "Task started processing",
     "queued": "Queued (position {{position}})...",
@@ -1905,6 +1909,21 @@
     "title": "Share Session",
     "userMessage": "(User Message: {{message}})",
     "visibility": "Access Control"
+  },
+  "shortcut": {
+    "categoryChat": "Chat",
+    "categoryDialog": "Dialog",
+    "categoryGeneral": "General",
+    "closeDialog": "Close Dialog",
+    "confirm": "Confirm Submit",
+    "historyDown": "Next History",
+    "historyUp": "Previous History",
+    "newChat": "New Chat",
+    "newChatAlt": "New Chat (Alternative)",
+    "newline": "New Line",
+    "search": "Search Chats",
+    "selectPersona": "Select Persona",
+    "send": "Send Message"
   },
   "sidebar": {
     "addToFavorites": "Add to Favorites",

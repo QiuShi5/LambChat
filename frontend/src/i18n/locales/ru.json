@@ -475,6 +475,8 @@
     "goodAfternoon": "Добрый день, {{name}}",
     "goodEvening": "Добрый вечер, {{name}}",
     "goodMorning": "Доброе утро, {{name}}",
+    "helpDocs": "Справка",
+    "keyboardShortcuts": "Горячие клавиши",
     "mentionNoResults": "Нет подходящих персон",
     "message": {
       "allFiles": "Все файлы",
@@ -552,6 +554,8 @@
     "noPermissionHint": "У вас нет прав для отправки сообщений",
     "outline": "Оглавление",
     "placeholder": "@ для выбора персонажа или введите сообщение...",
+    "placeholderWithHintCtrl": "@ для выбора персонажа или введите сообщение…  Enter новая строка, Ctrl+Enter отправить",
+    "placeholderWithHintShift": "@ для выбора персонажа или введите сообщение…  Enter отправить, Shift+Enter новая строка",
     "queueFull": "Очередь заполнена, попробуйте позже",
     "queueStart": "Обработка задачи начата",
     "queued": "В очереди (позиция {{position}})...",
@@ -1905,6 +1909,21 @@
     "title": "Поделиться сессией",
     "userMessage": "(Сообщение пользователя: {{message}})",
     "visibility": "Контроль доступа"
+  },
+  "shortcut": {
+    "categoryChat": "Чат",
+    "categoryDialog": "Диалог",
+    "categoryGeneral": "Общее",
+    "closeDialog": "Закрыть диалог",
+    "confirm": "Подтвердить отправку",
+    "historyDown": "Следующая запись",
+    "historyUp": "Предыдущая запись",
+    "newChat": "Новый чат",
+    "newChatAlt": "Новый чат (альтернативный)",
+    "newline": "Новая строка",
+    "search": "Поиск чатов",
+    "selectPersona": "Выбрать персону",
+    "send": "Отправить сообщение"
   },
   "sidebar": {
     "addToFavorites": "Добавить в избранное",
