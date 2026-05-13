@@ -7,6 +7,17 @@ const DEFAULT_DESCRIPTION =
 
 const DEFAULT_OG_TYPE = "website";
 
+const CRAWLER_ROBOTS_META_NAMES = [
+  "robots",
+  "googlebot",
+  "bingbot",
+  "Baiduspider",
+  "360Spider",
+  "Sogou web spider",
+  "YisouSpider",
+  "Bytespider",
+];
+
 function setMetaContent(selector: string, content: string) {
   const el = document.querySelector(selector);
   if (el) el.setAttribute("content", content);
@@ -45,8 +56,9 @@ function setRobots(noindex: boolean, nofollow: boolean) {
   const content = `${noindex ? "noindex" : "index"}, ${
     nofollow ? "nofollow" : "follow"
   }`;
-  setMetaContent('meta[name="robots"]', content);
-  setMetaContent('meta[name="googlebot"]', content);
+  for (const crawler of CRAWLER_ROBOTS_META_NAMES) {
+    setOrCreateMeta("name", crawler, content);
+  }
 }
 
 export interface SEOConfig {
@@ -105,8 +117,9 @@ export function useSEO(config: SEOConfig) {
       setOrCreateMeta("property", "og:type", DEFAULT_OG_TYPE);
       setOrCreateMeta("name", "twitter:title", APP_NAME);
       setMetaContent('meta[name="twitter:description"]', DEFAULT_DESCRIPTION);
-      setMetaContent('meta[name="robots"]', "index, follow");
-      setMetaContent('meta[name="googlebot"]', "index, follow");
+      for (const crawler of CRAWLER_ROBOTS_META_NAMES) {
+        setMetaContent(`meta[name="${crawler}"]`, "index, follow");
+      }
     };
   });
 }

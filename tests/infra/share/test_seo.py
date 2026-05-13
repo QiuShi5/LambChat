@@ -147,8 +147,60 @@ def test_inject_public_home_seo_adds_crawlable_landing_content() -> None:
     assert "Model Context Protocol" in rendered
 
 
+def test_inject_public_home_seo_adds_domestic_and_bing_crawler_meta() -> None:
+    html = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>LambChat - AI Agent Platform</title>
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+""".strip()
+
+    seo = build_public_route_seo(base_url="https://lambchat.com", path="/")
+    rendered = inject_public_route_seo_into_html(html, seo)
+
+    for crawler in [
+        "bingbot",
+        "Baiduspider",
+        "360Spider",
+        "Sogou web spider",
+        "YisouSpider",
+        "Bytespider",
+    ]:
+        assert f'meta name="{crawler}" content="index, follow, max-image-preview:large"' in rendered
+
+
 def test_build_public_route_seo_marks_app_routes_noindex() -> None:
     seo = build_public_route_seo(base_url="https://lambchat.com", path="/chat")
 
     assert seo.canonical_url == "https://lambchat.com/chat"
     assert seo.robots == "noindex, follow, max-image-preview:large"
+
+
+def test_inject_public_app_route_seo_noindexes_domestic_and_bing_crawlers() -> None:
+    html = """
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>LambChat - AI Agent Platform</title>
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="bingbot" content="index, follow, max-image-preview:large" />
+    <meta name="Baiduspider" content="index, follow, max-image-preview:large" />
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+""".strip()
+
+    seo = build_public_route_seo(base_url="https://lambchat.com", path="/chat")
+    rendered = inject_public_route_seo_into_html(html, seo)
+
+    assert 'meta name="bingbot" content="noindex, follow, max-image-preview:large"' in rendered
+    assert 'meta name="Baiduspider" content="noindex, follow, max-image-preview:large"' in rendered
+    assert 'meta name="360Spider" content="noindex, follow, max-image-preview:large"' in rendered

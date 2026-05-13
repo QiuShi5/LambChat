@@ -12,6 +12,15 @@ NOINDEX_ROBOTS = "noindex, follow, max-image-preview:large"
 DEFAULT_SHARE_PREVIEW_LABEL = "Shared session preview"
 DEFAULT_SHARE_DESCRIPTION = "View this shared session on LambChat."
 PUBLIC_HOME_PATH = "/"
+CRAWLER_ROBOTS_META_NAMES = (
+    "googlebot",
+    "bingbot",
+    "Baiduspider",
+    "360Spider",
+    "Sogou web spider",
+    "YisouSpider",
+    "Bytespider",
+)
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _ROOT_DIV_RE = re.compile(r'<div id="root"></div>')
@@ -255,12 +264,20 @@ def _replace_meta(html_doc: str, attr: str, name: str, content: str) -> str:
     return html_doc.replace("</head>", f"    {replacement}\n  </head>", 1)
 
 
+def _replace_crawler_robots_meta(html_doc: str, robots: str) -> str:
+    rendered = html_doc
+    for crawler in CRAWLER_ROBOTS_META_NAMES:
+        rendered = _replace_meta(rendered, "name", crawler, robots)
+    return rendered
+
+
 def inject_share_seo_into_html(html_doc: str, seo: SharedPageSeo) -> str:
     rendered = html_doc
     rendered = _replace_title(rendered, seo.title)
     rendered = _replace_link(rendered, "canonical", seo.canonical_url)
     rendered = _replace_meta(rendered, "name", "description", seo.description)
     rendered = _replace_meta(rendered, "name", "robots", seo.robots)
+    rendered = _replace_crawler_robots_meta(rendered, seo.robots)
     rendered = _replace_meta(rendered, "property", "og:type", seo.og_type)
     rendered = _replace_meta(rendered, "property", "og:title", seo.title)
     rendered = _replace_meta(rendered, "property", "og:description", seo.description)
@@ -298,6 +315,7 @@ def inject_public_route_seo_into_html(html_doc: str, seo: PublicRouteSeo) -> str
     rendered = _replace_link(rendered, "canonical", seo.canonical_url)
     rendered = _replace_meta(rendered, "name", "description", seo.description)
     rendered = _replace_meta(rendered, "name", "robots", seo.robots)
+    rendered = _replace_crawler_robots_meta(rendered, seo.robots)
     rendered = _replace_meta(rendered, "property", "og:type", seo.og_type)
     rendered = _replace_meta(rendered, "property", "og:title", seo.title)
     rendered = _replace_meta(rendered, "property", "og:description", seo.description)
