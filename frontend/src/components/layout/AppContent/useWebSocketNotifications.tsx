@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
@@ -31,17 +31,9 @@ export function useWebSocketNotifications({
 }: UseWebSocketNotificationsOptions) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { requestPermission, notify, isSupported, permission } =
-    useBrowserNotification();
+  const { notify, isSupported, permission } = useBrowserNotification();
   const onSessionUnreadRef = useRef(onSessionUnread);
   onSessionUnreadRef.current = onSessionUnread;
-
-  // Request notification permission on first interaction
-  useEffect(() => {
-    if (isSupported && permission === "default") {
-      requestPermission();
-    }
-  }, [isSupported, permission, requestPermission]);
 
   // WebSocket for task completion notifications
   useWebSocket({

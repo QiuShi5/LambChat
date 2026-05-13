@@ -53,9 +53,11 @@ function UserMessageSkeleton({
   return (
     <div className="w-full px-2 py-3 sm:py-4 sm:px-4 group">
       <div className="mx-auto flex max-w-3xl lg:max-w-4xl xl:max-w-5xl justify-end px-2">
-        <div className={`flex flex-col items-end max-w-[90%] ${msg.bubble}`}>
+        <div
+          className={`flex flex-col items-stretch max-w-[90%] ${msg.bubble}`}
+        >
           <div
-            className="rounded-3xl max-w-full px-5 py-2 shadow-sm border"
+            className="rounded-3xl w-full px-5 py-2 shadow-sm border"
             style={{
               background:
                 "linear-gradient(135deg, var(--theme-primary-light), var(--theme-bg))",
@@ -110,9 +112,11 @@ function AssistantMessageSkeleton() {
 /** Skeleton that mimics a chat conversation layout (user + assistant alternating) with input */
 export function ChatSkeleton({ count = 5 }: { count?: number }) {
   const userMsgs = [
-    { bubble: "w-[75%] sm:w-[55%]", lines: ["100%", "82%"] },
-    { bubble: "w-[85%] sm:w-[65%]", lines: ["100%"] },
-    { bubble: "w-[50%] sm:w-[35%]", lines: ["100%"] },
+    { bubble: "w-[85%] sm:w-[75%]", lines: ["w-full", "w-[82%]"] },
+    { bubble: "w-[70%] sm:w-[60%]", lines: ["w-full"] },
+    { bubble: "w-[90%] sm:w-[80%]", lines: ["w-full", "w-[75%]"] },
+    { bubble: "w-[75%] sm:w-[65%]", lines: ["w-full"] },
+    { bubble: "w-[80%] sm:w-[70%]", lines: ["w-full", "w-[88%]"] },
   ];
 
   return (
@@ -139,9 +143,11 @@ export function ChatSkeleton({ count = 5 }: { count?: number }) {
 /** Messages-only skeleton (for streaming footer, no input box) */
 export function ChatSkeletonMessagesOnly({ count = 3 }: { count?: number }) {
   const userMsgs = [
-    { bubble: "w-[75%] sm:w-[55%]", lines: ["100%", "82%"] },
-    { bubble: "w-[85%] sm:w-[65%]", lines: ["100%"] },
-    { bubble: "w-[50%] sm:w-[35%]", lines: ["100%"] },
+    { bubble: "w-[85%] sm:w-[75%]", lines: ["w-full", "w-[82%]"] },
+    { bubble: "w-[70%] sm:w-[60%]", lines: ["w-full"] },
+    { bubble: "w-[90%] sm:w-[80%]", lines: ["w-full", "w-[75%]"] },
+    { bubble: "w-[75%] sm:w-[65%]", lines: ["w-full"] },
+    { bubble: "w-[80%] sm:w-[70%]", lines: ["w-full", "w-[88%]"] },
   ];
 
   return (
@@ -208,7 +214,7 @@ export function WelcomeSkeleton() {
         </div>
         {/* Greeting line — desktop icon inline */}
         <div className="max-w-[90vw] w-full flex items-center justify-center">
-          <div className="skeleton-line size-10 rounded-full hidden sm:inline-block shrink-0 shadow-md ring-1 ring-stone-200/60 dark:ring-stone-700/40 mr-4" />
+          <div className="skeleton-line size-10 2xl:size-12 rounded-full hidden sm:inline-block shrink-0 shadow-md ring-1 ring-stone-200/60 dark:ring-stone-700/40 mr-4" />
           <SkeletonLine
             width="w-48 sm:w-64 md:w-72 lg:w-80 xl:w-[22rem] 2xl:w-96"
             className="!h-[1.65rem] sm:!h-8 md:!h-9 lg:!h-[2.35rem] xl:!h-[2.4rem] 2xl:!h-10 !rounded-lg"
@@ -217,7 +223,7 @@ export function WelcomeSkeleton() {
         {/* Subtitle */}
         <SkeletonLine
           width="w-36 sm:w-44 md:w-48 xl:w-56 2xl:w-60"
-          className="!h-3.5 sm:!h-4 md:!h-[17px] xl:!h-5 mt-2 sm:mt-3 md:mt-3.5 xl:mt-4 !rounded-lg"
+          className="!h-3.5 sm:!h-4 md:!h-[17px] xl:!h-5 mt-2 sm:mt-3 md:mt-3.5 xl:mt-4 2xl:mt-4 !rounded-lg"
         />
       </div>
 
@@ -249,24 +255,32 @@ export function WelcomeSkeleton() {
       </div>
 
       {/* Suggestions skeleton */}
-      <div className="welcome-suggestions relative w-[78%] sm:max-w-[38rem] md:max-w-[40rem] lg:max-w-[42rem] xl:max-w-[44rem] 2xl:max-w-[46rem] px-2 sm:px-4 sm:mt-2 md:mt-3 xl:mt-4">
+      <div className="welcome-suggestions relative w-[85%] sm:max-w-[38rem] md:max-w-[40rem] lg:max-w-[42rem] xl:max-w-[44rem] 2xl:max-w-[46rem] px-0 sm:px-4 sm:mt-2 md:mt-3 xl:mt-4 2xl:mt-4">
         {/* Label + refresh */}
-        <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-3 xl:mb-4">
+        <div className="welcome-suggestions-header flex items-center justify-between mb-2 sm:mb-3 md:mb-3 xl:mb-4 2xl:mb-4 px-2 sm:px-0">
           <div className="flex items-center gap-1">
-            <div className="skeleton-line size-3 rounded-full" />
-            <SkeletonLine width="w-16" className="!h-3 sm:!h-3.5 xl:!h-4" />
+            <div className="skeleton-line size-[11px] sm:size-3.5 xl:size-4 rounded-full opacity-60" />
+            <SkeletonLine
+              width="w-20 sm:w-24"
+              className="!h-3 sm:!h-3.5 xl:!h-4"
+            />
           </div>
-          <SkeletonLine
-            width="w-20"
-            className="!h-7 !rounded-lg !text-[11px] sm:!text-xs"
-          />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg">
+              <div className="skeleton-line size-3 xl:size-3.5 rounded-sm" />
+              <SkeletonLine
+                width="w-14 sm:w-16"
+                className="!h-[11px] sm:!h-3"
+              />
+            </div>
+          </div>
         </div>
         {/* Suggestion grid — items >= 2 hidden on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-2.5 xl:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-2.5 xl:gap-3 2xl:gap-3 px-2 sm:px-0">
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`welcome-card group relative flex items-center gap-2 sm:gap-3 md:gap-3 xl:gap-3.5 rounded-xl border px-3 py-2 sm:px-4 sm:py-3${
+              className={`welcome-card welcome-suggestion-pill group relative flex items-center gap-2 sm:gap-3 md:gap-3 xl:gap-3.5 2xl:gap-3.5 rounded-xl border px-3 py-2 sm:px-4 sm:py-3${
                 i >= 2 ? " hidden sm:flex" : ""
               }`}
               style={{
@@ -274,7 +288,7 @@ export function WelcomeSkeleton() {
                 borderColor: "var(--theme-border)",
               }}
             >
-              <div className="skeleton-line size-6 sm:size-7 xl:size-8 rounded-lg shrink-0" />
+              <div className="skeleton-line size-6 sm:size-7 xl:size-8 2xl:size-8 rounded-lg shrink-0" />
               <SkeletonLine
                 width={i % 2 === 0 ? "w-3/4" : "w-4/5"}
                 className="!h-[12.5px] sm:!h-[13.5px] flex-1"

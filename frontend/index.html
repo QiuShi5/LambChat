@@ -78,6 +78,16 @@
 
     <!-- Theme Color -->
     <meta id="app-theme-color" name="theme-color" content="#f5f5f4" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#f5f5f4"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#151210"
+    />
 
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
@@ -293,12 +303,18 @@
               ? "dark"
               : "light";
         const color = theme === "dark" ? darkColor : lightColor;
-        const themeColor = document.getElementById("app-theme-color");
+        const themeColors = document.querySelectorAll(
+          'meta[name="theme-color"]',
+        );
         const statusBar = document.getElementById("apple-status-bar-style");
         document.documentElement.classList.toggle("dark", theme === "dark");
         document.documentElement.style.backgroundColor = color;
+        document.documentElement.style.colorScheme = theme;
         document.body.style.backgroundColor = color;
-        themeColor?.setAttribute("content", color);
+        document.body.style.colorScheme = theme;
+        themeColors.forEach((themeColor) => {
+          themeColor.setAttribute("content", color);
+        });
         statusBar?.setAttribute(
           "content",
           theme === "dark" ? "black" : "default",

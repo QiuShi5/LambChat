@@ -4,6 +4,7 @@
  */
 
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { uuid } from "../../utils/uuid";
 import { sessionApi } from "../../services/api";
 import {
   getValidAccessToken,
@@ -180,7 +181,7 @@ export async function connectToSSE(
         },
         onmessage: (event) => {
           if (event.event === "ping") return;
-          const eventId = event.id || crypto.randomUUID();
+          const eventId = event.id || uuid();
           let parsedData: Record<string, unknown>;
           try {
             parsedData = JSON.parse(event.data);

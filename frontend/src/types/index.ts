@@ -51,11 +51,14 @@ export type {
   PersonaPresetCreate,
   PersonaPresetListParams,
   PersonaPresetListResponse,
+  PersonaPresetPreferenceUpdate,
   PersonaPresetScope,
   PersonaPresetSnapshot,
   PersonaPresetStatus,
+  PersonaStarterPrompt,
   PersonaPresetUpdate,
   PersonaPresetVisibility,
+  LocalizedText,
 } from "./personaPreset";
 
 // ============================================

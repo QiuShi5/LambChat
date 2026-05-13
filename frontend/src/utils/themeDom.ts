@@ -15,8 +15,15 @@ interface ThemePreferenceEnvironment {
 interface ThemeDocument {
   documentElement: {
     classList: Pick<DOMTokenList, "add" | "remove">;
+    style?: Pick<CSSStyleDeclaration, "setProperty">;
   };
+  body?: {
+    style?: Pick<CSSStyleDeclaration, "setProperty">;
+  } | null;
   querySelector?: (selector: string) => Pick<Element, "setAttribute"> | null;
+  querySelectorAll?: (
+    selector: string,
+  ) => Iterable<Pick<Element, "setAttribute">>;
 }
 
 export function isTheme(value: unknown): value is Theme {
@@ -53,9 +60,24 @@ export function applyThemeToDocument(
   }
 
   const color = THEME_COLORS[theme];
-  doc
-    .querySelector?.('meta[name="theme-color"]')
-    ?.setAttribute("content", color);
+  const colorScheme = theme === "dark" ? "dark" : "light";
+
+  doc.documentElement.style?.setProperty("background-color", color);
+  doc.documentElement.style?.setProperty("color-scheme", colorScheme);
+  doc.body?.style?.setProperty("background-color", color);
+  doc.body?.style?.setProperty("color-scheme", colorScheme);
+
+  const themeColorMetas = doc.querySelectorAll?.('meta[name="theme-color"]');
+  if (themeColorMetas) {
+    for (const meta of themeColorMetas) {
+      meta.setAttribute("content", color);
+    }
+  } else {
+    doc
+      .querySelector?.('meta[name="theme-color"]')
+      ?.setAttribute("content", color);
+  }
+
   doc
     .querySelector?.('meta[name="apple-mobile-web-app-status-bar-style"]')
     ?.setAttribute("content", theme === "dark" ? "black" : "default");

@@ -5,6 +5,7 @@ import type {
   PersonaPresetCreate,
   PersonaPresetListParams,
   PersonaPresetListResponse,
+  PersonaPresetPreferenceUpdate,
   PersonaPresetSnapshot,
   PersonaPresetUpdate,
 } from "../../types/personaPreset";
@@ -19,12 +20,20 @@ export function buildPersonaPresetListUrl(
   if (params.status) searchParams.set("status", params.status);
   if (params.q) searchParams.set("q", params.q);
   if (params.tag) searchParams.set("tag", params.tag);
+  if (params.favorite !== undefined)
+    searchParams.set("favorite", String(params.favorite));
+  if (params.pinned !== undefined)
+    searchParams.set("pinned", String(params.pinned));
   if (params.skip !== undefined) searchParams.set("skip", String(params.skip));
   if (params.limit !== undefined)
     searchParams.set("limit", String(params.limit));
 
   const query = searchParams.toString();
   return `${PERSONA_PRESETS_API}/${query ? `?${query}` : ""}`;
+}
+
+export function buildPersonaPresetPreferenceUrl(presetId: string): string {
+  return `${PERSONA_PRESETS_API}/${encodeURIComponent(presetId)}/preference`;
 }
 
 export const personaPresetApi = {
@@ -58,6 +67,16 @@ export const personaPresetApi = {
   ): Promise<PersonaPreset> {
     return authFetch(`${PERSONA_PRESETS_API}/${encodeURIComponent(presetId)}`, {
       method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updatePreference(
+    presetId: string,
+    data: PersonaPresetPreferenceUpdate,
+  ): Promise<PersonaPreset> {
+    return authFetch(buildPersonaPresetPreferenceUrl(presetId), {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },

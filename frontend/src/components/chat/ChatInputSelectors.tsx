@@ -48,6 +48,10 @@ export interface ChatInputSelectorsProps {
   onUsePersonaPreset?: (
     preset: PersonaPreset,
   ) => Promise<PersonaPresetSnapshot | null>;
+  onTogglePersonaPreference?: (
+    preset: PersonaPreset,
+    preference: { is_favorite?: boolean; is_pinned?: boolean },
+  ) => Promise<void>;
   onCopyPersonaPreset?: (preset: PersonaPreset) => Promise<void>;
   onClearPersonaPreset?: () => void;
   canManagePersonaPresets?: boolean;
@@ -86,6 +90,7 @@ export function ChatInputSelectors({
   personaPresetsLoading = false,
   personaPresetsMutating = false,
   onUsePersonaPreset,
+  onTogglePersonaPreference,
   onCopyPersonaPreset,
   onClearPersonaPreset,
   canManagePersonaPresets = false,
@@ -142,6 +147,7 @@ export function ChatInputSelectors({
           canManagePresets={canManagePersonaPresets}
           onOpenChange={(open) => onActivePanelChange(open ? "persona" : null)}
           onUsePreset={onUsePersonaPreset}
+          onTogglePreference={onTogglePersonaPreference}
           onCopyPreset={onCopyPersonaPreset}
           onManagePresets={() => navigate("/persona")}
           onClearPreset={() => {

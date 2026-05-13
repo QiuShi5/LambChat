@@ -8,6 +8,7 @@
  */
 
 import type { Message, FormField } from "../../types";
+import { uuid } from "../../utils/uuid";
 import { authFetch } from "../../services/api/fetch";
 import { sessionApi } from "../../services/api";
 import i18n from "../../i18n";
@@ -304,7 +305,7 @@ function handleUserMessage(
       ? data.message_id
       : typeof data.run_id === "string" && data.run_id.trim()
         ? `${data.run_id}:user`
-        : crypto.randomUUID();
+        : uuid();
   const userContent = data.content || "";
   const userAttachments = convertAttachments(data.attachments) || [];
 

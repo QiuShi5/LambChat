@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { uploadApi } from "../services/api";
 import { compressImageFile } from "../utils/imageCompression";
+import { uuid } from "../utils/uuid";
 import type { MessageAttachment, FileCategory } from "../types";
 
 export interface UploadLimits {
@@ -139,7 +140,7 @@ export function useFileUpload({
           : Promise.resolve(file);
 
       maybeCompress.then((processedFile) => {
-        const tempId = `temp-${crypto.randomUUID()}`;
+        const tempId = `temp-${uuid()}`;
 
         const tempAttachment: MessageAttachment = {
           id: tempId,
@@ -175,7 +176,7 @@ export function useFileUpload({
             if (check.exists) {
               abortMapRef.current.delete(tempId);
               const finalAttachment: MessageAttachment = {
-                id: crypto.randomUUID(),
+                id: uuid(),
                 key: check.key ?? "",
                 name: check.name || processedFile.name,
                 type: check.type as FileCategory,
@@ -214,7 +215,7 @@ export function useFileUpload({
             return handle.promise.then((result) => {
               abortMapRef.current.delete(tempId);
               const finalAttachment: MessageAttachment = {
-                id: crypto.randomUUID(),
+                id: uuid(),
                 key: result.key,
                 name: result.name || processedFile.name,
                 type: result.type as FileCategory,

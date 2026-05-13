@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   PWA_SKIP_WAITING_MESSAGE,
   isPwaSkipWaitingMessage,
@@ -45,4 +47,15 @@ test("recognizes the skip waiting message without accepting arbitrary payloads",
   );
   assert.equal(isPwaSkipWaitingMessage({ type: "OTHER_MESSAGE" }), false);
   assert.equal(isPwaSkipWaitingMessage(null), false);
+});
+
+test("manifest launch colors match the light app shell background", () => {
+  const manifest = JSON.parse(
+    readFileSync(resolve(import.meta.dirname, "../../public/manifest.json"), {
+      encoding: "utf8",
+    }),
+  ) as { background_color?: string; theme_color?: string };
+
+  assert.equal(manifest.background_color, "#f5f5f4");
+  assert.equal(manifest.theme_color, "#f5f5f4");
 });

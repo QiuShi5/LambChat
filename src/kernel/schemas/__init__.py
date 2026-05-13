@@ -43,6 +43,7 @@ from src.kernel.schemas.persona_preset import (
     PersonaPresetCreate,
     PersonaPresetSnapshot,
     PersonaPresetUpdate,
+    PersonaStarterPrompt,
 )
 from src.kernel.schemas.role import (
     Role,
@@ -120,6 +121,7 @@ __all__ = [
     "PersonaPresetCreate",
     "PersonaPresetUpdate",
     "PersonaPresetSnapshot",
+    "PersonaStarterPrompt",
     # Agent
     "AgentRequest",
     "AgentResponse",

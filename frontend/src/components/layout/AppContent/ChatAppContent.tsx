@@ -60,11 +60,10 @@ export function ChatAppContent({
   setMobileSidebarOpen,
   onShowProfile,
 }: ChatAppContentProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { enableSkills, settings, availableModels, defaultModel } =
-    useSettingsContext();
+  const { enableSkills, availableModels, defaultModel } = useSettingsContext();
   const { hasPermission, isAuthenticated } = useAuth();
 
   const { isPageDragging, pageDragAttachments, setPageDragAttachments } =
@@ -103,6 +102,7 @@ export function ChatAppContent({
     isLoading: personaPresetsLoading,
     isMutating: personaPresetsMutating,
     usePreset: activatePersonaPreset,
+    updatePreference: updatePersonaPreference,
     copyPreset: copyPersonaPreset,
     createPreset: createPersonaPreset,
     updatePreset: updatePersonaPreset,
@@ -326,6 +326,16 @@ export function ChatAppContent({
       await copyPersonaPreset(preset.id);
     },
     [copyPersonaPreset],
+  );
+
+  const handleTogglePersonaPreference = useCallback(
+    async (
+      preset: PersonaPreset,
+      preference: { is_favorite?: boolean; is_pinned?: boolean },
+    ) => {
+      await updatePersonaPreference(preset.id, preference);
+    },
+    [updatePersonaPreference],
   );
 
   const handleSavePersonaPreset = useCallback(
@@ -729,10 +739,12 @@ export function ChatAppContent({
           personaPresets={personaPresets}
           selectedPersonaPresetId={sessionConfig.personaPresetId}
           selectedPersonaName={sessionConfig.personaSnapshot?.name || null}
+          selectedPersonaSnapshot={sessionConfig.personaSnapshot}
           personaSkillsControlled={false}
           personaPresetsLoading={personaPresetsLoading}
           personaPresetsMutating={personaPresetsMutating}
           onUsePersonaPreset={handleUsePersonaPreset}
+          onTogglePersonaPreference={handleTogglePersonaPreference}
           onCopyPersonaPreset={handleCopyPersonaPreset}
           onSavePersonaPreset={handleSavePersonaPreset}
           onClearPersonaPreset={clearPersonaPreset}
@@ -750,8 +762,6 @@ export function ChatAppContent({
           onStopGeneration={stopGeneration}
           attachments={pageDragAttachments}
           onAttachmentsChange={setPageDragAttachments}
-          settings={settings || {}}
-          i18n={i18n}
           externalNavigationToken={externalNavigationToken}
           externalNavigationTargetFile={externalNavigationTargetFile}
           externalNavigationPreview={externalNavigationPreviewRequest}

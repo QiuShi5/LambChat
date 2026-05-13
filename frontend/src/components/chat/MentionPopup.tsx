@@ -1,12 +1,8 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Pin, Star } from "lucide-react";
 import type { PersonaPreset } from "../../types";
-import {
-  PersonaAvatarIcon,
-  PersonaAvatarImage,
-} from "../persona/PersonaAvatarIcon";
-import { isPersonaImageAvatar } from "../persona/personaAvatar";
+import { PersonaAvatarWithLoading } from "../persona/PersonaAvatarWithLoading";
 
 interface MentionPopupProps {
   presets: PersonaPreset[];
@@ -16,6 +12,10 @@ interface MentionPopupProps {
   isLoadingMore?: boolean;
   hasMore?: boolean;
   onSelect: (preset: PersonaPreset) => void;
+  onTogglePreference?: (
+    preset: PersonaPreset,
+    preference: { is_favorite?: boolean; is_pinned?: boolean },
+  ) => Promise<void>;
   onHover: (index: number) => void;
   onClose: () => void;
   onLoadMore?: () => void;
@@ -43,52 +43,6 @@ function SkeletonItems() {
   );
 }
 
-function AvatarWithSkeleton({ preset }: { preset: PersonaPreset }) {
-  const isImage = isPersonaImageAvatar(preset.avatar);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  return (
-    <div
-      className={`mention-popup-avatar ${
-        isImage && !imgLoaded && !imgError
-          ? "mention-popup-avatar--loading"
-          : isImage && imgLoaded
-            ? "mention-popup-avatar--loaded"
-            : ""
-      }`}
-    >
-      {isImage ? (
-        !imgError ? (
-          <PersonaAvatarImage
-            avatar={preset.avatar}
-            alt=""
-            className="mention-popup-avatar-img"
-            onLoad={() => setImgLoaded(true)}
-            onError={() => {
-              setImgError(true);
-            }}
-          />
-        ) : (
-          <PersonaAvatarIcon
-            avatar={null}
-            primaryTag={preset.tags?.[0]}
-            size={14}
-            className="mention-popup-avatar-icon"
-          />
-        )
-      ) : (
-        <PersonaAvatarIcon
-          avatar={preset.avatar}
-          primaryTag={preset.tags?.[0]}
-          size={14}
-          className="mention-popup-avatar-icon"
-        />
-      )}
-    </div>
-  );
-}
-
 export function MentionPopup({
   presets,
   highlightedIndex,
@@ -97,6 +51,7 @@ export function MentionPopup({
   isLoadingMore,
   hasMore,
   onSelect,
+  onTogglePreference,
   onHover,
   onClose,
   onLoadMore,
@@ -183,7 +138,12 @@ export function MentionPopup({
                     onClick={() => onSelect(preset)}
                     onMouseEnter={() => onHover(index)}
                   >
-                    <AvatarWithSkeleton preset={preset} />
+                    <PersonaAvatarWithLoading
+                      preset={preset}
+                      className="mention-popup-avatar"
+                      imgClassName="mention-popup-avatar-img"
+                      iconSize={14}
+                    />
                     <div className="mention-popup-text">
                       <span className="mention-popup-name">
                         {preset.name}
@@ -198,6 +158,48 @@ export function MentionPopup({
                         {preset.description || preset.system_prompt}
                       </span>
                     </div>
+                    {onTogglePreference && (
+                      <span className="mention-popup-actions">
+                        <button
+                          type="button"
+                          className={`mention-popup-action ${
+                            preset.is_pinned
+                              ? "mention-popup-action--active"
+                              : ""
+                          }`}
+                          title={t("personaPresets.pin", "置顶")}
+                          aria-label={t("personaPresets.pin", "置顶")}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void onTogglePreference(preset, {
+                              is_pinned: !preset.is_pinned,
+                            });
+                          }}
+                        >
+                          <Pin size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`mention-popup-action ${
+                            preset.is_favorite
+                              ? "mention-popup-action--active"
+                              : ""
+                          }`}
+                          title={t("personaPresets.favorite", "收藏")}
+                          aria-label={t("personaPresets.favorite", "收藏")}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void onTogglePreference(preset, {
+                              is_favorite: !preset.is_favorite,
+                            });
+                          }}
+                        >
+                          <Star size={12} />
+                        </button>
+                      </span>
+                    )}
                   </button>
                 );
               })}

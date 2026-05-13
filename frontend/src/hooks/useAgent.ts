@@ -6,6 +6,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import i18n from "../i18n";
+import { uuid } from "../utils/uuid";
 import type {
   Message,
   AgentInfo,
@@ -446,7 +447,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
               setCurrentRunId(currentRunId);
               isReconnectFromHistoryRef.current = false;
 
-              const streamingMessageId = crypto.randomUUID();
+              const streamingMessageId = uuid();
               const prepared = prepareMessagesForRunningRun(
                 [],
                 currentRunId,

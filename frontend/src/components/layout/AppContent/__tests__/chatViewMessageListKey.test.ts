@@ -31,14 +31,18 @@ test("passes the message list session key into the scroll hook as a bottom-lock 
   );
 });
 
-test("keeps both floating scroll buttons close to the chat input", () => {
+test("anchors floating scroll buttons to the chat input", () => {
   assert.match(
     chatViewSource,
-    /const FLOATING_SCROLL_BUTTON_OFFSET_CLASS = "bottom-28 sm:bottom-36";/,
+    /const FLOATING_SCROLL_BUTTON_OFFSET_CLASS = "bottom-full mb-3";/,
   );
   assert.equal(
     chatViewSource.match(/\$\{FLOATING_SCROLL_BUTTON_OFFSET_CLASS\}/g)?.length,
     2,
   );
-  assert.doesNotMatch(chatViewSource, /bottom-36 sm:bottom-48/);
+  assert.match(
+    chatViewSource,
+    /\{messages\.length > 0 && \(\s*<div className="relative">[\s\S]*<ChatInput \{\.\.\.chatInputProps\} \/>[\s\S]*<\/div>\s*\)\}/,
+  );
+  assert.doesNotMatch(chatViewSource, /bottom-\d+/);
 });

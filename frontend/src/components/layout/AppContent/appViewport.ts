@@ -7,12 +7,25 @@
  * return the measured height so the app shrinks to stay above the keyboard.
  */
 const KEYBOARD_THRESHOLD_PX = 100;
+const VIEWPORT_JITTER_THRESHOLD_PX = 2;
 
 export interface AppViewportState {
   heightCssValue: string | null;
   offsetTopCssValue: string | null;
   keyboardInsetCssValue: string | null;
   keyboardOpen: boolean;
+}
+
+export function shouldPreferVisibleViewportHeight({
+  isMobileDevice,
+  isStandaloneDisplayMode,
+  hasVisualViewport,
+}: {
+  isMobileDevice: boolean;
+  isStandaloneDisplayMode: boolean;
+  hasVisualViewport: boolean;
+}): boolean {
+  return isMobileDevice && hasVisualViewport && !isStandaloneDisplayMode;
 }
 
 export function isKeyboardViewport({
@@ -31,9 +44,11 @@ export function isKeyboardViewport({
 export function getAppViewportHeightCssValue({
   visualViewportHeight,
   windowInnerHeight,
+  preferVisibleViewportHeight = false,
 }: {
   visualViewportHeight?: number | null;
   windowInnerHeight?: number | null;
+  preferVisibleViewportHeight?: boolean;
 }): string | null {
   const vvHeight = visualViewportHeight ?? null;
   const wHeight = windowInnerHeight ?? null;
@@ -52,6 +67,13 @@ export function getAppViewportHeightCssValue({
     return `${Math.round(vvHeight)}px`;
   }
 
+  if (
+    preferVisibleViewportHeight &&
+    vvHeight < wHeight - VIEWPORT_JITTER_THRESHOLD_PX
+  ) {
+    return `${Math.round(vvHeight)}px`;
+  }
+
   // No keyboard — let CSS 100dvh handle full-screen height
   return null;
 }
@@ -61,11 +83,13 @@ export function getAppViewportState({
   visualViewportOffsetTop,
   windowInnerHeight,
   editableFocused,
+  preferVisibleViewportHeight = false,
 }: {
   visualViewportHeight?: number | null;
   visualViewportOffsetTop?: number | null;
   windowInnerHeight?: number | null;
   editableFocused: boolean;
+  preferVisibleViewportHeight?: boolean;
 }): AppViewportState {
   const vvHeight = visualViewportHeight ?? null;
   const offsetTop = visualViewportOffsetTop ?? 0;
@@ -78,8 +102,14 @@ export function getAppViewportState({
     });
 
   if (!keyboardOpen || !vvHeight || !wHeight) {
+    const visibleViewportHeightCssValue = getAppViewportHeightCssValue({
+      visualViewportHeight: vvHeight,
+      windowInnerHeight: wHeight,
+      preferVisibleViewportHeight,
+    });
+
     return {
-      heightCssValue: null,
+      heightCssValue: visibleViewportHeightCssValue,
       offsetTopCssValue: null,
       keyboardInsetCssValue: null,
       keyboardOpen: false,

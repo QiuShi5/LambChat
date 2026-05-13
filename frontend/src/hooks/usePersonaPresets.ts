@@ -6,6 +6,7 @@ import type {
   PersonaPreset,
   PersonaPresetCreate,
   PersonaPresetListParams,
+  PersonaPresetPreferenceUpdate,
   PersonaPresetSnapshot,
   PersonaPresetUpdate,
 } from "../types";
@@ -68,12 +69,58 @@ export function usePersonaPresets(options?: { enabled?: boolean }) {
       setIsMutating(true);
       setError(null);
       try {
-        return await personaPresetApi.use(presetId);
+        const snapshot = await personaPresetApi.use(presetId);
+        const now = new Date().toISOString();
+        setPresets((prev) =>
+          prev.map((preset) =>
+            preset.id === presetId
+              ? {
+                  ...preset,
+                  usage_count: preset.usage_count + 1,
+                  last_used_at: now,
+                }
+              : preset,
+          ),
+        );
+        return snapshot;
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
             : t("personaPresets.useFailed", "Failed to use persona preset"),
+        );
+        return null;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [t],
+  );
+
+  const updatePreference = useCallback(
+    async (
+      presetId: string,
+      preference: PersonaPresetPreferenceUpdate,
+    ): Promise<PersonaPreset | null> => {
+      setIsMutating(true);
+      setError(null);
+      try {
+        const updated = await personaPresetApi.updatePreference(
+          presetId,
+          preference,
+        );
+        setPresets((prev) =>
+          prev.map((preset) => (preset.id === updated.id ? updated : preset)),
+        );
+        return updated;
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : t(
+                "personaPresets.preferenceFailed",
+                "Failed to update persona preference",
+              ),
         );
         return null;
       } finally {
@@ -190,6 +237,7 @@ export function usePersonaPresets(options?: { enabled?: boolean }) {
     error,
     fetchPresets,
     usePreset,
+    updatePreference,
     copyPreset,
     createPreset,
     updatePreset,

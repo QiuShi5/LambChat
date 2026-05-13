@@ -368,6 +368,36 @@
   margin-top: 1px;
 }
 
+.mention-popup-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+}
+
+.mention-popup-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 0.45rem;
+  color: var(--theme-text-tertiary, var(--theme-text-secondary));
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.mention-popup-action:hover,
+.mention-popup-action--active {
+  background: var(--theme-primary-light);
+  color: var(--theme-primary);
+}
+
+.mention-popup-action:active {
+  transform: scale(0.94);
+}
+
 .mention-popup-empty {
   display: flex;
   align-items: center;

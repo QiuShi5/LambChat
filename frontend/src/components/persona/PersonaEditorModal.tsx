@@ -41,6 +41,7 @@ import { PersonaAvatarIcon, PersonaAvatarImage } from "./PersonaAvatarIcon";
 import type {
   PersonaPreset,
   PersonaPresetCreate,
+  PersonaStarterPrompt,
   PersonaPresetStatus,
   PersonaPresetUpdate,
 } from "../../types";
@@ -65,6 +66,61 @@ const AVATAR_ICONS: {
       general: Package,
     }[item.key] ?? Sparkles,
 }));
+
+interface StarterPromptDraftRow {
+  icon: string;
+  text: string;
+}
+
+function stringifyStarterPromptText(
+  text: PersonaStarterPrompt["text"],
+): string {
+  return typeof text === "string" ? text : JSON.stringify(text);
+}
+
+function starterPromptsToDraftRows(
+  prompts: PersonaStarterPrompt[] | undefined,
+): StarterPromptDraftRow[] {
+  return (prompts ?? []).map((prompt) => ({
+    icon: prompt.icon ?? "",
+    text: stringifyStarterPromptText(prompt.text),
+  }));
+}
+
+function parseStarterPromptText(text: string): PersonaStarterPrompt["text"] {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{")) return trimmed;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Object.values(parsed as Record<string, unknown>).every(
+        (value) => typeof value === "string",
+      )
+    ) {
+      return parsed as Record<string, string>;
+    }
+  } catch {
+    return trimmed;
+  }
+  return trimmed;
+}
+
+function draftRowsToStarterPrompts(
+  rows: StarterPromptDraftRow[],
+): PersonaStarterPrompt[] {
+  return rows
+    .map((row) => ({
+      icon: row.icon.trim() || null,
+      text: parseStarterPromptText(row.text),
+    }))
+    .filter((prompt) =>
+      typeof prompt.text === "string"
+        ? prompt.text.trim().length > 0
+        : Object.keys(prompt.text).length > 0,
+    );
+}
 
 interface PersonaEditorModalProps {
   showModal: boolean;
@@ -103,6 +159,7 @@ export function PersonaEditorModal({
     description: editingPreset?.description || "",
     avatar: editingPreset?.avatar || "",
     system_prompt: editingPreset?.system_prompt || "",
+    starter_prompts: starterPromptsToDraftRows(editingPreset?.starter_prompts),
     tags: editingPreset?.tags.join(", ") || "",
     skill_names: [...(editingPreset?.skill_names || [])] as string[],
   });
@@ -119,6 +176,9 @@ export function PersonaEditorModal({
         description: editingPreset?.description || "",
         avatar: editingPreset?.avatar || "",
         system_prompt: editingPreset?.system_prompt || "",
+        starter_prompts: starterPromptsToDraftRows(
+          editingPreset?.starter_prompts,
+        ),
         tags: editingPreset?.tags.join(", ") || "",
         skill_names: [...(editingPreset?.skill_names || [])] as string[],
       });
@@ -183,6 +243,7 @@ export function PersonaEditorModal({
       description: draft.description.trim(),
       avatar: draft.avatar,
       system_prompt: draft.system_prompt.trim(),
+      starter_prompts: draftRowsToStarterPrompts(draft.starter_prompts),
       tags: draft.tags
         .split(",")
         .map((s) => s.trim())
@@ -523,6 +584,80 @@ export function PersonaEditorModal({
             />
             <div className="ppe-char-counter">{draft.system_prompt.length}</div>
           </div>
+        </div>
+
+        {/* Starter Prompts */}
+        <div className="ppe-field">
+          <label className="ppe-label">
+            <Sparkles size={13} className="ppe-label-icon" />
+            {t("personaPresets.starterPrompts", "开场提示词")}
+          </label>
+          <div className="ppe-starter-list">
+            {draft.starter_prompts.map((prompt, index) => (
+              <div key={index} className="ppe-starter-row">
+                <input
+                  value={prompt.icon}
+                  onChange={(e) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      starter_prompts: prev.starter_prompts.map((item, i) =>
+                        i === index ? { ...item, icon: e.target.value } : item,
+                      ),
+                    }))
+                  }
+                  className="ppe-input ppe-starter-icon"
+                  placeholder={t("personaPresets.starterIcon", "图标")}
+                />
+                <input
+                  value={prompt.text}
+                  onChange={(e) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      starter_prompts: prev.starter_prompts.map((item, i) =>
+                        i === index ? { ...item, text: e.target.value } : item,
+                      ),
+                    }))
+                  }
+                  className="ppe-input ppe-starter-text"
+                  placeholder={t(
+                    "personaPresets.starterPromptPlaceholder",
+                    '输入提示词，或使用 {"zh":"...","en":"..."}',
+                  )}
+                />
+                <button
+                  type="button"
+                  className="ppe-starter-remove"
+                  onClick={() =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      starter_prompts: prev.starter_prompts.filter(
+                        (_, i) => i !== index,
+                      ),
+                    }))
+                  }
+                  title={t("common.delete", "删除")}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="ppe-starter-add"
+            onClick={() =>
+              setDraft((prev) => ({
+                ...prev,
+                starter_prompts: [
+                  ...prev.starter_prompts,
+                  { icon: "", text: "" },
+                ],
+              }))
+            }
+          >
+            <Plus size={13} />
+            {t("personaPresets.addStarterPrompt", "添加开场提示词")}
+          </button>
         </div>
 
         {/* Tags + Skills */}

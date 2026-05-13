@@ -1,11 +1,11 @@
 import { createPortal } from "react-dom";
-import { Users, Sparkles, User } from "lucide-react";
+import { Users, Sparkles, User, Pin, Star } from "lucide-react";
 import type { ScopeFilter } from "./usePersonaPlaza";
 
 interface ScopeTab {
   key: ScopeFilter;
   label: string;
-  icon: "Users" | "Sparkles" | "User";
+  icon: "Users" | "Sparkles" | "User" | "Pin" | "Star";
   count: number;
 }
 
@@ -13,6 +13,8 @@ const ICON_MAP = {
   Users,
   Sparkles,
   User,
+  Pin,
+  Star,
 } as const;
 
 interface PersonaScopeDropdownProps {

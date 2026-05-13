@@ -78,7 +78,7 @@ import { getFullUrl } from "../../../services/api/config";
 import { sessionApi } from "../../../services/api";
 import { shouldOpenExternalNavigationPreview } from "./externalNavigationState";
 
-const FLOATING_SCROLL_BUTTON_OFFSET_CLASS = "bottom-28 sm:bottom-36";
+const FLOATING_SCROLL_BUTTON_OFFSET_CLASS = "bottom-full mb-3";
 
 interface ChatViewProps {
   messages: Message[];
@@ -111,12 +111,17 @@ interface ChatViewProps {
   personaPresets: PersonaPreset[];
   selectedPersonaPresetId: string | null;
   selectedPersonaName: string | null;
+  selectedPersonaSnapshot: PersonaPresetSnapshot | null;
   personaSkillsControlled: boolean;
   personaPresetsLoading: boolean;
   personaPresetsMutating: boolean;
   onUsePersonaPreset: (
     preset: PersonaPreset,
   ) => Promise<PersonaPresetSnapshot | null>;
+  onTogglePersonaPreference: (
+    preset: PersonaPreset,
+    preference: { is_favorite?: boolean; is_pinned?: boolean },
+  ) => Promise<void>;
   onCopyPersonaPreset: (preset: PersonaPreset) => Promise<void>;
   onSavePersonaPreset: (
     preset: PersonaPreset | null,
@@ -150,10 +155,6 @@ interface ChatViewProps {
   onAttachmentsChange: React.Dispatch<
     React.SetStateAction<MessageAttachment[]>
   >;
-  settings: {
-    settings?: { frontend?: Array<{ key: string; value: unknown }> };
-  };
-  i18n: { language?: string };
   externalNavigationToken?: string | null;
   externalNavigationTargetFile?: ExternalNavigationTargetFile | null;
   externalNavigationPreview?: RevealPreviewRequest | null;
@@ -191,10 +192,12 @@ export function ChatView({
   personaPresets,
   selectedPersonaPresetId,
   selectedPersonaName,
+  selectedPersonaSnapshot,
   personaSkillsControlled,
   personaPresetsLoading,
   personaPresetsMutating,
   onUsePersonaPreset,
+  onTogglePersonaPreference,
   onCopyPersonaPreset,
   onSavePersonaPreset,
   onClearPersonaPreset,
@@ -212,8 +215,6 @@ export function ChatView({
   onStopGeneration,
   attachments,
   onAttachmentsChange,
-  settings,
-  i18n,
   externalNavigationToken,
   externalNavigationTargetFile,
   externalNavigationPreview,
@@ -648,46 +649,6 @@ export function ChatView({
     ],
   );
 
-  const suggestions = useMemo(() => {
-    const rawValue = settings?.settings?.frontend?.find(
-      (s) => s.key === "WELCOME_SUGGESTIONS",
-    )?.value;
-    const currentLang = i18n.language?.split("-")[0] || "en";
-    let list: Array<{ icon: string; text: string }> | undefined;
-    if (Array.isArray(rawValue)) list = rawValue;
-    else if (rawValue && typeof rawValue === "object") {
-      const langMap = rawValue as Record<
-        string,
-        Array<{ icon: string; text: string }>
-      >;
-      list = langMap[currentLang] || langMap["en"];
-    }
-    return list;
-  }, [settings, i18n.language]);
-
-  const [displaySuggestions, setDisplaySuggestions] = useState(() => {
-    if (!suggestions) return undefined;
-    return [...suggestions].sort(() => Math.random() - 0.5).slice(0, 4);
-  });
-
-  // Sync displaySuggestions when suggestions change (language/settings update)
-  useEffect(() => {
-    if (!suggestions) {
-      setDisplaySuggestions(undefined);
-      return;
-    }
-    setDisplaySuggestions(
-      [...suggestions].sort(() => Math.random() - 0.5).slice(0, 4),
-    );
-  }, [suggestions]);
-
-  const refreshSuggestions = useCallback(() => {
-    if (!suggestions) return;
-    setDisplaySuggestions(
-      [...suggestions].sort(() => Math.random() - 0.5).slice(0, 4),
-    );
-  }, [suggestions]);
-
   // Shared ChatInput props to avoid duplication
   const chatInputProps = {
     onSend: onSendMessage,
@@ -718,6 +679,7 @@ export function ChatView({
     personaPresetsLoading,
     personaPresetsMutating,
     onUsePersonaPreset,
+    onTogglePersonaPreference,
     onCopyPersonaPreset,
     onSavePersonaPreset,
     onClearPersonaPreset,
@@ -736,7 +698,7 @@ export function ChatView({
     <>
       <main
         ref={messagesContainerRef}
-        className={`relative flex-1 min-h-0 pt-6 ${
+        className={`relative flex-1 min-h-0 mt-4 ${
           messages.length > 0 ? "overflow-hidden" : ""
         }`}
       >
@@ -749,13 +711,23 @@ export function ChatView({
               subtitle={
                 t("chat.welcomeSubtitle") ?? "How can I help you today?"
               }
-              suggestionsLabel={t("chat.welcomeSuggestions") ?? "Suggestions"}
               refreshLabel={t("chat.welcomeRefresh") ?? "Refresh"}
-              suggestions={displaySuggestions}
+              personasLabel={t("personaPresets.title", "角色")}
+              starterPromptsLabel={t(
+                "personaPresets.starterPrompts",
+                "开始对话",
+              )}
+              changePersonaLabel={t("personaPresets.change", "更换角色")}
+              personaPresets={personaPresets}
+              selectedPersonaPresetId={selectedPersonaPresetId}
+              selectedPersonaSnapshot={selectedPersonaSnapshot}
+              personaPresetsLoading={personaPresetsLoading}
+              personaPresetsMutating={personaPresetsMutating}
               canSendMessage={canSendMessage}
               onSendMessage={onSendMessage}
               chatInputProps={chatInputProps}
-              onRefreshSuggestions={refreshSuggestions}
+              onUsePersonaPreset={onUsePersonaPreset}
+              onClearPersonaPreset={onClearPersonaPreset}
             />
           )
         ) : (
@@ -778,51 +750,6 @@ export function ChatView({
         )}
       </main>
 
-      {/* Right-side floating button cluster */}
-      {messages.length > 0 && showScrollTop && (
-        <div
-          className={`absolute right-3 sm:right-4 z-50 flex flex-col gap-1.5 ${FLOATING_SCROLL_BUTTON_OFFSET_CLASS}`}
-        >
-          <button
-            onClick={scrollToTop}
-            className="flex items-center p-2 rounded-full bg-white/90 dark:bg-stone-800/90 border border-stone-200/80 dark:border-stone-700/60 shadow-lg  hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4 text-stone-500 dark:text-stone-300"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 17a.75.75 0 01-.75-.75V5.612l-3.96 4.158a.75.75 0 11-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {messages.length > 0 && !isNearBottom && (
-        <button
-          onClick={scrollToBottom}
-          className={`absolute left-1/2 z-50 flex items-center p-2 rounded-full bg-white/90 dark:bg-stone-800/90 border border-stone-200/80 dark:border-stone-700/60 shadow-lg  hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 ${FLOATING_SCROLL_BUTTON_OFFSET_CLASS} -translate-x-1/2`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="w-4 h-4 text-stone-500 dark:text-stone-300"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      )}
-
       <ApprovalPanel
         approvals={approvals}
         onRespond={onRespondApproval}
@@ -838,7 +765,56 @@ export function ChatView({
       <PersistentToolPanelHost />
 
       {/* ChatInput at bottom (when messages exist, WelcomePage renders its own) */}
-      {messages.length > 0 && <ChatInput {...chatInputProps} />}
+      {messages.length > 0 && (
+        <div className="relative">
+          {/* Right-side floating button cluster */}
+          {showScrollTop && (
+            <div
+              className={`absolute right-3 sm:right-4 z-50 flex flex-col gap-1.5 ${FLOATING_SCROLL_BUTTON_OFFSET_CLASS}`}
+            >
+              <button
+                onClick={scrollToTop}
+                className="flex items-center p-2 rounded-full bg-white/90 dark:bg-stone-800/90 border border-stone-200/80 dark:border-stone-700/60 shadow-lg  hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-4 h-4 text-stone-500 dark:text-stone-300"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 17a.75.75 0 01-.75-.75V5.612l-3.96 4.158a.75.75 0 11-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {!isNearBottom && (
+            <button
+              onClick={scrollToBottom}
+              className={`absolute left-1/2 z-50 flex items-center p-2 rounded-full bg-white/90 dark:bg-stone-800/90 border border-stone-200/80 dark:border-stone-700/60 shadow-lg  hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 ${FLOATING_SCROLL_BUTTON_OFFSET_CLASS} -translate-x-1/2`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4 text-stone-500 dark:text-stone-300"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          )}
+
+          <ChatInput {...chatInputProps} />
+        </div>
+      )}
     </>
   );
 }

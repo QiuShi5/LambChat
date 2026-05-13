@@ -38,7 +38,6 @@ export function useMentionSearch(query: string, isActive: boolean) {
     personaPresetApi
       .list({
         q: query || undefined,
-        status: "published",
         skip: 0,
         limit: PAGE_SIZE,
       })
@@ -72,7 +71,6 @@ export function useMentionSearch(query: string, isActive: boolean) {
     personaPresetApi
       .list({
         q: query || undefined,
-        status: "published",
         skip: skipRef.current,
         limit: PAGE_SIZE,
       })
@@ -97,5 +95,19 @@ export function useMentionSearch(query: string, isActive: boolean) {
     };
   }, [isLoadingMore, hasMore, isActive, query]);
 
-  return { presets, total, isLoading, isLoadingMore, hasMore, loadMore };
+  const updatePreset = useCallback((updated: PersonaPreset) => {
+    setPresets((prev) =>
+      prev.map((preset) => (preset.id === updated.id ? updated : preset)),
+    );
+  }, []);
+
+  return {
+    presets,
+    total,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMore,
+    updatePreset,
+  };
 }

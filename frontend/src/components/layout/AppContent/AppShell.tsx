@@ -4,8 +4,14 @@ import { Header } from "./Header";
 import {
   getAppViewportState,
   isKeyboardViewport,
+  shouldPreferVisibleViewportHeight,
   shouldUpdateAppViewportHeight,
 } from "./appViewport";
+import {
+  getBrowserChromeNudgeScrollY,
+  shouldNudgeBrowserChrome,
+} from "./appBrowserChrome";
+import { isMobileDevice } from "../../../utils/mobile";
 import type { Project, VersionInfo } from "../../../types";
 import type { TabType } from "./types";
 
@@ -22,6 +28,22 @@ function isEditableElementFocused(): boolean {
   }
   return (
     activeElement instanceof HTMLElement && activeElement.isContentEditable
+  );
+}
+
+function isStandaloneDisplayMode(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+
+  const navigatorWithStandalone = navigator as Navigator & {
+    standalone?: boolean;
+  };
+
+  return (
+    navigatorWithStandalone.standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    window.matchMedia?.("(display-mode: fullscreen)").matches
   );
 }
 
@@ -78,6 +100,49 @@ export function AppShell({
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
+    const enabled = shouldNudgeBrowserChrome({
+      isMobileDevice: isMobileDevice(),
+      isStandaloneDisplayMode: isStandaloneDisplayMode(),
+      hasVisualViewport: Boolean(window.visualViewport),
+    });
+
+    if (!enabled) return undefined;
+
+    document.documentElement.setAttribute("data-browser-chrome-nudge", "true");
+
+    let raf = 0;
+    const nudgeBrowserChrome = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const top = getBrowserChromeNudgeScrollY({
+          scrollHeight: document.documentElement.scrollHeight,
+          innerHeight: window.innerHeight,
+        });
+        if (top > 0 && window.scrollY < top) {
+          window.scrollTo(0, top);
+        }
+      });
+    };
+
+    const timers = [120, 420, 900].map((delay) =>
+      window.setTimeout(nudgeBrowserChrome, delay),
+    );
+    nudgeBrowserChrome();
+    window.addEventListener("resize", nudgeBrowserChrome);
+    window.addEventListener("orientationchange", nudgeBrowserChrome);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("resize", nudgeBrowserChrome);
+      window.removeEventListener("orientationchange", nudgeBrowserChrome);
+      document.documentElement.removeAttribute("data-browser-chrome-nudge");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
     const rootStyle = document.documentElement.style;
     let raf = 0;
     let viewportHeightValue: string | null = "";
@@ -101,6 +166,11 @@ export function AppShell({
           visualViewportOffsetTop,
           windowInnerHeight,
           editableFocused: keyboardFocused,
+          preferVisibleViewportHeight: shouldPreferVisibleViewportHeight({
+            isMobileDevice: isMobileDevice(),
+            isStandaloneDisplayMode: isStandaloneDisplayMode(),
+            hasVisualViewport: Boolean(window.visualViewport),
+          }),
         });
         const nextViewportHeightValue = viewportState.heightCssValue;
         const nextViewportOffsetTopValue = viewportState.offsetTopCssValue;

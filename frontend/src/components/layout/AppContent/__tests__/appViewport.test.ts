@@ -4,6 +4,7 @@ import {
   getAppViewportState,
   getAppViewportHeightCssValue,
   isKeyboardViewport,
+  shouldPreferVisibleViewportHeight,
   shouldUpdateAppViewportHeight,
 } from "../appViewport.ts";
 
@@ -22,6 +23,28 @@ test("lets CSS dynamic viewport units handle normal fullscreen sizing", () => {
     getAppViewportHeightCssValue({
       visualViewportHeight: 760,
       windowInnerHeight: 800,
+    }),
+    null,
+  );
+});
+
+test("uses visible viewport height for direct mobile browser chrome", () => {
+  assert.equal(
+    getAppViewportHeightCssValue({
+      visualViewportHeight: 724.6,
+      windowInnerHeight: 800,
+      preferVisibleViewportHeight: true,
+    }),
+    "725px",
+  );
+});
+
+test("keeps standalone fullscreen sizing even when visual viewport is shorter", () => {
+  assert.equal(
+    getAppViewportHeightCssValue({
+      visualViewportHeight: 724.6,
+      windowInnerHeight: 800,
+      preferVisibleViewportHeight: false,
     }),
     null,
   );
@@ -94,6 +117,25 @@ test("does not force keyboard viewport variables when no editable field is focus
       visualViewportOffsetTop: 36.2,
       windowInnerHeight: 800,
       editableFocused: false,
+      preferVisibleViewportHeight: true,
+    }),
+    {
+      heightCssValue: "512px",
+      offsetTopCssValue: null,
+      keyboardInsetCssValue: null,
+      keyboardOpen: false,
+    },
+  );
+});
+
+test("does not use visible viewport preference when visual viewport is taller", () => {
+  assert.deepEqual(
+    getAppViewportState({
+      visualViewportHeight: 820,
+      visualViewportOffsetTop: 0,
+      windowInnerHeight: 800,
+      editableFocused: false,
+      preferVisibleViewportHeight: true,
     }),
     {
       heightCssValue: null,
@@ -101,5 +143,40 @@ test("does not force keyboard viewport variables when no editable field is focus
       keyboardInsetCssValue: null,
       keyboardOpen: false,
     },
+  );
+});
+
+test("prefers visible viewport height only for direct mobile browser access", () => {
+  assert.equal(
+    shouldPreferVisibleViewportHeight({
+      isMobileDevice: true,
+      isStandaloneDisplayMode: false,
+      hasVisualViewport: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPreferVisibleViewportHeight({
+      isMobileDevice: true,
+      isStandaloneDisplayMode: true,
+      hasVisualViewport: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPreferVisibleViewportHeight({
+      isMobileDevice: false,
+      isStandaloneDisplayMode: false,
+      hasVisualViewport: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPreferVisibleViewportHeight({
+      isMobileDevice: true,
+      isStandaloneDisplayMode: false,
+      hasVisualViewport: false,
+    }),
+    false,
   );
 });

@@ -119,6 +119,8 @@ class PersonaPresetManager:
         status: str | None = None,
         tag: str | None = None,
         q: str | None = None,
+        favorite: bool | None = None,
+        pinned: bool | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[PersonaPreset]:
@@ -129,10 +131,32 @@ class PersonaPresetManager:
             status=status,
             tag=tag,
             q=q,
+            favorite=favorite,
+            pinned=pinned,
             skip=skip,
             limit=limit,
         )
         return [PersonaPreset(**doc) for doc in docs]
+
+    async def update_preference(
+        self,
+        preset_id: str,
+        *,
+        user_id: str,
+        is_admin: bool,
+        is_favorite: bool | None = None,
+        is_pinned: bool | None = None,
+    ) -> PersonaPreset:
+        preset = await self.get_preset(preset_id, user_id=user_id, is_admin=is_admin)
+        preference = await self.storage.update_user_preference(
+            user_id=user_id,
+            preset_id=preset_id,
+            update={
+                "is_favorite": is_favorite,
+                "is_pinned": is_pinned,
+            },
+        )
+        return preset.model_copy(update=preference)
 
     async def count_presets(
         self,
@@ -143,6 +167,8 @@ class PersonaPresetManager:
         status: str | None = None,
         tag: str | None = None,
         q: str | None = None,
+        favorite: bool | None = None,
+        pinned: bool | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> int:
@@ -154,6 +180,8 @@ class PersonaPresetManager:
             status=status,
             tag=tag,
             q=q,
+            favorite=favorite,
+            pinned=pinned,
         )
 
     async def update_preset(
@@ -203,6 +231,9 @@ class PersonaPresetManager:
             "avatar": source.avatar,
             "tags": source.tags,
             "system_prompt": source.system_prompt,
+            "starter_prompts": [
+                prompt.model_dump(mode="json") for prompt in source.starter_prompts
+            ],
             "skill_names": source.skill_names,
             "visibility": PersonaPresetVisibility.PRIVATE.value,
             "status": PersonaPresetStatus.DRAFT.value,
@@ -231,10 +262,12 @@ class PersonaPresetManager:
         missing = [name for name in preset.skill_names if name not in available]
 
         await self.storage.increment_usage(preset_id)
+        await self.storage.touch_user_preference(user_id=user_id, preset_id=preset_id)
         return PersonaPresetSnapshot(
             preset_id=preset.id,
             name=preset.name,
             system_prompt=preset.system_prompt,
+            starter_prompts=preset.starter_prompts,
             skill_names=skill_names,
             missing_skill_names=missing,
             version=preset.version,

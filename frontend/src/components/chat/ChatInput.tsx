@@ -145,6 +145,7 @@ export interface ChatInputProps {
       | MessageAttachment[]
       | ((prev: MessageAttachment[]) => MessageAttachment[]),
   ) => void;
+  onMentionQueryChange?: (query: string | null) => void;
   className?: string;
 }
 
@@ -189,6 +190,7 @@ export const ChatInput = memo(function ChatInput({
   onSelectAgent,
   attachments: externalAttachments,
   onAttachmentsChange: externalOnAttachmentsChange,
+  onMentionQueryChange,
   className,
 }: ChatInputProps) {
   const { t } = useTranslation();
@@ -267,6 +269,30 @@ export const ChatInput = memo(function ChatInput({
       setMentionResultCount(mentionSearch.presets.length);
     }
   }, [mention.isActive, mentionSearch.presets.length, setMentionResultCount]);
+
+  useEffect(() => {
+    if (!onMentionQueryChange) return;
+    onMentionQueryChange(mention.isActive ? mention.query : null);
+  }, [mention.isActive, mention.query, onMentionQueryChange]);
+
+  useEffect(() => {
+    if (!onMentionQueryChange || !selectedPersonaPresetId || !mention.isActive)
+      return;
+    const before = input.substring(0, mention.atIndex);
+    const after = input.substring(mention.atIndex + mention.query.length + 1);
+    setInput(before + after);
+    setCursorPosition(before.length || 0);
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = before.length;
+        textarea.focus();
+        scheduleTextareaResize();
+      }
+    });
+    resetMention();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on preset selection
+  }, [selectedPersonaPresetId]);
 
   useEffect(() => {
     const applySelectionActionPrompt = (prompt: string) => {
@@ -548,7 +574,7 @@ export const ChatInput = memo(function ChatInput({
               : "0 2px 12px rgba(0,0,0,0.06)",
           }}
         >
-          {mention.isActive && (
+          {mention.isActive && !onMentionQueryChange && (
             <MentionPopup
               presets={mentionSearch.presets}
               highlightedIndex={mention.highlightedIndex}

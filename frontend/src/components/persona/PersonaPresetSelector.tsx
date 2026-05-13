@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Search, Settings2, UserRound, X, Sparkles, Copy } from "lucide-react";
+import {
+  Search,
+  Settings2,
+  UserRound,
+  X,
+  Sparkles,
+  Copy,
+  Pin,
+  Star,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { nameToGradient } from "../panels/MarketplacePanel/constants";
 import type { PersonaPreset, PersonaPresetSnapshot } from "../../types";
@@ -20,6 +29,10 @@ interface PersonaPresetSelectorProps {
   canManagePresets?: boolean;
   onOpenChange: (open: boolean) => void;
   onUsePreset: (preset: PersonaPreset) => Promise<PersonaPresetSnapshot | null>;
+  onTogglePreference?: (
+    preset: PersonaPreset,
+    preference: { is_favorite?: boolean; is_pinned?: boolean },
+  ) => Promise<void>;
   onCopyPreset: (preset: PersonaPreset) => Promise<void>;
   onManagePresets?: () => void;
   onClearPreset: () => void;
@@ -34,6 +47,7 @@ export function PersonaPresetSelector({
   canManagePresets = false,
   onOpenChange,
   onUsePreset,
+  onTogglePreference,
   onCopyPreset,
   onManagePresets,
   onClearPreset,
@@ -242,6 +256,44 @@ export function PersonaPresetSelector({
                         <span className="pps-card__status-badge">
                           {t("personaPresets.using", "使用中")}
                         </span>
+                      )}
+                      {onTogglePreference && (
+                        <div className="absolute left-2 top-2 flex gap-1.5">
+                          <button
+                            type="button"
+                            className={`pps-card__icon-action ${
+                              preset.is_pinned
+                                ? "pps-card__icon-action--active"
+                                : ""
+                            }`}
+                            title={t("personaPresets.pin", "置顶")}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void onTogglePreference(preset, {
+                                is_pinned: !preset.is_pinned,
+                              });
+                            }}
+                          >
+                            <Pin size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            className={`pps-card__icon-action ${
+                              preset.is_favorite
+                                ? "pps-card__icon-action--active"
+                                : ""
+                            }`}
+                            title={t("personaPresets.favorite", "收藏")}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void onTogglePreference(preset, {
+                                is_favorite: !preset.is_favorite,
+                              });
+                            }}
+                          >
+                            <Star size={12} />
+                          </button>
+                        </div>
                       )}
                     </div>
 

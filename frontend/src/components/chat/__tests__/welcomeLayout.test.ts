@@ -1,21 +1,118 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getWelcomeSuggestionButtonClass } from "../welcomeLayout.ts";
+import {
+  getSelectedPersonaStarterPrompts,
+  getWelcomePersonaCards,
+  getWelcomePersonaCardClass,
+  getWelcomePersonaSkeletonCount,
+  getWelcomeSuggestionsContainerClass,
+  getWelcomeSuggestionButtonClass,
+} from "../welcomeLayout.ts";
 
-test("keeps the first two welcome suggestions visible on mobile", () => {
-  assert.equal(
-    getWelcomeSuggestionButtonClass(0).includes("hidden sm:flex"),
-    false,
-  );
-  assert.equal(
-    getWelcomeSuggestionButtonClass(1).includes("hidden sm:flex"),
-    false,
-  );
+test("keeps every welcome persona card reachable on mobile", () => {
+  const className = getWelcomePersonaCardClass(3);
+
+  assert.equal(className.includes("welcome-persona-card"), true);
+  assert.equal(className.includes("hidden sm:flex"), false);
 });
 
-test("hides later welcome suggestions on narrow screens until keyboard pill mode restyles them", () => {
+test("keeps later starter prompt pills compact on narrow screens", () => {
   const className = getWelcomeSuggestionButtonClass(2);
 
   assert.equal(className.includes("welcome-suggestion-pill"), true);
   assert.equal(className.includes("hidden sm:flex"), true);
+});
+
+test("keeps starter prompt container narrower than persona gallery", () => {
+  assert.match(
+    getWelcomeSuggestionsContainerClass("prompts"),
+    /sm:max-w-\[38rem\]/,
+  );
+  assert.match(
+    getWelcomeSuggestionsContainerClass("personas"),
+    /sm:max-w-\[42rem\]/,
+  );
+});
+
+test("shows persona cards before a welcome persona is selected", () => {
+  const cards = getWelcomePersonaCards(
+    [
+      { id: "writer", name: "Writer", starter_prompts: [] },
+      { id: "coder", name: "Coder", starter_prompts: [] },
+      { id: "planner", name: "Planner", starter_prompts: [] },
+    ],
+    null,
+    2,
+  );
+
+  assert.deepEqual(
+    cards.map((card) => card.id),
+    ["writer", "coder"],
+  );
+});
+
+test("shows all welcome persona cards with pinned and favorite cards first", () => {
+  const cards = getWelcomePersonaCards(
+    [
+      { id: "normal", name: "Normal", starter_prompts: [], usage_count: 10 },
+      {
+        id: "favorite",
+        name: "Favorite",
+        starter_prompts: [],
+        is_favorite: true,
+      },
+      {
+        id: "pinned",
+        name: "Pinned",
+        starter_prompts: [],
+        is_pinned: true,
+      },
+    ],
+    null,
+  );
+
+  assert.deepEqual(
+    cards.map((card) => card.id),
+    ["pinned", "favorite", "normal"],
+  );
+});
+
+test("reserves persona skeleton cards while presets are loading", () => {
+  assert.equal(getWelcomePersonaSkeletonCount(true, 0), 6);
+  assert.equal(getWelcomePersonaSkeletonCount(true, 3), 0);
+  assert.equal(getWelcomePersonaSkeletonCount(false, 0), 0);
+});
+
+test("uses only the selected persona starter prompts after a welcome persona is selected", () => {
+  const prompts = getSelectedPersonaStarterPrompts(
+    [
+      {
+        id: "writer",
+        name: "Writer",
+        starter_prompts: [{ icon: "✍️", text: "写一段开场白" }],
+      },
+      {
+        id: "coder",
+        name: "Coder",
+        starter_prompts: [
+          { text: { zh: "帮我审查这段代码", en: "Review this code" } },
+        ],
+      },
+    ],
+    "coder",
+    "zh-CN",
+  );
+
+  assert.deepEqual(prompts, [{ icon: null, text: "帮我审查这段代码" }]);
+});
+
+test("falls back to default suggestions when selected persona has no starter prompts", () => {
+  const prompts = getSelectedPersonaStarterPrompts(
+    [{ id: "coder", name: "Coder", starter_prompts: [] }],
+    "coder",
+    "zh-CN",
+    [{ icon: "🐍", text: "创建一个 Python 脚本" }],
+  );
+
+  assert.deepEqual(prompts, [{ icon: "🐍", text: "创建一个 Python 脚本" }]);
 });

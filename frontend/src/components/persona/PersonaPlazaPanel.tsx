@@ -9,6 +9,8 @@ import {
   ChevronDown,
   Download,
   Upload,
+  Pin,
+  Star,
 } from "lucide-react";
 import { PanelHeader } from "../common/PanelHeader";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -26,6 +28,8 @@ const SCOPE_ICON_MAP: Record<string, typeof Sparkles> = {
   Users,
   Sparkles,
   User,
+  Pin,
+  Star,
 };
 
 export function PersonaPlazaPanel() {
@@ -57,6 +61,7 @@ export function PersonaPlazaPanel() {
     handleUse,
     handleClear,
     handleCopy,
+    handleTogglePreference,
     handleDelete,
     deleteTarget,
     setDeleteTarget,
@@ -256,6 +261,7 @@ export function PersonaPlazaPanel() {
                   onUse={handleUse}
                   onClear={handleClear}
                   onCopy={handleCopy}
+                  onTogglePreference={handleTogglePreference}
                   onEdit={(p) => openModal(p)}
                   onDelete={(p) => setDeleteTarget(p)}
                   onToggleTag={toggleTag}

@@ -8,6 +8,7 @@
  */
 
 import type { Message, MessagePart, FormField } from "../../types";
+import { uuid } from "../../utils/uuid";
 import { authFetch } from "../../services/api/fetch";
 import i18n from "../../i18n";
 import type {
@@ -30,7 +31,7 @@ function resolveUserMessageId(
   if (typeof event.run_id === "string" && event.run_id.trim()) {
     return `${event.run_id}:user`;
   }
-  return crypto.randomUUID();
+  return uuid();
 }
 
 interface ProcessHistoryOptions {
@@ -126,7 +127,7 @@ function processHistoryEvent(
   // Ensure assistant message exists for other event types
   let msg = currentAssistantMessage;
   if (!msg) {
-    const messageId = event.run_id || crypto.randomUUID();
+    const messageId = event.run_id || uuid();
     msg = {
       id: messageId,
       role: "assistant",
@@ -260,7 +261,7 @@ export function reconstructMessagesFromEvents(
         reconstructedMessages.push(updatedMessage);
       } else {
         reconstructedMessages.push({
-          id: crypto.randomUUID(),
+          id: uuid(),
           role: "assistant",
           content: "",
           timestamp: parseEventTimestamp(event.timestamp, Date.now()),
@@ -296,7 +297,7 @@ export interface RunningAssistantPreparationResult {
 export function prepareMessagesForRunningRun(
   messages: Message[],
   runId: string,
-  createId: () => string = () => crypto.randomUUID(),
+  createId: () => string = () => uuid(),
 ): RunningAssistantPreparationResult {
   const existingAssistant = [...messages]
     .reverse()

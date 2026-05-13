@@ -1,21 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildPersonaPresetListUrl } from "../personaPreset.ts";
+import { buildPersonaPresetPreferenceUrl } from "../personaPreset.ts";
 
-test("builds the default persona preset list url", () => {
-  assert.equal(buildPersonaPresetListUrl(), "/api/persona-presets/");
-});
-
-test("builds persona preset list url with filters", () => {
+test("buildPersonaPresetPreferenceUrl encodes preset ids", () => {
   assert.equal(
-    buildPersonaPresetListUrl({
-      scope: "global",
-      q: "coder",
-      tag: "coding",
-      skip: 20,
-      limit: 10,
-    }),
-    "/api/persona-presets/?scope=global&q=coder&tag=coding&skip=20&limit=10",
+    buildPersonaPresetPreferenceUrl("preset/1"),
+    "/api/persona-presets/preset%2F1/preference",
   );
 });

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Sparkles, Check, Copy, Pencil, Trash2 } from "lucide-react";
+import { Sparkles, Check, Copy, Pencil, Trash2, Pin, Star } from "lucide-react";
 import type { PersonaPreset } from "../../types";
 import { PersonaAvatarIcon, PersonaAvatarImage } from "./PersonaAvatarIcon";
 import { isPersonaImageAvatar } from "./personaAvatar";
@@ -15,6 +15,10 @@ interface PersonaPresetCardProps {
   onUse: (preset: PersonaPreset) => void;
   onClear: () => void;
   onCopy: (preset: PersonaPreset) => void;
+  onTogglePreference?: (
+    preset: PersonaPreset,
+    preference: { is_favorite?: boolean; is_pinned?: boolean },
+  ) => void;
   onEdit: (preset: PersonaPreset) => void;
   onDelete: (preset: PersonaPreset) => void;
   onToggleTag: (tag: string) => void;
@@ -29,6 +33,7 @@ export function PersonaPresetCard({
   onUse,
   onClear,
   onCopy,
+  onTogglePreference,
   onEdit,
   onDelete,
   onToggleTag,
@@ -58,6 +63,36 @@ export function PersonaPresetCard({
             </span>
           )}
         </div>
+        {onTogglePreference && (
+          <div className="absolute left-2 top-2 flex gap-1.5">
+            <button
+              type="button"
+              className={`pps-card__icon-action ${
+                preset.is_pinned ? "pps-card__icon-action--active" : ""
+              }`}
+              title={t("personaPresets.pin", "置顶")}
+              onClick={() =>
+                onTogglePreference(preset, { is_pinned: !preset.is_pinned })
+              }
+            >
+              <Pin size={12} />
+            </button>
+            <button
+              type="button"
+              className={`pps-card__icon-action ${
+                preset.is_favorite ? "pps-card__icon-action--active" : ""
+              }`}
+              title={t("personaPresets.favorite", "收藏")}
+              onClick={() =>
+                onTogglePreference(preset, {
+                  is_favorite: !preset.is_favorite,
+                })
+              }
+            >
+              <Star size={12} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Card Body */}

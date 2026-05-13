@@ -1,10 +1,5 @@
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "../../hooks/useAuth";
 
-export const SIDEBAR_RAIL_SKELETON_NAV_STYLE = {
-  backgroundColor: "var(--theme-bg-sidebar)",
-  borderRight: "1px solid var(--theme-border)",
-};
-
 /** Sidebar skeleton — matches real SessionSidebar layout */
 export function SidebarSkeleton() {
   const collapsed = (() => {
@@ -28,7 +23,10 @@ function SidebarRailSkeleton() {
     >
       <nav
         className="absolute inset-0 flex h-full w-full flex-col items-start select-none"
-        style={SIDEBAR_RAIL_SKELETON_NAV_STYLE}
+        style={{
+          backgroundColor: "var(--theme-bg-sidebar)",
+          borderRight: "1px solid var(--theme-border)",
+        }}
       >
         {/* Expand button area */}
         <div className="flex items-center justify-center w-full pt-3">

@@ -31,6 +31,40 @@ class PersonaPresetStatus(str, Enum):
     ARCHIVED = "archived"
 
 
+class PersonaStarterPrompt(BaseModel):
+    """Prompt suggestion shown after selecting a persona."""
+
+    icon: Optional[str] = None
+    text: str | dict[str, str]
+
+    @field_validator("icon")
+    @classmethod
+    def _normalize_icon(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        item = value.strip()
+        return item or None
+
+    @field_validator("text")
+    @classmethod
+    def _normalize_text(cls, value: str | dict[str, str]) -> str | dict[str, str]:
+        if isinstance(value, str):
+            item = value.strip()
+            if not item:
+                raise ValueError("starter_prompt_text_required")
+            return item
+
+        result: dict[str, str] = {}
+        for lang, text in value.items():
+            lang_key = str(lang).strip()
+            localized_text = str(text).strip()
+            if lang_key and localized_text:
+                result[lang_key] = localized_text
+        if not result:
+            raise ValueError("starter_prompt_text_required")
+        return result
+
+
 class PersonaPresetBase(BaseModel):
     """Common persona preset fields."""
 
@@ -39,6 +73,7 @@ class PersonaPresetBase(BaseModel):
     avatar: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
     system_prompt: str = Field(..., min_length=1)
+    starter_prompts: list[PersonaStarterPrompt] = Field(default_factory=list)
     skill_names: list[str] = Field(default_factory=list)
     scope: PersonaPresetScope = PersonaPresetScope.USER
     visibility: PersonaPresetVisibility = PersonaPresetVisibility.PRIVATE
@@ -70,6 +105,7 @@ class PersonaPresetUpdate(BaseModel):
     avatar: Optional[str] = None
     tags: Optional[list[str]] = None
     system_prompt: Optional[str] = Field(None, min_length=1)
+    starter_prompts: Optional[list[PersonaStarterPrompt]] = None
     skill_names: Optional[list[str]] = None
     visibility: Optional[PersonaPresetVisibility] = None
     status: Optional[PersonaPresetStatus] = None
@@ -80,6 +116,13 @@ class PersonaPresetUpdate(BaseModel):
         if values is None:
             return None
         return PersonaPresetBase._dedupe_strings(values)
+
+
+class PersonaPresetPreferenceUpdate(BaseModel):
+    """Update the current user's presentation preferences for a preset."""
+
+    is_favorite: Optional[bool] = None
+    is_pinned: Optional[bool] = None
 
 
 class PersonaPreset(BaseModel):
@@ -95,6 +138,7 @@ class PersonaPreset(BaseModel):
     avatar: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
     system_prompt: str
+    starter_prompts: list[PersonaStarterPrompt] = Field(default_factory=list)
     skill_names: list[str] = Field(default_factory=list)
     visibility: PersonaPresetVisibility
     status: PersonaPresetStatus
@@ -102,6 +146,9 @@ class PersonaPreset(BaseModel):
     copied_from_version: Optional[int] = None
     version: int = 1
     usage_count: int = 0
+    is_favorite: bool = False
+    is_pinned: bool = False
+    last_used_at: Optional[datetime] = None
     created_by: Optional[str] = None
     updated_by: Optional[str] = None
     created_at: datetime = Field(default_factory=utc_now)
@@ -114,6 +161,7 @@ class PersonaPresetSnapshot(BaseModel):
     preset_id: str
     name: str
     system_prompt: str
+    starter_prompts: list[PersonaStarterPrompt] = Field(default_factory=list)
     skill_names: list[str] = Field(default_factory=list)
     missing_skill_names: list[str] = Field(default_factory=list)
     version: int = 1

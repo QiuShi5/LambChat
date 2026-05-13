@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Permission } from "../../types";
+import { uuid } from "../../utils/uuid";
 import type {
   MCPServerResponse,
   MCPServerCreate,
@@ -266,7 +267,7 @@ export function MCPServerForm({
   };
 
   const addHeader = () => {
-    setHeaders([...headers, { id: crypto.randomUUID(), key: "", value: "" }]);
+    setHeaders([...headers, { id: uuid(), key: "", value: "" }]);
   };
 
   const updateHeader = (id: string, field: "key" | "value", value: string) => {

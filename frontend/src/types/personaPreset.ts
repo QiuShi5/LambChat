@@ -1,6 +1,12 @@
 export type PersonaPresetScope = "global" | "user";
 export type PersonaPresetVisibility = "public" | "private";
 export type PersonaPresetStatus = "draft" | "published" | "archived";
+export type LocalizedText = string | Record<string, string>;
+
+export interface PersonaStarterPrompt {
+  icon?: string | null;
+  text: LocalizedText;
+}
 
 export interface PersonaPreset {
   id: string;
@@ -11,6 +17,7 @@ export interface PersonaPreset {
   avatar?: string | null;
   tags: string[];
   system_prompt: string;
+  starter_prompts?: PersonaStarterPrompt[];
   skill_names: string[];
   visibility: PersonaPresetVisibility;
   status: PersonaPresetStatus;
@@ -18,6 +25,9 @@ export interface PersonaPreset {
   copied_from_version?: number | null;
   version: number;
   usage_count: number;
+  is_favorite?: boolean;
+  is_pinned?: boolean;
+  last_used_at?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
   created_at: string;
@@ -30,6 +40,7 @@ export interface PersonaPresetCreate {
   avatar?: string | null;
   tags?: string[];
   system_prompt: string;
+  starter_prompts?: PersonaStarterPrompt[];
   skill_names?: string[];
   scope?: PersonaPresetScope;
   visibility?: PersonaPresetVisibility;
@@ -42,15 +53,22 @@ export interface PersonaPresetUpdate {
   avatar?: string | null;
   tags?: string[];
   system_prompt?: string;
+  starter_prompts?: PersonaStarterPrompt[];
   skill_names?: string[];
   visibility?: PersonaPresetVisibility;
   status?: PersonaPresetStatus;
+}
+
+export interface PersonaPresetPreferenceUpdate {
+  is_favorite?: boolean;
+  is_pinned?: boolean;
 }
 
 export interface PersonaPresetSnapshot {
   preset_id: string;
   name: string;
   system_prompt: string;
+  starter_prompts?: PersonaStarterPrompt[];
   skill_names: string[];
   missing_skill_names: string[];
   version: number;
@@ -69,6 +87,8 @@ export interface PersonaPresetListParams {
   status?: PersonaPresetStatus;
   tag?: string;
   q?: string;
+  favorite?: boolean;
+  pinned?: boolean;
   skip?: number;
   limit?: number;
 }

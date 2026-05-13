@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  hasServiceWorkerNotificationSupport,
+  selectNotificationDeliveryMode,
+} from "./browserNotificationDelivery";
 import { isMobileDevice, resetMobileViewport } from "../utils/mobile";
 
 interface NotificationOptions {
@@ -60,7 +64,10 @@ export function useBrowserNotification() {
   }, []);
 
   const notify = useCallback(
-    (title: string, options?: NotificationOptions): Notification | null => {
+    async (
+      title: string,
+      options?: NotificationOptions,
+    ): Promise<Notification | null> => {
       if (!("Notification" in window)) {
         console.warn("[BrowserNotification] Not supported");
         return null;
@@ -68,6 +75,42 @@ export function useBrowserNotification() {
 
       if (Notification.permission !== "granted") {
         console.warn("[BrowserNotification] Permission not granted");
+        return null;
+      }
+
+      const deliveryMode = selectNotificationDeliveryMode({
+        isMobile,
+        permission: Notification.permission,
+        hasNotificationApi: true,
+        hasServiceWorkerNotification: hasServiceWorkerNotificationSupport(),
+      });
+
+      if (deliveryMode === "service-worker") {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.showNotification(title, {
+            icon: options?.icon || "/icons/icon-192.png",
+            badge: options?.badge || "/icons/icon-192.png",
+            tag: options?.tag || "lambchat-notification",
+            body: options?.body,
+            data: {
+              ...(typeof options?.data === "object" && options.data !== null
+                ? options.data
+                : {}),
+              url: options?.url || "/chat",
+            },
+          });
+          return null;
+        } catch (e) {
+          console.error("[BrowserNotification] Service worker show failed:", e);
+          if (isMobile) {
+            return null;
+          }
+        }
+      }
+
+      if (deliveryMode === "none") {
+        console.warn("[BrowserNotification] No supported delivery method");
         return null;
       }
 
@@ -96,7 +139,7 @@ export function useBrowserNotification() {
         return null;
       }
     },
-    [],
+    [isMobile],
   );
 
   return {

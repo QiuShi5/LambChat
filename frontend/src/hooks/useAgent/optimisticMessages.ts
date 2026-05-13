@@ -1,5 +1,6 @@
 import type { Message } from "../../types/message.ts";
 import type { MessageAttachment } from "../../types/upload.ts";
+import { uuid } from "../../utils/uuid.ts";
 
 interface CreateOptimisticMessagesForSendOptions {
   previousMessages: Message[];
@@ -19,7 +20,7 @@ export function createOptimisticMessagesForSend({
   content,
   attachments,
   now = new Date(),
-  createId = () => crypto.randomUUID(),
+  createId = () => uuid(),
 }: CreateOptimisticMessagesForSendOptions): CreateOptimisticMessagesForSendResult {
   const userMessage: Message = {
     id: createId(),

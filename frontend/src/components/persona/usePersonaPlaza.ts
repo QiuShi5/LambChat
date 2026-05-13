@@ -8,14 +8,16 @@ import { usePersonaPresets } from "../../hooks/usePersonaPresets";
 import { Permission } from "../../types";
 import { translateBackendError } from "../../utils/backendErrors";
 import type {
+  LocalizedText,
   PersonaPreset,
   PersonaPresetCreate,
+  PersonaStarterPrompt,
   PersonaPresetSnapshot,
 } from "../../types";
 
 const SESSION_CONFIG_KEY = "lambchat_session_config";
 
-export type ScopeFilter = "all" | "global" | "user";
+export type ScopeFilter = "all" | "pinned" | "favorite" | "global" | "user";
 
 function readPersonaPresetId(): string | null {
   try {
@@ -34,6 +36,50 @@ export interface PersonaRouteState {
 
 const PAGE_SIZE = 12;
 
+function timeValue(value: string | null | undefined): number {
+  if (!value) return 0;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
+
+function comparePersonaPresetPreference(a: PersonaPreset, b: PersonaPreset) {
+  return (
+    Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned)) ||
+    Number(Boolean(b.is_favorite)) - Number(Boolean(a.is_favorite)) ||
+    timeValue(b.last_used_at) - timeValue(a.last_used_at) ||
+    Number(b.usage_count || 0) - Number(a.usage_count || 0) ||
+    timeValue(b.updated_at) - timeValue(a.updated_at)
+  );
+}
+
+function isLocalizedText(value: unknown): value is LocalizedText {
+  if (typeof value === "string") return true;
+  return (
+    !!value &&
+    typeof value === "object" &&
+    Object.values(value as Record<string, unknown>).every(
+      (item) => typeof item === "string",
+    )
+  );
+}
+
+function normalizeImportedStarterPrompts(
+  value: unknown,
+): PersonaStarterPrompt[] {
+  if (!Array.isArray(value)) return [];
+  const prompts: PersonaStarterPrompt[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    if (!isLocalizedText(record.text)) continue;
+    prompts.push({
+      icon: typeof record.icon === "string" ? record.icon : null,
+      text: record.text,
+    });
+  }
+  return prompts;
+}
+
 export function usePersonaPlaza() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -48,6 +94,7 @@ export function usePersonaPlaza() {
     isMutating,
     error,
     usePreset: activatePreset,
+    updatePreference,
     copyPreset,
     createPreset,
     updatePreset,
@@ -84,17 +131,22 @@ export function usePersonaPlaza() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return presets.filter((preset) => {
-      const matchesQuery =
-        !q ||
-        preset.name.toLowerCase().includes(q) ||
-        preset.description.toLowerCase().includes(q) ||
-        preset.system_prompt.toLowerCase().includes(q);
-      const matchesTag = !activeTag || preset.tags.includes(activeTag);
-      const matchesScope =
-        scopeFilter === "all" || preset.scope === scopeFilter;
-      return matchesQuery && matchesTag && matchesScope;
-    });
+    return presets
+      .filter((preset) => {
+        const matchesQuery =
+          !q ||
+          preset.name.toLowerCase().includes(q) ||
+          preset.description.toLowerCase().includes(q) ||
+          preset.system_prompt.toLowerCase().includes(q);
+        const matchesTag = !activeTag || preset.tags.includes(activeTag);
+        const matchesScope =
+          scopeFilter === "all" ||
+          (scopeFilter === "pinned" && !!preset.is_pinned) ||
+          (scopeFilter === "favorite" && !!preset.is_favorite) ||
+          preset.scope === scopeFilter;
+        return matchesQuery && matchesTag && matchesScope;
+      })
+      .sort(comparePersonaPresetPreference);
   }, [presets, query, activeTag, scopeFilter]);
 
   useEffect(() => {
@@ -112,6 +164,14 @@ export function usePersonaPlaza() {
   );
   const userCount = useMemo(
     () => presets.filter((p) => p.scope === "user").length,
+    [presets],
+  );
+  const pinnedCount = useMemo(
+    () => presets.filter((p) => p.is_pinned).length,
+    [presets],
+  );
+  const favoriteCount = useMemo(
+    () => presets.filter((p) => p.is_favorite).length,
     [presets],
   );
 
@@ -187,6 +247,19 @@ export function usePersonaPlaza() {
     [copyPreset, t, error],
   );
 
+  const handleTogglePreference = useCallback(
+    async (
+      preset: PersonaPreset,
+      preference: { is_favorite?: boolean; is_pinned?: boolean },
+    ) => {
+      const updated = await updatePreference(preset.id, preference);
+      if (!updated && error) {
+        toast.error(translateBackendError(error, t));
+      }
+    },
+    [updatePreference, error, t],
+  );
+
   const openModal = (
     preset: PersonaPreset | null,
     scope: "user" | "global" = preset?.scope ?? "user",
@@ -238,6 +311,18 @@ export function usePersonaPlaza() {
       count: presets.length,
     },
     {
+      key: "pinned" as ScopeFilter,
+      label: t("personaPresets.pinned", "置顶"),
+      icon: "Pin" as const,
+      count: pinnedCount,
+    },
+    {
+      key: "favorite" as ScopeFilter,
+      label: t("personaPresets.favorites", "收藏"),
+      icon: "Star" as const,
+      count: favoriteCount,
+    },
+    {
       key: "global" as ScopeFilter,
       label: t("personaPresets.official", "官方"),
       icon: "Sparkles" as const,
@@ -276,6 +361,7 @@ export function usePersonaPlaza() {
       avatar: p.avatar ?? null,
       tags: p.tags,
       system_prompt: p.system_prompt,
+      starter_prompts: p.starter_prompts ?? [],
       skill_names: p.skill_names,
       scope: p.scope,
       visibility: p.visibility,
@@ -324,6 +410,9 @@ export function usePersonaPlaza() {
           avatar: item.avatar !== undefined ? String(item.avatar) : undefined,
           tags: Array.isArray(item.tags) ? item.tags.map(String) : undefined,
           system_prompt: String(item.system_prompt ?? ""),
+          starter_prompts: normalizeImportedStarterPrompts(
+            item.starter_prompts,
+          ),
           skill_names: Array.isArray(item.skill_names)
             ? item.skill_names.map(String)
             : undefined,
@@ -389,6 +478,7 @@ export function usePersonaPlaza() {
     handleUse,
     handleClear,
     handleCopy,
+    handleTogglePreference,
     handleDelete,
     deleteTarget,
     setDeleteTarget,

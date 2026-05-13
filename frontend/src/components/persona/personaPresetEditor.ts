@@ -1,6 +1,7 @@
 import type {
   PersonaPreset,
   PersonaPresetCreate,
+  PersonaStarterPrompt,
   PersonaPresetStatus,
   PersonaPresetUpdate,
 } from "../../types";
@@ -10,6 +11,7 @@ export interface PersonaPresetEditorDraft {
   description: string;
   avatar: string;
   system_prompt: string;
+  starter_prompts: PersonaStarterPrompt[];
   tags: string[];
   skill_names: string[];
 }
@@ -39,6 +41,7 @@ export function buildPersonaPresetPayload(
     description: draft.description,
     avatar: draft.avatar || null,
     system_prompt: draft.system_prompt,
+    starter_prompts: draft.starter_prompts,
     tags: draft.tags,
     skill_names: draft.skill_names,
   };

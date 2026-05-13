@@ -9,6 +9,7 @@ from src.kernel.schemas.persona_preset import (
     PersonaPreset,
     PersonaPresetCreate,
     PersonaPresetListResponse,
+    PersonaPresetPreferenceUpdate,
     PersonaPresetSnapshot,
     PersonaPresetUpdate,
 )
@@ -31,6 +32,8 @@ async def list_persona_presets(
     status: str | None = None,
     tag: str | None = None,
     q: str | None = None,
+    favorite: bool | None = None,
+    pinned: bool | None = None,
     skip: int = 0,
     limit: int = Query(default=100, le=200),
     user: TokenPayload = Depends(require_permissions("persona_preset:read")),
@@ -43,6 +46,8 @@ async def list_persona_presets(
         status=status,
         tag=tag,
         q=q,
+        favorite=favorite,
+        pinned=pinned,
         skip=skip,
         limit=limit,
     )
@@ -53,6 +58,8 @@ async def list_persona_presets(
         status=status,
         tag=tag,
         q=q,
+        favorite=favorite,
+        pinned=pinned,
         skip=skip,
         limit=limit,
     )
@@ -175,6 +182,25 @@ async def use_persona_preset(
             preset_id,
             user_id=user.sub,
             is_admin=_is_admin(user),
+        )
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail="persona_preset_not_found")
+
+
+@router.patch("/{preset_id}/preference", response_model=PersonaPreset)
+async def update_persona_preset_preference(
+    preset_id: str,
+    preference: PersonaPresetPreferenceUpdate,
+    user: TokenPayload = Depends(require_permissions("persona_preset:read")),
+):
+    """Update the current user's favorite/pinned state for a visible preset."""
+    try:
+        return await _manager().update_preference(
+            preset_id,
+            user_id=user.sub,
+            is_admin=_is_admin(user),
+            is_favorite=preference.is_favorite,
+            is_pinned=preference.is_pinned,
         )
     except NotFoundError:
         raise HTTPException(status_code=404, detail="persona_preset_not_found")

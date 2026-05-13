@@ -9,6 +9,13 @@ const draft = {
   description: "Plan carefully",
   avatar: "",
   system_prompt: "Plan first.",
+  starter_prompts: [
+    { icon: "🧭", text: "帮我拆解这个目标" },
+    {
+      icon: "",
+      text: { zh: "先列一个执行计划", en: "Draft an execution plan" },
+    },
+  ],
   tags: ["planning"],
   skill_names: ["planner"],
 };
@@ -53,6 +60,7 @@ test("preserves user preset updates without admin-only fields", () => {
     description: "",
     tags: [],
     system_prompt: "Hi",
+    starter_prompts: [],
     skill_names: [],
     visibility: "private",
     status: "draft",
@@ -79,6 +87,7 @@ test("includes status when updating an official preset", () => {
     description: "",
     tags: [],
     system_prompt: "Hi",
+    starter_prompts: [],
     skill_names: [],
     visibility: "public",
     status: "draft",
