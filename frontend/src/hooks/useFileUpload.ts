@@ -170,8 +170,9 @@ export function useFileUpload({
                 processedFile.name,
                 processedFile.type,
               )
-              .then((check) => ({ hash, check }));
+              .then((check) => ({ check }));
           })
+          .catch(() => ({ check: { exists: false } }))
           .then(({ check }) => {
             if (check.exists) {
               abortMapRef.current.delete(tempId);

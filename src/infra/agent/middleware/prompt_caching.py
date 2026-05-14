@@ -19,6 +19,7 @@ from src.infra.agent.middleware._helpers import _system_message_to_blocks
 from src.kernel.config import settings
 
 _MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4
+_PROMPT_CACHE_VOLATILE_TOOL_EXTRA = "_lambchat_prompt_cache_volatile"
 
 
 class PromptCachingMiddleware(AgentMiddleware):
@@ -70,6 +71,40 @@ class PromptCachingMiddleware(AgentMiddleware):
 
             # RunnableBinding and similar wrappers keep the underlying model on
             # ``bound``.  Some adapters use ``model`` for the wrapped runnable.
+            next_model = getattr(current, "bound", None)
+            if next_model is None:
+                next_model = getattr(current, "_bound", None)
+            if next_model is None:
+                candidate = getattr(current, "model", None)
+                next_model = candidate if not isinstance(candidate, str) else None
+            current = next_model
+        return False
+
+    @staticmethod
+    def _is_minimax_passive_cache_model(model: Any) -> bool:
+        """Return True for MiniMax Anthropic-compatible models.
+
+        MiniMax Prompt Cache is passive by default on its Anthropic-compatible
+        endpoint. Avoid adding Anthropic active ``cache_control`` tags here so
+        requests keep the documented passive-cache semantics.
+        """
+        seen: set[int] = set()
+        current = model
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            haystack = " ".join(
+                str(getattr(current, attr, "") or "")
+                for attr in (
+                    "model",
+                    "model_name",
+                    "anthropic_api_url",
+                    "base_url",
+                    "_base_url",
+                )
+            ).lower()
+            if "minimax" in haystack or "minimaxi" in haystack:
+                return True
+
             next_model = getattr(current, "bound", None)
             if next_model is None:
                 next_model = getattr(current, "_bound", None)
@@ -167,10 +202,21 @@ class PromptCachingMiddleware(AgentMiddleware):
     # ---- tools ------------------------------------------------------------
 
     @staticmethod
+    def _is_cacheable_tool(tool: Any) -> bool:
+        if not isinstance(tool, BaseTool):
+            return False
+        extras = tool.extras or {}
+        return not bool(extras.get(_PROMPT_CACHE_VOLATILE_TOOL_EXTRA))
+
+    @classmethod
+    def _cacheable_tool_count(cls, tools: list[Any] | None) -> int:
+        return sum(1 for tool in tools or [] if cls._is_cacheable_tool(tool))
+
+    @staticmethod
     def _retag_tools(
         tools: list[Any] | None, cache_control: dict, *, max_cached_tools: int = 4
     ) -> list[Any] | None:
-        """Strip stale cache_control from tools and tag the final N tools."""
+        """Strip stale cache_control from tools and tag the final stable N tools."""
         if not tools:
             return tools
 
@@ -179,8 +225,9 @@ class PromptCachingMiddleware(AgentMiddleware):
         tool_indices: list[int] = []
         for i, tool in enumerate(tools):
             if isinstance(tool, BaseTool):
-                tool_indices.append(i)
                 extras = tool.extras or {}
+                if PromptCachingMiddleware._is_cacheable_tool(tool):
+                    tool_indices.append(i)
                 if "cache_control" in extras:
                     new_extras = {k: v for k, v in extras.items() if k != "cache_control"}
                     cleaned.append(tool.model_copy(update={"extras": new_extras}))
@@ -208,10 +255,12 @@ class PromptCachingMiddleware(AgentMiddleware):
     ) -> ModelResponse[ResponseT]:
         if not self._is_anthropic_model(getattr(request, "model", None)):
             return await handler(request)
+        if self._is_minimax_passive_cache_model(getattr(request, "model", None)):
+            return await handler(request)
 
         overrides: dict[str, Any] = {}
         system_block_count = self._cacheable_system_block_count(request.system_message)
-        tool_count = sum(1 for tool in request.tools or [] if isinstance(tool, BaseTool))
+        tool_count = self._cacheable_tool_count(request.tools)
 
         reserved_tool_breakpoints = 1 if tool_count > 0 and self._max_cached_tools > 0 else 0
         system_budget = min(

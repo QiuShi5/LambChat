@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { getFileTypeInfo, isImageFile } from "../../../documents/utils";
 import { exportProjectZip } from "../../../../utils/exportProjectZip";
+import { copyToClipboard } from "../../../../utils/clipboard";
 import { countProjectRevealFiles } from "./projectRevealState";
 
 export interface TreeNode {
@@ -247,7 +248,7 @@ function FileTreeNode({
         <span
           onClick={(e) => {
             e.stopPropagation();
-            navigator.clipboard.writeText(files[node.path]);
+            copyToClipboard(files[node.path]);
           }}
           className="shrink-0 p-1.5 rounded-lg text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 opacity-0 group-hover:opacity-100 transition-all"
           title={t("chat.message.copy")}

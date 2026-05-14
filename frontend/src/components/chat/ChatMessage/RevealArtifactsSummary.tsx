@@ -15,6 +15,7 @@ import {
   type RevealArtifactTreeDir,
   type RevealArtifactTreeFile,
 } from "./revealArtifacts";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 function FolderIcon({
   size = 36,
@@ -138,7 +139,7 @@ function TreeFileRow({
       <span
         onClick={(e) => {
           e.stopPropagation();
-          navigator.clipboard.writeText(
+          copyToClipboard(
             node.artifact.preview.signedUrl || node.artifact.path,
           );
         }}

@@ -9,6 +9,13 @@ from src.infra.agent.events.buffers import BufferKey, TextChunkBuffer
 from src.infra.agent.events.types import StreamEvent, get_value
 
 
+def _first_int(*values: Any) -> int | None:
+    for value in values:
+        if isinstance(value, int):
+            return value
+    return None
+
+
 class StreamEventMixin:
     _chunk_buffer: TextChunkBuffer
     _summary_chunk_buffer: TextChunkBuffer
@@ -97,16 +104,31 @@ class StreamEventMixin:
 
         usage = getattr(response, "usage_metadata", None)
         if usage is None:
+            response_metadata = getattr(response, "response_metadata", None)
+            if response_metadata:
+                usage = response_metadata.get("token_usage") or response_metadata.get("usage")
+        if usage is None:
             metadata = getattr(response, "metadata", None)
             if metadata:
-                usage = metadata.get("usage")
+                usage = metadata.get("token_usage") or metadata.get("usage")
 
         if usage is None:
             return
 
-        input_tok = get_value(usage, "input_tokens")
-        output_tok = get_value(usage, "output_tokens")
-        total_tok = get_value(usage, "total_tokens")
+        input_tok = _first_int(
+            get_value(usage, "input_tokens", None),
+            get_value(usage, "prompt_tokens", None),
+            get_value(usage, "prompt_token_count", None),
+        )
+        output_tok = _first_int(
+            get_value(usage, "output_tokens", None),
+            get_value(usage, "completion_tokens", None),
+            get_value(usage, "candidates_token_count", None),
+        )
+        total_tok = _first_int(
+            get_value(usage, "total_tokens", None),
+            get_value(usage, "total_token_count", None),
+        )
 
         if isinstance(input_tok, int):
             self.total_input_tokens += input_tok
@@ -116,13 +138,33 @@ class StreamEventMixin:
             self.total_tokens += total_tok
 
         input_details = get_value(usage, "input_token_details", {})
+        if not input_details:
+            input_details = get_value(usage, "prompt_tokens_details", {})
+        cache_creation = None
+        cache_read = None
         if input_details:
-            cache_creation = get_value(input_details, "cache_creation")
-            cache_read = get_value(input_details, "cache_read")
-            if isinstance(cache_creation, int):
-                self.total_cache_creation_tokens += cache_creation
-            if isinstance(cache_read, int):
-                self.total_cache_read_tokens += cache_read
+            cache_creation = _first_int(
+                get_value(input_details, "cache_creation", None),
+                get_value(input_details, "cache_creation_input_tokens", None),
+            )
+            cache_read = _first_int(
+                get_value(input_details, "cache_read", None),
+                get_value(input_details, "cached_tokens", None),
+                get_value(input_details, "cached_content_token_count", None),
+            )
+
+        if cache_read is None:
+            cache_read = _first_int(
+                get_value(usage, "cached_content_token_count", None),
+                get_value(usage, "cache_read_input_tokens", None),
+            )
+        if cache_creation is None:
+            cache_creation = _first_int(get_value(usage, "cache_creation_input_tokens", None))
+
+        if cache_creation is not None:
+            self.total_cache_creation_tokens += cache_creation
+        if cache_read is not None:
+            self.total_cache_read_tokens += cache_read
 
     async def _handle_summary_stream(
         self,

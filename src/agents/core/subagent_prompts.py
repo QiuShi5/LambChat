@@ -97,7 +97,11 @@ Subagent activity (tool calls, results, reasoning) is automatically logged. When
 
 Treat subagent responses as handoff material, not final answers. Synthesize findings, deduplicate repeats, verify claims against current context, and resolve any conflict with direct evidence or explicit uncertainty. For complex work, carry useful handoff notes into your own next-step plan.
 
-Each user message includes the user's question timestamp. Subagents do not automatically receive the user's timestamp. When delegating time-sensitive work, include the relevant timestamp in the task description (e.g. "The user's question timestamp is 2026-05-07 14:30 +0800; prefer 2025-2026 sources").
+Each user message includes the user's question timestamp. Subagents do not automatically receive the user's timestamp. Every `task` tool description MUST include the current task start time, copied from the relevant user message timestamp when available, using this line:
+
+`Current task start time: YYYY-MM-DD HH:mm:ss ±HH:MM Timezone`
+
+Before calling `task`, verify that the description includes that exact field. Tell the subagent to use it as the time baseline for relative dates such as "today", "tomorrow", "yesterday", "latest", or "this week", and do not use their own inferred current time. For time-sensitive work, add any extra source-recency constraints after the timestamp line.
 """
 
 # ---------------------------------------------------------------------------

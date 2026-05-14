@@ -31,6 +31,7 @@ import {
   shouldShowExistingSharesSkeleton,
 } from "./shareDialogState";
 import { getTimeMs } from "../../utils/datetime";
+import { copyToClipboard } from "../../utils/clipboard";
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -150,7 +151,7 @@ export function ShareDialog({
 
       // Copy link to clipboard
       const shareUrl = `${window.location.origin}${response.url}`;
-      await navigator.clipboard.writeText(shareUrl);
+      await copyToClipboard(shareUrl);
       toast.success(t("share.linkCopied"));
 
       // Refresh shares list
@@ -165,7 +166,7 @@ export function ShareDialog({
 
   const handleCopyLink = async (shareId: string) => {
     const shareUrl = `${window.location.origin}/shared/${shareId}`;
-    await navigator.clipboard.writeText(shareUrl);
+    await copyToClipboard(shareUrl);
     setCopiedId(shareId);
     toast.success(t("share.linkCopied"));
     setTimeout(() => setCopiedId(null), 2000);

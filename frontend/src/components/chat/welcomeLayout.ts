@@ -44,7 +44,7 @@ export function getWelcomePersonaCardClass(_index: number): string {
 export function getWelcomePersonaSkeletonCount(
   loading: boolean,
   visibleCardCount: number,
-  fallbackCount = 6,
+  fallbackCount = 12,
 ): number {
   if (!loading || visibleCardCount > 0) return 0;
   return fallbackCount;

@@ -16,6 +16,7 @@ import { createHeadingAnchorId } from "../../layout/AppContent/messageOutline";
 import { getFileLinkInfo } from "../../documents/utils";
 import { setActiveRevealPreviewState } from "./items/activeRevealPreviewStore";
 import { createActiveRevealPreviewState } from "./items/revealPreviewState";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 function extractNodeText(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -76,7 +77,7 @@ function CodeBlock({
   const codeString = String(children).replace(/\n$/, "");
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(codeString);
+    await copyToClipboard(codeString);
     setCopied(true);
     toast.success(t("chat.message.copied"));
     setTimeout(() => setCopied(false), 2000);
@@ -92,7 +93,7 @@ function CodeBlock({
       <code
         className="rounded bg-stone-200 dark:bg-stone-700 px-1.5 py-0.5 text-sm text-stone-800 dark:text-stone-200 font-mono cursor-pointer hover:bg-stone-300 dark:hover:bg-stone-600 transition-colors"
         onClick={() => {
-          navigator.clipboard.writeText(String(children));
+          copyToClipboard(String(children));
           toast.success(t("chat.message.copied"));
         }}
         title={t("chat.message.copyCode")}
@@ -192,7 +193,7 @@ function TableBlock({ children }: { children: React.ReactNode }) {
       );
 
     const markdown = [header, separator, ...rows].join("\n");
-    await navigator.clipboard.writeText(markdown);
+    await copyToClipboard(markdown);
     setCopied(true);
     toast.success(t("chat.message.copied"));
     setTimeout(() => setCopied(false), 2000);

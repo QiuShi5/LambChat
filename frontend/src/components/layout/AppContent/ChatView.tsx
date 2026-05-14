@@ -62,6 +62,7 @@ import {
   createActiveRevealPreviewState,
   markRevealPreviewInteracted,
   shouldAcceptRevealPreviewOpen,
+  shouldStabilizeScrollForAutoPreviewOpen,
   type ActiveRevealPreviewState,
   type RevealPreviewOpenSource,
 } from "../../chat/ChatMessage/items/revealPreviewState";
@@ -401,6 +402,10 @@ export function ChatView({
   const activePreviewStateRef = useRef<ActiveRevealPreviewState | null>(
     getActiveRevealPreviewState(),
   );
+  const isNearBottomRef = useRef(isNearBottom);
+  const autoPreviewScrollStabilizerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const dismissedPreviewKeysRef = useRef<Set<string>>(new Set());
   const handledExternalPreviewRef = useRef<{
     token: string | null;
@@ -413,13 +418,42 @@ export function ChatView({
   const activePreview = activePreviewStateRef.current?.request ?? null;
 
   useEffect(() => {
+    isNearBottomRef.current = isNearBottom;
+  }, [isNearBottom]);
+
+  useEffect(() => {
     const syncPreviewState = () => {
-      activePreviewStateRef.current = getActiveRevealPreviewState();
+      const previousPreview = activePreviewStateRef.current;
+      const nextPreview = getActiveRevealPreviewState();
+      activePreviewStateRef.current = nextPreview;
       forcePreviewRender((count) => count + 1);
+
+      if (
+        shouldStabilizeScrollForAutoPreviewOpen({
+          previousPreview,
+          nextPreview,
+          isNearBottom: isNearBottomRef.current,
+        })
+      ) {
+        if (autoPreviewScrollStabilizerRef.current) {
+          clearTimeout(autoPreviewScrollStabilizerRef.current);
+        }
+        autoPreviewScrollStabilizerRef.current = setTimeout(() => {
+          autoPreviewScrollStabilizerRef.current = null;
+          scrollToBottom();
+        }, 360);
+      }
     };
 
-    return subscribeActiveRevealPreviewState(syncPreviewState);
-  }, []);
+    const unsubscribe = subscribeActiveRevealPreviewState(syncPreviewState);
+    return () => {
+      unsubscribe();
+      if (autoPreviewScrollStabilizerRef.current) {
+        clearTimeout(autoPreviewScrollStabilizerRef.current);
+        autoPreviewScrollStabilizerRef.current = null;
+      }
+    };
+  }, [scrollToBottom]);
 
   const handleOpenPreview = useCallback(
     (

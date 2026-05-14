@@ -7,6 +7,7 @@ import {
   stripResponsiveWidthAttribute,
 } from "./mermaidSvgUtils";
 import { ViewerToolbar } from "../../common/ViewerToolbar";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 // Fix common AI-generated mermaid syntax issues:
 // - subgraph 🎯 ["title"] → subgraph S1["🎯 title"]
@@ -202,7 +203,7 @@ export function MermaidDiagram({
   }, [showDownloadMenu]);
 
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(chart);
+    await copyToClipboard(chart);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -686,7 +687,7 @@ function MermaidViewer({
   }, [isDragging, dragStart]);
 
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(chart);
+    await copyToClipboard(chart);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

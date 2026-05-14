@@ -31,6 +31,7 @@ import {
   getFileTypeInfo,
   detectLanguage,
 } from "./utils";
+import { copyToClipboard } from "../../utils/clipboard";
 
 export interface DocumentPreviewProps {
   path: string;
@@ -393,7 +394,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
   // Action handlers
   const handleCopy = async () => {
     if (data?.content) {
-      await navigator.clipboard.writeText(data.content);
+      await copyToClipboard(data.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

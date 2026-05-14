@@ -34,6 +34,8 @@ from src.kernel.config import settings
 
 logger = logging.getLogger(__name__)
 
+_PROMPT_CACHE_VOLATILE_TOOL_EXTRA = "_lambchat_prompt_cache_volatile"
+
 
 # MCP content block types that may carry binary data
 _BINARY_BLOCK_TYPES = frozenset(("image", "file"))
@@ -429,7 +431,18 @@ class ToolSearchMiddleware(AgentMiddleware):
         new_tools = []
         if search_tool.name not in existing_names:
             new_tools.append(search_tool)
-        new_tools.extend(t for t in discovered if t.name not in existing_names)
+        new_tools.extend(
+            t.model_copy(
+                update={
+                    "extras": {
+                        **(t.extras or {}),
+                        _PROMPT_CACHE_VOLATILE_TOOL_EXTRA: True,
+                    }
+                }
+            )
+            for t in discovered
+            if t.name not in existing_names
+        )
         if new_tools:
             combined = list(request.tools) + sorted(new_tools, key=_tool_sort_key)
             request = request.override(tools=combined)
@@ -449,9 +462,12 @@ class ToolSearchMiddleware(AgentMiddleware):
         """
         tool_name = request.tool_call.get("name", "")
 
-        # Handle search_tools call (safety net: even if registered to ToolNode, no side effects)
+        # Handle search_tools through this middleware even when ToolNode has a
+        # registered search_tools instance. Sub-agents use forked managers, and
+        # executing the registered parent tool would make the search invisible
+        # to the sub-agent's next model call.
         search_tool = self._get_search_tool()
-        if tool_name == search_tool.name and request.tool is None:
+        if tool_name == search_tool.name:
             try:
                 args = request.tool_call.get("args", {})
                 result = await search_tool.ainvoke(args)

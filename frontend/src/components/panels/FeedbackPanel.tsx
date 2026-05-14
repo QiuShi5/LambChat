@@ -29,6 +29,7 @@ import type {
   RatingValue,
 } from "../../types/feedback";
 import { formatDateTimeShort, formatDateTime } from "../../utils/datetime";
+import { copyToClipboard } from "../../utils/clipboard";
 
 // Stats card component
 function StatsCard({
@@ -306,7 +307,7 @@ export function FeedbackPanel() {
   // Copy to clipboard
   const handleCopy = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (error) {

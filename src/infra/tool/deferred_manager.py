@@ -48,6 +48,7 @@ class DeferredToolManager:
         disabled_mcp_tools: Optional[list[str]] = None,
         pre_discovered_names: Optional[list[str]] = None,
         prompt_tool_limit: Optional[int] = None,
+        parent: Optional["DeferredToolManager"] = None,
     ):
         # 应用 disabled_tools 过滤
         disabled_set = set(disabled_tools or [])
@@ -77,6 +78,7 @@ class DeferredToolManager:
         pre_set = set(pre_discovered_names or []) & set(self._tool_map.keys())
         self._discovered_names: set[str] = pre_set
         self._session_id = session_id
+        self._parent = parent
         configured_prompt_limit = prompt_tool_limit
         if configured_prompt_limit is None:
             configured_prompt_limit = getattr(settings, "DEFERRED_TOOL_PROMPT_LIMIT", 40)
@@ -100,6 +102,37 @@ class DeferredToolManager:
             len(pre_set),
         )
 
+    def fork_for_scope(self, scope: str) -> "DeferredToolManager":
+        """Create an isolated manager for nested agent/tool-search scopes.
+
+        The fork shares immutable tool objects but owns its discovery set, so a
+        sub-agent can search and call tools without promoting them in the parent
+        agent's tool list.
+        """
+        safe_scope = scope.strip() or "isolated"
+        return DeferredToolManager(
+            all_deferred_tools=self._all_tools,
+            session_id=f"{self._session_id}:{safe_scope}",
+            pre_discovered_names=self.discovered_names,
+            prompt_tool_limit=self._prompt_tool_limit,
+            parent=self,
+        )
+
+    def _sync_parent_discoveries(self) -> None:
+        if self._parent is None:
+            return
+
+        parent_names = set(self._parent.discovered_names)
+        inherited = parent_names & set(self._tool_map.keys())
+        new_names = inherited - self._discovered_names
+        if not new_names:
+            return
+
+        self._discovered_names.update(new_names)
+        self.stale = True
+        self._stubs_stale = True
+        self._prompt_stale = True
+
     @property
     def total_deferred(self) -> int:
         """延迟工具总数"""
@@ -108,20 +141,24 @@ class DeferredToolManager:
     @property
     def discovered_count(self) -> int:
         """已发现工具数"""
+        self._sync_parent_discoveries()
         return len(self._discovered_names)
 
     @property
     def discovered_names(self) -> list[str]:
         """已发现工具名列表"""
+        self._sync_parent_discoveries()
         return sorted(self._discovered_names)
 
     @property
     def remaining_count(self) -> int:
         """剩余未发现工具数"""
+        self._sync_parent_discoveries()
         return self.total_deferred - self.discovered_count
 
     def get_deferred_stubs(self) -> list[DeferredToolStub]:
         """获取未发现工具的轻量描述列表（带脏标记缓存）"""
+        self._sync_parent_discoveries()
         if not self._stubs_stale:
             return self._cached_stubs
 
@@ -147,6 +184,7 @@ class DeferredToolManager:
 
     def get_deferred_prompt_blocks(self) -> tuple[str, ...]:
         """Return prompt blocks for deferred MCP guidance and visible tool stubs."""
+        self._sync_parent_discoveries()
         if not self._prompt_stale:
             return self._cached_prompt_blocks
 
@@ -196,10 +234,12 @@ class DeferredToolManager:
 
     def get_discovered_tools(self) -> list["BaseTool"]:
         """获取已发现工具的完整 BaseTool 列表"""
+        self._sync_parent_discoveries()
         return [self._tool_map[n] for n in sorted(self._discovered_names) if n in self._tool_map]
 
     def get_undiscovered_tools(self) -> list["BaseTool"]:
         """获取未发现工具的完整 BaseTool 列表（用于搜索）"""
+        self._sync_parent_discoveries()
         return [t for t in self._all_tools if t.name not in self._discovered_names]
 
     def discover_tools(self, names: list[str]) -> list["BaseTool"]:
@@ -211,6 +251,7 @@ class DeferredToolManager:
         Returns:
             新发现的 BaseTool 列表
         """
+        self._sync_parent_discoveries()
         newly_discovered: list["BaseTool"] = []
         for name in names:
             if name in self._tool_map and name not in self._discovered_names:
@@ -232,6 +273,7 @@ class DeferredToolManager:
 
     def is_discovered(self, name: str) -> bool:
         """检查工具是否已发现"""
+        self._sync_parent_discoveries()
         return name in self._discovered_names
 
     def get_tool(self, name: str) -> Optional["BaseTool"]:
@@ -240,6 +282,7 @@ class DeferredToolManager:
 
     def get_stats(self) -> dict:
         """返回统计信息"""
+        self._sync_parent_discoveries()
         return {
             "total_deferred": self.total_deferred,
             "discovered": self.discovered_count,

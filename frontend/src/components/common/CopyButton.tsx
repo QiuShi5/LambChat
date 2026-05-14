@@ -3,6 +3,7 @@ import { Copy, Check } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import { copyToClipboard } from "../../utils/clipboard";
 
 export function CopyButton({
   text,
@@ -20,7 +21,7 @@ export function CopyButton({
 
   const handleCopy = useCallback(async () => {
     if (!text) return;
-    await navigator.clipboard.writeText(text);
+    await copyToClipboard(text);
     setCopied(true);
     toast.success(t("chat.message.copied"));
     setTimeout(() => setCopied(false), 2000);

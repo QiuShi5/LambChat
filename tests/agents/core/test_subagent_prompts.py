@@ -209,12 +209,14 @@ def test_subagent_task_guide_passes_relevant_timestamps_to_subagents() -> None:
     required_guidance = [
         "each user message includes the user's question timestamp",
         "subagents do not automatically receive the user's timestamp",
-        "include the relevant timestamp",
+        "must include the current task start time",
+        "当前任务开始时间",
+        "do not use their own inferred current time",
     ]
 
     guide = SUBAGENT_TASK_GUIDE.lower()
     for phrase in required_guidance:
-        assert phrase in guide
+        assert phrase.lower() in guide
 
 
 def test_subagent_prompts_require_scope_and_verification_handoff() -> None:

@@ -117,6 +117,12 @@ def _make_cache_key(
     )
 
 
+def _prompt_cache_key(provider: str, model_name: str) -> str:
+    """Stable routing key for provider-side prompt cache locality."""
+    safe_model = model_name.replace("/", ":")
+    return f"lambchat:{provider}:{safe_model}"
+
+
 def _safe_close_client(model_instance: BaseChatModel) -> None:
     """Safely close HTTP client with error logging."""
     try:
@@ -227,6 +233,11 @@ class LLMClient:
             # OpenAI 支持: minimal, low, medium, high
             openai_effort_map = {"low": "low", "medium": "medium", "high": "high", "max": "high"}
             openai_kwargs["reasoning_effort"] = openai_effort_map.get(level, "medium")
+        if provider == "openai":
+            model_kwargs = dict(openai_kwargs.get("model_kwargs") or kwargs.pop("model_kwargs", {}))
+            model_kwargs.setdefault("prompt_cache_key", _prompt_cache_key(provider, model_name))
+            model_kwargs.setdefault("prompt_cache_retention", "24h")
+            openai_kwargs["model_kwargs"] = model_kwargs
         if profile:
             openai_kwargs["profile"] = profile
         return ChatOpenAI(**openai_kwargs, **kwargs)

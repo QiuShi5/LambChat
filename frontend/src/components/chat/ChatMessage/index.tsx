@@ -32,6 +32,7 @@ import type { RevealPreviewRequest } from "./items/revealPreviewData";
 import type { RevealPreviewOpenSource } from "./items/revealPreviewState";
 import { createMessageAnchorId } from "../../layout/AppContent/messageOutline";
 import { formatDateTime, formatDateTimeShort } from "../../../utils/datetime";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 // Skeleton-style loading animation component - refined thin lines
 function ThinkingIndicator() {
@@ -416,7 +417,7 @@ export const ChatMessage = memo(function ChatMessage({
               onClick={() => {
                 const textContent = getAssistantTextContent();
                 if (textContent) {
-                  navigator.clipboard.writeText(textContent);
+                  copyToClipboard(textContent);
                   toast.success(t("chat.message.copied"));
                 }
               }}

@@ -327,17 +327,17 @@ class SkillStorage:
         disabled_set = set(disabled_skills)
 
         collection = self._get_files_collection()
-        skill_names: list[str] | None = None
+        paged_skill_names: list[str] | None = None
         if q or tags:
-            skill_names = await self.list_matching_skill_names(user_id, q=q, tags=tags)
-            paged_names = skill_names[skip : skip + limit]
-            if not paged_names:
+            matching_skill_names = await self.list_matching_skill_names(user_id, q=q, tags=tags)
+            paged_skill_names = matching_skill_names[skip : skip + limit]
+            if not paged_skill_names:
                 return []
 
         # 使用 aggregation 一次获取所有 skill 的统计信息 + 文件路径（排除 __meta__）
         match: dict[str, Any] = {"user_id": user_id, "file_path": {"$ne": "__meta__"}}
-        if skill_names is not None:
-            match["skill_name"] = {"$in": paged_names}
+        if paged_skill_names is not None:
+            match["skill_name"] = {"$in": paged_skill_names}
 
         pipeline: list[dict[str, Any]] = [
             {"$match": match},
@@ -352,7 +352,7 @@ class SkillStorage:
             },
             {"$sort": {"_id": 1}},
         ]
-        if skill_names is None:
+        if paged_skill_names is None:
             pipeline.extend([{"$skip": skip}, {"$limit": limit}])
         skill_stats: dict[str, dict] = {}
         async for doc in collection.aggregate(pipeline):  # type: ignore[arg-type]
@@ -379,7 +379,9 @@ class SkillStorage:
 
         # 组装结果
         result = []
-        ordered_names = paged_names if skill_names is not None else sorted(skill_stats.keys())
+        ordered_names = (
+            paged_skill_names if paged_skill_names is not None else sorted(skill_stats.keys())
+        )
         for skill_name in ordered_names:
             if skill_name not in skill_stats:
                 continue

@@ -39,4 +39,7 @@ def format_user_message_with_timestamp(
     tz, timezone_label = _resolve_timezone(user_timezone)
     localized = current.astimezone(tz)
     timestamp = localized.strftime("%Y-%m-%d %H:%M:%S")
-    return f"[{timestamp} {_format_offset(localized)} {timezone_label}] {content}"
+    return (
+        f"[User message sent at: {timestamp} {_format_offset(localized)} {timezone_label}] "
+        f"{content}"
+    )

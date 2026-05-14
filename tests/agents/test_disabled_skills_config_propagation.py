@@ -36,6 +36,18 @@ class _FakeEventProcessor:
         return None
 
 
+class _FakeDeferredManager:
+    def __init__(self) -> None:
+        self.fork_calls: list[str] = []
+        self.forked = SimpleNamespace(label="subagent-deferred-manager")
+        self.discovered_count = 0
+        self.discovered_names: list[str] = []
+
+    def fork_for_scope(self, scope: str):
+        self.fork_calls.append(scope)
+        return self.forked
+
+
 def _patch_common(monkeypatch: pytest.MonkeyPatch, module, fake_graph: _FakeDeepAgent) -> None:
     async def fake_get_model(**_kwargs):
         return object()
@@ -71,6 +83,20 @@ def _patch_common(monkeypatch: pytest.MonkeyPatch, module, fake_graph: _FakeDeep
     monkeypatch.setattr(module.settings, "ENABLE_MCP", False)
     monkeypatch.setattr(module.settings, "ENABLE_MEMORY", False)
     monkeypatch.setattr(module.settings, "ENABLE_SKILLS", False)
+
+
+def _patch_tool_search_middleware(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    from src.infra.agent import middleware as middleware_pkg
+
+    captured_managers: list[object] = []
+
+    class _FakeToolSearchMiddleware:
+        def __init__(self, *, deferred_manager, search_limit) -> None:
+            captured_managers.append(deferred_manager)
+            self.search_limit = search_limit
+
+    monkeypatch.setattr(middleware_pkg, "ToolSearchMiddleware", _FakeToolSearchMiddleware)
+    return captured_managers
 
 
 @pytest.mark.asyncio
@@ -146,6 +172,69 @@ async def test_fast_agent_node_passes_backend_instance_to_deepagents(
 
 
 @pytest.mark.asyncio
+async def test_fast_agent_subagent_middleware_retags_prompt_cache_last(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.agents.fast_agent import nodes as fast_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, fast_nodes, fake_graph)
+    monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    monkeypatch.setattr(fast_nodes, "PromptCachingMiddleware", lambda: "prompt-cache")
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await fast_nodes.fast_agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.captured_create_kwargs is not None
+    subagent_middleware = fake_graph.captured_create_kwargs["subagents"][0]["middleware"]
+    assert subagent_middleware[-1] == "prompt-cache"
+
+
+@pytest.mark.asyncio
+async def test_fast_agent_subagent_tool_search_uses_isolated_manager(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.agents.fast_agent import nodes as fast_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, fast_nodes, fake_graph)
+    monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    captured_managers = _patch_tool_search_middleware(monkeypatch)
+
+    deferred_manager = _FakeDeferredManager()
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=deferred_manager)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await fast_nodes.fast_agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert deferred_manager.fork_calls == ["subagent:general-purpose"]
+    assert captured_managers[0] is deferred_manager.forked
+    assert captured_managers[1] is deferred_manager
+
+
+@pytest.mark.asyncio
 async def test_search_agent_node_propagates_disabled_skills_to_inner_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -218,3 +307,74 @@ async def test_search_agent_node_passes_backend_instance_to_deepagents(
     assert fake_graph.captured_create_kwargs["backend"] is backend_instance
     assert fake_graph.captured_inner_config is not None
     assert fake_graph.captured_inner_config["configurable"]["backend"] is backend_instance
+
+
+@pytest.mark.asyncio
+async def test_search_agent_subagent_middleware_retags_prompt_cache_last(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.agents.search_agent import nodes as search_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, search_nodes, fake_graph)
+    monkeypatch.setattr(search_nodes, "PromptCachingMiddleware", lambda: "prompt-cache")
+
+    async def fake_create_backend_and_prompt(**_kwargs):
+        return object(), "system prompt", object(), None, None
+
+    monkeypatch.setattr(search_nodes, "_create_backend_and_prompt", fake_create_backend_and_prompt)
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await search_nodes.agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.captured_create_kwargs is not None
+    subagent_middleware = fake_graph.captured_create_kwargs["subagents"][0]["middleware"]
+    assert subagent_middleware[-1] == "prompt-cache"
+
+
+@pytest.mark.asyncio
+async def test_search_agent_subagent_tool_search_uses_isolated_manager(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.agents.search_agent import nodes as search_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, search_nodes, fake_graph)
+    captured_managers = _patch_tool_search_middleware(monkeypatch)
+
+    async def fake_create_backend_and_prompt(**_kwargs):
+        return object(), "system prompt", object(), None, None
+
+    monkeypatch.setattr(search_nodes, "_create_backend_and_prompt", fake_create_backend_and_prompt)
+
+    deferred_manager = _FakeDeferredManager()
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=deferred_manager)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await search_nodes.agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert deferred_manager.fork_calls == ["subagent:general-purpose"]
+    assert captured_managers[0] is deferred_manager.forked
+    assert captured_managers[1] is deferred_manager

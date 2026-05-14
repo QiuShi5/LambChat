@@ -174,12 +174,16 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     if context.deferred_manager is not None:
         from src.infra.agent.middleware import ToolSearchMiddleware
 
+        subagent_deferred_manager = context.deferred_manager.fork_for_scope(
+            "subagent:general-purpose"
+        )
         subagent_middleware.append(
             ToolSearchMiddleware(
-                deferred_manager=context.deferred_manager,
+                deferred_manager=subagent_deferred_manager,
                 search_limit=settings.DEFERRED_TOOL_SEARCH_LIMIT,
             )
         )
+    subagent_middleware.append(PromptCachingMiddleware())
 
     custom_subagents: list[SubAgent | CompiledSubAgent] = [
         {

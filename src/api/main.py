@@ -61,6 +61,17 @@ from src.kernel.config import initialize_settings, settings
 logger = get_logger(__name__)
 
 
+async def _warm_agent_registry() -> None:
+    """Preload agent registrations without blocking startup."""
+    try:
+        from src.agents import discover_agents
+
+        await asyncio.to_thread(discover_agents)
+        logger.info("Agents discovered")
+    except Exception as e:
+        logger.warning("Agent discovery warm-up failed: %s", e, exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
@@ -114,15 +125,6 @@ async def lifespan(app: FastAPI):
     logger.info("Memory monitor started")
 
     # 后台预热 Agent 注册，避免阻塞服务启动；请求路径仍有懒发现兜底
-    async def _warm_agent_registry() -> None:
-        try:
-            from src.agents import discover_agents
-
-            await asyncio.to_thread(discover_agents)
-            logger.info("Agents discovered")
-        except Exception as e:
-            logger.warning("Agent discovery warm-up failed: %s", e)
-
     app.state.agent_discovery_task = asyncio.create_task(_warm_agent_registry())
 
     # 初始化 Agent 配置存储索引

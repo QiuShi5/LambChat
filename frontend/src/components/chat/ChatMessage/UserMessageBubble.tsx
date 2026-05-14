@@ -8,6 +8,7 @@ import { getFullUrl } from "../../../services/api";
 import { MarkdownContent } from "./MarkdownContent";
 import { openAttachmentPreview } from "../attachmentPreviewStore";
 import { getUserMessageActionButtonVisibilityClass } from "./userMessageBubbleState";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 // User message bubble component (with copy function, supports markdown rendering) - ChatGPT style
 export function UserMessageBubble({
@@ -27,7 +28,7 @@ export function UserMessageBubble({
 
   const handleCopy = async () => {
     if (!content) return;
-    await navigator.clipboard.writeText(content);
+    await copyToClipboard(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

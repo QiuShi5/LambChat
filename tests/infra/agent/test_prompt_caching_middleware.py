@@ -1,7 +1,13 @@
-from langchain_core.messages import SystemMessage
+from types import SimpleNamespace
+
+from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 
-from src.infra.agent.middleware import PromptCachingMiddleware, SectionPromptMiddleware
+from src.infra.agent.middleware import (
+    PromptCachingMiddleware,
+    SectionPromptMiddleware,
+    ToolSearchMiddleware,
+)
 from src.infra.tool.deferred_manager import DeferredToolManager
 from src.kernel.config import settings
 
@@ -95,6 +101,38 @@ def test_retag_tools_tags_multiple_tail_tools() -> None:
     assert retagged[0].extras in (None, {})
     assert retagged[1].extras == {"cache_control": {"type": "ephemeral"}}
     assert retagged[2].extras == {"cache_control": {"type": "ephemeral"}}
+
+
+def test_retag_tools_skips_volatile_deferred_tools() -> None:
+    tools = [
+        _FakeTool(name="stable_tool", description="stable"),
+        _FakeTool(
+            name="github:create_issue",
+            description="dynamic deferred tool",
+            extras={"_lambchat_prompt_cache_volatile": True},
+        ),
+    ]
+
+    retagged = PromptCachingMiddleware._retag_tools(
+        tools, {"type": "ephemeral"}, max_cached_tools=1
+    )
+
+    assert retagged is not None
+    assert retagged[0].extras == {"cache_control": {"type": "ephemeral"}}
+    assert retagged[1].extras == {"_lambchat_prompt_cache_volatile": True}
+
+
+def test_cacheable_tool_count_ignores_volatile_deferred_tools() -> None:
+    tools = [
+        _FakeTool(name="stable_tool", description="stable"),
+        _FakeTool(
+            name="github:create_issue",
+            description="dynamic deferred tool",
+            extras={"_lambchat_prompt_cache_volatile": True},
+        ),
+    ]
+
+    assert PromptCachingMiddleware._cacheable_tool_count(tools) == 1
 
 
 async def test_prompt_caching_middleware_respects_four_breakpoint_budget() -> None:
@@ -212,6 +250,38 @@ async def test_prompt_caching_middleware_tags_anthropic_wrapped_models() -> None
     assert result.tools[0].extras == {"cache_control": {"type": "ephemeral"}}
 
 
+async def test_prompt_caching_middleware_skips_minimax_anthropic_passive_cache() -> None:
+    middleware = PromptCachingMiddleware()
+
+    class _MiniMaxAnthropicLike:
+        model = "MiniMax-M2.7"
+        anthropic_api_url = "https://api.minimaxi.com/anthropic"
+
+    _MiniMaxAnthropicLike.__module__ = "langchain_anthropic.chat_models"
+
+    class _Request:
+        def __init__(self) -> None:
+            self.model = _MiniMaxAnthropicLike()
+            self.system_message = SystemMessage(content=[{"type": "text", "text": "base"}])
+            self.tools = [_FakeTool(name="alpha", description="a")]
+
+        def override(self, **kwargs):
+            clone = _Request()
+            clone.model = kwargs.get("model", self.model)
+            clone.system_message = kwargs.get("system_message", self.system_message)
+            clone.tools = kwargs.get("tools", self.tools)
+            return clone
+
+    async def _handler(request):
+        return request
+
+    result = await middleware.awrap_model_call(_Request(), _handler)
+
+    assert isinstance(result.system_message.content, list)
+    assert "cache_control" not in result.system_message.content[0]
+    assert result.tools[0].extras in (None, {})
+
+
 def test_prompt_caching_middleware_uses_settings_for_cache_limits(monkeypatch) -> None:
     monkeypatch.setattr(settings, "PROMPT_CACHE_MAX_SYSTEM_BLOCKS", 6, raising=False)
     monkeypatch.setattr(settings, "PROMPT_CACHE_MAX_TOOLS", 5, raising=False)
@@ -236,6 +306,69 @@ def test_deferred_manager_returns_discovered_tools_in_sorted_order() -> None:
     discovered = manager.get_discovered_tools()
 
     assert [tool.name for tool in discovered] == ["alpha:create", "zeta:lookup"]
+
+
+def test_deferred_manager_fork_does_not_mutate_parent_discoveries() -> None:
+    manager = DeferredToolManager(
+        all_deferred_tools=[
+            _FakeTool(name="alpha:create", description="alpha create", server="alpha"),
+            _FakeTool(name="beta:list", description="beta list", server="beta"),
+        ],
+        session_id="session-1",
+        pre_discovered_names=["alpha:create"],
+    )
+
+    forked = manager.fork_for_scope("subagent")
+    forked.discover_tools(["beta:list"])
+
+    assert manager.discovered_names == ["alpha:create"]
+    assert forked.discovered_names == ["alpha:create", "beta:list"]
+
+
+def test_deferred_manager_fork_inherits_parent_later_discoveries() -> None:
+    manager = DeferredToolManager(
+        all_deferred_tools=[
+            _FakeTool(name="alpha:create", description="alpha create", server="alpha"),
+            _FakeTool(name="beta:list", description="beta list", server="beta"),
+        ],
+        session_id="session-1",
+        pre_discovered_names=["alpha:create"],
+    )
+    forked = manager.fork_for_scope("subagent")
+
+    manager.discover_tools(["beta:list"])
+
+    assert forked.discovered_names == ["alpha:create", "beta:list"]
+    assert [tool.name for tool in forked.get_discovered_tools()] == ["alpha:create", "beta:list"]
+
+
+async def test_tool_search_middleware_intercepts_registered_search_tool_with_own_manager() -> None:
+    manager = DeferredToolManager(
+        all_deferred_tools=[
+            _FakeTool(name="alpha:create", description="alpha create", server="alpha"),
+            _FakeTool(name="beta:list", description="beta list", server="beta"),
+        ],
+        session_id="session-1",
+        pre_discovered_names=["alpha:create"],
+    )
+    middleware = ToolSearchMiddleware(deferred_manager=manager, search_limit=5)
+    request = SimpleNamespace(
+        tool_call={
+            "name": "search_tools",
+            "args": {"query": "select:beta:list"},
+            "id": "call-1",
+        },
+        tool=object(),
+    )
+
+    async def _handler(_request):
+        return ToolMessage(content="wrong manager", tool_call_id="call-1", name="search_tools")
+
+    result = await middleware.awrap_tool_call(request, _handler)
+
+    assert isinstance(result, ToolMessage)
+    assert "beta:list" in result.content
+    assert manager.discovered_names == ["alpha:create", "beta:list"]
 
 
 def test_deferred_prompt_does_not_repeat_loaded_tool_names() -> None:

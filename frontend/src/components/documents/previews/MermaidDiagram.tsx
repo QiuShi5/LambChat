@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState, useCallback } from "react";
 import { Copy, Check, Download, ChevronDown } from "lucide-react";
+import { copyToClipboard } from "../../../utils/clipboard";
 
 interface MermaidDiagramProps {
   code: string;
@@ -136,7 +137,7 @@ const MermaidDiagram = memo(function MermaidDiagram({
   }, [showDownloadMenu]);
 
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(code);
+    await copyToClipboard(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

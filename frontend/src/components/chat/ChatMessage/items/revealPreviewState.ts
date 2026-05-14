@@ -62,3 +62,20 @@ export function shouldAcceptRevealPreviewOpen(input: {
 
   return activePreview.source === "auto" && !activePreview.userInteracted;
 }
+
+export function shouldStabilizeScrollForAutoPreviewOpen(input: {
+  previousPreview: ActiveRevealPreviewState | null;
+  nextPreview: ActiveRevealPreviewState | null;
+  isNearBottom: boolean;
+}): boolean {
+  const { previousPreview, nextPreview, isNearBottom } = input;
+
+  if (!isNearBottom || nextPreview?.source !== "auto") {
+    return false;
+  }
+
+  return (
+    previousPreview?.request.previewKey !== nextPreview.request.previewKey ||
+    previousPreview?.source !== nextPreview.source
+  );
+}

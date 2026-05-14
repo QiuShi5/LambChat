@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   createActiveRevealPreviewState,
   shouldAcceptRevealPreviewOpen,
+  shouldStabilizeScrollForAutoPreviewOpen,
 } from "../revealPreviewState.ts";
 
 test("marks external previews as already interacted", () => {
@@ -66,5 +67,49 @@ test("still allows manual preview to replace an external navigation preview", ()
       dismissedPreviewKeys: new Set<string>(),
     }),
     true,
+  );
+});
+
+test("stabilizes chat scroll only when an auto preview opens near the bottom", () => {
+  const autoPreview = createActiveRevealPreviewState(
+    {
+      kind: "project",
+      previewKey: "project:/tmp/demo",
+      project: {
+        version: 1,
+        name: "demo",
+        path: "/tmp/demo",
+        template: "static",
+        mode: "folder",
+        files: {},
+        fileCount: 0,
+      },
+    },
+    "auto",
+  );
+
+  assert.equal(
+    shouldStabilizeScrollForAutoPreviewOpen({
+      previousPreview: null,
+      nextPreview: autoPreview,
+      isNearBottom: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldStabilizeScrollForAutoPreviewOpen({
+      previousPreview: null,
+      nextPreview: autoPreview,
+      isNearBottom: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldStabilizeScrollForAutoPreviewOpen({
+      previousPreview: autoPreview,
+      nextPreview: autoPreview,
+      isNearBottom: true,
+    }),
+    false,
   );
 });

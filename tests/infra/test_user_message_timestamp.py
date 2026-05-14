@@ -10,7 +10,7 @@ def test_format_user_message_with_timestamp_uses_user_timezone() -> None:
         now=datetime(2026, 4, 28, 12, 34, 56, tzinfo=timezone.utc),
     )
 
-    assert formatted == "[2026-04-28 20:34:56 +08:00 Asia/Shanghai] hello"
+    assert formatted == ("[User message sent at: 2026-04-28 20:34:56 +08:00 Asia/Shanghai] hello")
 
 
 def test_format_user_message_with_timestamp_falls_back_to_utc() -> None:
@@ -20,4 +20,4 @@ def test_format_user_message_with_timestamp_falls_back_to_utc() -> None:
         now=datetime(2026, 4, 28, 12, 34, 56, tzinfo=timezone.utc),
     )
 
-    assert formatted == "[2026-04-28 12:34:56 +00:00 UTC] hello"
+    assert formatted == "[User message sent at: 2026-04-28 12:34:56 +00:00 UTC] hello"
