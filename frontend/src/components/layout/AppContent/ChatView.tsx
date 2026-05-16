@@ -7,6 +7,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import { ChatMessage } from "../../chat/ChatMessage";
 import { AttachmentPreviewHost } from "../../chat/AttachmentPreviewHost";
 import { RevealPreviewHost } from "../../chat/ChatMessage/items/RevealPreviewHost";
+import { SessionImageGalleryProvider } from "../../chat/ChatMessage/sessionImageGallery";
 import {
   PersistentToolPanelHost,
   closePersistentToolPanel,
@@ -744,7 +745,7 @@ export function ChatView({
   };
 
   return (
-    <>
+    <SessionImageGalleryProvider messages={messages}>
       <main
         ref={messagesContainerRef}
         className={`relative flex-1 min-h-0 mt-4 ${
@@ -863,6 +864,6 @@ export function ChatView({
           <ChatInput {...chatInputProps} />
         </div>
       )}
-    </>
+    </SessionImageGalleryProvider>
   );
 }

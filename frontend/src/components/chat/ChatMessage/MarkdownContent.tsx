@@ -17,6 +17,7 @@ import { getFileLinkInfo } from "../../documents/utils";
 import { setActiveRevealPreviewState } from "./items/activeRevealPreviewStore";
 import { createActiveRevealPreviewState } from "./items/revealPreviewState";
 import { copyToClipboard } from "../../../utils/clipboard";
+import { useSessionImageGallery } from "./sessionImageGallery";
 
 function extractNodeText(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -271,6 +272,7 @@ export const MarkdownContent = memo(function MarkdownContent({
   headingAnchorContext?: { messageId: string; partIndex: number };
 }) {
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
+  const sessionImageGallery = useSessionImageGallery();
 
   return (
     <span className="markdown-preview block my-1">
@@ -501,7 +503,13 @@ export const MarkdownContent = memo(function MarkdownContent({
                 alt={alt}
                 loading="lazy"
                 className="max-w-full h-auto my-2 rounded-lg shadow cursor-zoom-in hover:opacity-90 transition-opacity"
-                onClick={() => resolvedSrc && setImageViewerSrc(resolvedSrc)}
+                onClick={() => {
+                  if (!resolvedSrc) return;
+                  sessionImageGallery?.openImage(resolvedSrc, alt || undefined);
+                  if (!sessionImageGallery) {
+                    setImageViewerSrc(resolvedSrc);
+                  }
+                }}
               />
             );
           },

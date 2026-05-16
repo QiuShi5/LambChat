@@ -196,3 +196,14 @@ test("ImageViewer exposes previous and next controls with keyboard shortcuts", (
   assert.match(source, /ChevronLeft/);
   assert.match(source, /ChevronRight/);
 });
+
+test("ImageViewer shows a loading affordance while switched images load", () => {
+  const source = readSource("../../common/ImageViewer.tsx");
+
+  assert.match(source, /isImageLoading/);
+  assert.match(source, /setIsImageLoading\(true\)/);
+  assert.match(source, /onLoad=\{\(\) => setIsImageLoading\(false\)\}/);
+  assert.match(source, /onError=\{\(\) => setIsImageLoading\(false\)\}/);
+  assert.match(source, /imageViewer\.loading/);
+  assert.match(source, /animate-spin/);
+});

@@ -36,6 +36,7 @@ export function ImageViewer({
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +55,7 @@ export function ImageViewer({
       setScale(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
+      setIsImageLoading(true);
     }
   }, [isOpen, src]);
 
@@ -264,9 +266,14 @@ export function ImageViewer({
             className="max-w-full max-h-full object-contain select-none"
             style={{
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
-              transition: isDragging ? "none" : "transform 0.1s ease-out",
+              opacity: isImageLoading ? 0.45 : 1,
+              transition: isDragging
+                ? "none"
+                : "transform 0.1s ease-out, opacity 0.15s ease-out",
               touchAction: "none",
             }}
+            onLoad={() => setIsImageLoading(false)}
+            onError={() => setIsImageLoading(false)}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -274,6 +281,15 @@ export function ImageViewer({
             draggable={false}
           />
         </div>
+
+        {isImageLoading && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
+            <div className="flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-medium text-white/80 shadow-lg backdrop-blur-sm">
+              <span className="h-4 w-4 rounded-full border-2 border-white/25 border-t-white/85 animate-spin" />
+              <span>{t("imageViewer.loading", "Loading image")}</span>
+            </div>
+          </div>
+        )}
 
         {(onPrevious || onNext) && (
           <>

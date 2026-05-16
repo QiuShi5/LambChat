@@ -1,4 +1,12 @@
 import { Brain, Zap, Settings, type LucideIcon } from "lucide-react";
+import { Permission, type FileCategory } from "../../types";
+
+export const FILE_CATEGORY_PERMISSIONS: Record<FileCategory, Permission> = {
+  image: Permission.FILE_UPLOAD_IMAGE,
+  video: Permission.FILE_UPLOAD_VIDEO,
+  audio: Permission.FILE_UPLOAD_AUDIO,
+  document: Permission.FILE_UPLOAD_DOCUMENT,
+};
 
 export const ICON_MAP: Record<string, LucideIcon> = {
   Brain,

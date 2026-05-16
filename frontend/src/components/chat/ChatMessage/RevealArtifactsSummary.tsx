@@ -338,7 +338,7 @@ interface RevealArtifactImagePreviewItem {
   src: string;
 }
 
-export function getRevealArtifactImagePreviewItems(
+function getRevealArtifactImagePreviewItems(
   artifacts: RevealArtifact[],
 ): RevealArtifactImagePreviewItem[] {
   return artifacts.flatMap((artifact) => {

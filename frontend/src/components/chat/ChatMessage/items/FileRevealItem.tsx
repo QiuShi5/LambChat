@@ -12,6 +12,7 @@ import {
 } from "./fileRevealAutoOpen";
 import type { RevealPreviewRequest } from "./revealPreviewData";
 import type { RevealPreviewOpenSource } from "./revealPreviewState";
+import { useSessionImageGallery } from "../sessionImageGallery";
 
 function MediaSkeleton({ aspectRatio = "16/9" }: { aspectRatio?: string }) {
   return (
@@ -93,6 +94,7 @@ export function FileRevealItem({
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
   const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
+  const sessionImageGallery = useSessionImageGallery();
 
   const parsed = useMemo(() => {
     let filePath = "";
@@ -187,6 +189,15 @@ export function FileRevealItem({
       onOpenPreview?.(previewRequest, source);
     },
     [previewAutoOpenKey, onOpenPreview, previewRequest],
+  );
+  const openImagePreview = useCallback(
+    (src: string) => {
+      sessionImageGallery?.openImage(src, fileName || undefined);
+      if (!sessionImageGallery) {
+        setImageViewerSrc(src);
+      }
+    },
+    [fileName, sessionImageGallery],
   );
 
   // Auto-open sidebar preview on desktop when file is ready
@@ -321,7 +332,7 @@ export function FileRevealItem({
               className="relative group cursor-pointer"
               style={{ aspectRatio: isImage ? "16/10" : "16/9" }}
               onClick={() => {
-                if (isImage) setImageViewerSrc(parsed.s3Url);
+                if (isImage) openImagePreview(parsed.s3Url);
                 else if (isVideo) setVideoViewerSrc(parsed.s3Url);
               }}
             >
@@ -393,7 +404,7 @@ export function FileRevealItem({
           onClick={() => {
             if (!parsed.filePath || !success) return;
             if (isImage && parsed.s3Url) {
-              setImageViewerSrc(parsed.s3Url);
+              openImagePreview(parsed.s3Url);
             } else {
               openPreview("manual");
             }

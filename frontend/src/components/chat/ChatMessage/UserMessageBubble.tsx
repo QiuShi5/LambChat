@@ -9,6 +9,7 @@ import { MarkdownContent } from "./MarkdownContent";
 import { openAttachmentPreview } from "../attachmentPreviewStore";
 import { getUserMessageActionButtonVisibilityClass } from "./userMessageBubbleState";
 import { copyToClipboard } from "../../../utils/clipboard";
+import { useSessionImageGallery } from "./sessionImageGallery";
 
 // User message bubble component (with copy function, supports markdown rendering) - ChatGPT style
 export function UserMessageBubble({
@@ -25,6 +26,7 @@ export function UserMessageBubble({
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
+  const sessionImageGallery = useSessionImageGallery();
 
   const handleCopy = async () => {
     if (!content) return;
@@ -51,7 +53,11 @@ export function UserMessageBubble({
               size="default"
               onClick={() => {
                 if (isImage && attachment.url) {
-                  setImageViewerSrc(getFullUrl(attachment.url) ?? null);
+                  const src = getFullUrl(attachment.url) ?? attachment.url;
+                  sessionImageGallery?.openImage(src, attachment.name);
+                  if (!sessionImageGallery) {
+                    setImageViewerSrc(src);
+                  }
                 } else {
                   openAttachmentPreview(attachment, "user-message");
                 }
