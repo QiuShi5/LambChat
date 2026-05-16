@@ -192,7 +192,9 @@ export function FileRevealItem({
   );
   const openImagePreview = useCallback(
     (src: string) => {
-      sessionImageGallery?.openImage(src, fileName || undefined);
+      sessionImageGallery?.openImage(src, fileName || undefined, {
+        group: "reveal-file",
+      });
       if (!sessionImageGallery) {
         setImageViewerSrc(src);
       }

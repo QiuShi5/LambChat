@@ -15,10 +15,17 @@ export interface SessionImageGalleryItem {
   id: string;
   src: string;
   alt?: string;
+  group: SessionImageGalleryGroup;
 }
 
+export type SessionImageGalleryGroup = "conversation" | "reveal-file";
+
 interface SessionImageGalleryContextValue {
-  openImage: (src: string, alt?: string) => void;
+  openImage: (
+    src: string,
+    alt?: string,
+    options?: { group?: SessionImageGalleryGroup },
+  ) => void;
 }
 
 const SessionImageGalleryContext =
@@ -65,6 +72,7 @@ function collectMarkdownImages(
       id: `${idPrefix}:image:${items.length}`,
       src,
       alt: match[1] || undefined,
+      group: "conversation",
     });
   }
 
@@ -75,6 +83,7 @@ function collectMarkdownImages(
     items.push({
       id: `${idPrefix}:html-image:${items.length}`,
       src,
+      group: "conversation",
     });
   }
 
@@ -103,6 +112,7 @@ function collectRevealFileImage(
         id: `${idPrefix}:reveal-file`,
         src,
         alt: name || undefined,
+        group: "reveal-file",
       };
     }
   }
@@ -117,6 +127,7 @@ function collectRevealFileImage(
         id: `${idPrefix}:reveal-file`,
         src,
         alt: path.split("/").pop() || undefined,
+        group: "reveal-file",
       };
     }
   }
@@ -166,6 +177,7 @@ export function collectSessionImageGalleryItems(
             id: `${message.id}:attachment:${attachment.id}`,
             src,
             alt: attachment.name,
+            group: "conversation",
           },
         ];
       },
@@ -201,24 +213,43 @@ export function SessionImageGalleryProvider({
   const [activeImage, setActiveImage] =
     useState<SessionImageGalleryItem | null>(null);
   const activeIndex = activeImage
-    ? items.findIndex((item) => item.src === activeImage.src)
+    ? items
+        .filter((item) => item.group === activeImage.group)
+        .findIndex((item) => item.src === activeImage.src)
     : -1;
-  const currentItem = activeIndex >= 0 ? items[activeIndex] : activeImage;
-  const previousItem = activeIndex > 0 ? items[activeIndex - 1] : null;
+  const activeGalleryItems = activeImage
+    ? items.filter((item) => item.group === activeImage.group)
+    : [];
+  const currentItem =
+    activeIndex >= 0 ? activeGalleryItems[activeIndex] : activeImage;
+  const previousItem =
+    activeIndex > 0 ? activeGalleryItems[activeIndex - 1] : null;
   const nextItem =
-    activeIndex >= 0 && activeIndex < items.length - 1
-      ? items[activeIndex + 1]
+    activeIndex >= 0 && activeIndex < activeGalleryItems.length - 1
+      ? activeGalleryItems[activeIndex + 1]
       : null;
   const positionLabel =
-    activeIndex >= 0 && items.length > 1
-      ? `${activeIndex + 1} / ${items.length}`
+    activeIndex >= 0 && activeGalleryItems.length > 1
+      ? `${activeIndex + 1} / ${activeGalleryItems.length}`
       : undefined;
 
-  const openImage = useCallback((src: string, alt?: string) => {
-    const resolvedSrc = resolveImageSrc(src);
-    if (!resolvedSrc) return;
-    setActiveImage({ id: `ad-hoc:${resolvedSrc}`, src: resolvedSrc, alt });
-  }, []);
+  const openImage = useCallback(
+    (
+      src: string,
+      alt?: string,
+      options?: { group?: SessionImageGalleryGroup },
+    ) => {
+      const resolvedSrc = resolveImageSrc(src);
+      if (!resolvedSrc) return;
+      setActiveImage({
+        id: `ad-hoc:${resolvedSrc}`,
+        src: resolvedSrc,
+        alt,
+        group: options?.group || "conversation",
+      });
+    },
+    [],
+  );
 
   const value = useMemo(() => ({ openImage }), [openImage]);
 

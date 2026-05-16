@@ -14,7 +14,7 @@ function createMessage(overrides: Partial<Message>): Message {
   };
 }
 
-test("collects session images from attachments, markdown, and reveal_file tools in message order", () => {
+test("collects session images from attachments, markdown, and individual reveal_file cards in message order", () => {
   const messages: Message[] = [
     createMessage({
       id: "user-1",
@@ -72,18 +72,27 @@ test("collects session images from attachments, markdown, and reveal_file tools 
   const items = collectSessionImageGalleryItems(messages);
 
   assert.deepEqual(
-    items.map((item) => [item.id, item.src, item.alt]),
+    items.map((item) => [item.id, item.src, item.alt, item.group]),
     [
       [
         "user-1:attachment:attachment-image",
         "/attachment.png",
         "attachment.png",
+        "conversation",
       ],
-      ["user-1:content:image:0", "/inline-user.png", "inline"],
-      ["assistant-1:part:0:image:0", "/chart.png", "chart"],
-      ["assistant-1:part:1:reveal-file", "/generated.png", "generated.png"],
+      ["user-1:content:image:0", "/inline-user.png", "inline", "conversation"],
+      ["assistant-1:part:0:image:0", "/chart.png", "chart", "conversation"],
+      [
+        "assistant-1:part:1:reveal-file",
+        "/generated.png",
+        "generated.png",
+        "reveal-file",
+      ],
     ],
   );
+
+  assert.equal(items.filter((item) => item.group === "conversation").length, 3);
+  assert.equal(items.filter((item) => item.group === "reveal-file").length, 1);
 });
 
 test("ChatView provides a session image gallery around chat messages", () => {
@@ -116,9 +125,10 @@ test("conversation image entry points use the session gallery when available", (
   assert.match(userBubbleSource, /sessionImageGallery\?\.openImage/);
   assert.match(fileRevealSource, /useSessionImageGallery/);
   assert.match(fileRevealSource, /sessionImageGallery\?\.openImage/);
+  assert.match(fileRevealSource, /group:\s*"reveal-file"/);
 });
 
-test("session image gallery is independent from RevealArtifactsSummary", () => {
+test("session image count includes reveal_file cards but not the RevealArtifactsSummary gallery", () => {
   const sessionGallerySource = readFileSync(
     new URL("../sessionImageGallery.tsx", import.meta.url),
     "utf8",
