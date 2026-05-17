@@ -297,12 +297,7 @@ export function ThinkingBlock({
   return (
     <CollapsiblePill
       status={status}
-      icon={
-        <Brain
-          size={12}
-          className="shrink-0 text-stone-500 dark:text-stone-400"
-        />
-      }
+      icon={<Brain size={12} className="shrink-0 opacity-50" />}
       label={
         isStreaming ? t("chat.message.thinking") : t("chat.message.thought")
       }

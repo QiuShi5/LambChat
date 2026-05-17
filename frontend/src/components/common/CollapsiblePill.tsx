@@ -29,143 +29,59 @@ export interface CollapsiblePillProps {
   formatLabel?: boolean;
 }
 
-// Get spinner color based on variant
-function getSpinnerColor(variant: CollapsibleVariant): string {
-  if (variant === "tool") {
-    return "text-amber-500 dark:text-amber-400";
-  }
-  if (variant === "thinking") {
-    return "text-stone-500 dark:text-stone-400";
-  }
-  if (variant === "summary") {
-    return "text-amber-500 dark:text-amber-400";
-  }
-  // default (sandbox) - use emerald
-  return "text-emerald-500 dark:text-emerald-400";
-}
+// Unified status-based colors — same status always gets the same color
+const statusStyles: Record<CollapsibleStatus, string> = {
+  idle: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400",
+  loading:
+    "bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+  success:
+    "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+  error: "bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+  cancelled:
+    "bg-stone-200/60 dark:bg-stone-700/50 text-stone-500 dark:text-stone-400",
+};
 
-// StatusIndicator component
-function StatusIndicator({
-  status,
-  variant,
-}: {
-  status: CollapsibleStatus;
-  variant: CollapsibleVariant;
-}) {
+// Status indicator icon/spinner colors
+const statusIconColors: Record<CollapsibleStatus, string> = {
+  idle: "",
+  loading: "text-amber-500 dark:text-amber-400",
+  success: "text-emerald-500 dark:text-emerald-400",
+  error: "text-red-500 dark:text-red-400",
+  cancelled: "text-stone-400 dark:text-stone-500",
+};
+
+function StatusIndicator({ status }: { status: CollapsibleStatus }) {
   if (status === "loading") {
     return (
       <LoadingSpinner
         size="xs"
         className="shrink-0"
-        color={getSpinnerColor(variant)}
+        color={statusIconColors[status]}
       />
     );
   }
   if (status === "success") {
-    return <CheckCircle size={12} className="shrink-0" />;
+    return (
+      <CheckCircle
+        size={12}
+        className={clsx("shrink-0", statusIconColors[status])}
+      />
+    );
   }
   if (status === "error") {
-    return <XCircle size={12} className="shrink-0" />;
+    return (
+      <XCircle
+        size={12}
+        className={clsx("shrink-0", statusIconColors[status])}
+      />
+    );
   }
   if (status === "cancelled") {
-    return <Ban size={12} className="shrink-0" />;
+    return (
+      <Ban size={12} className={clsx("shrink-0", statusIconColors[status])} />
+    );
   }
-  // idle - no indicator
   return null;
-}
-
-// Get button styles based on status and variant
-function getButtonStyles(
-  status: CollapsibleStatus,
-  variant: CollapsibleVariant,
-): string {
-  if (variant === "thinking") {
-    return clsx(
-      "bg-stone-200 dark:bg-stone-700",
-      "text-stone-600 dark:text-stone-300",
-      "hover:bg-stone-300 dark:hover:bg-stone-600",
-    );
-  }
-
-  if (variant === "tool") {
-    if (status === "loading") {
-      return clsx(
-        "bg-amber-100/80 dark:bg-amber-900/30",
-        "text-amber-700 dark:text-amber-300",
-      );
-    }
-    if (status === "success") {
-      return clsx(
-        "bg-emerald-100/80 dark:bg-emerald-900/30",
-        "text-emerald-700 dark:text-emerald-300",
-      );
-    }
-    if (status === "error") {
-      return clsx(
-        "bg-red-100/80 dark:bg-red-900/30",
-        "text-red-700 dark:text-red-300",
-      );
-    }
-    if (status === "cancelled") {
-      return clsx(
-        "bg-amber-100/80 dark:bg-amber-900/30",
-        "text-amber-700 dark:text-amber-300",
-      );
-    }
-    return clsx(
-      "bg-stone-100 dark:bg-stone-800",
-      "text-stone-600 dark:text-stone-400",
-    );
-  }
-
-  if (variant === "summary") {
-    if (status === "loading") {
-      return clsx(
-        "bg-amber-100/80 dark:bg-amber-900/30",
-        "text-amber-700 dark:text-amber-300",
-      );
-    }
-    if (status === "success") {
-      return clsx(
-        "bg-emerald-100/80 dark:bg-emerald-900/30",
-        "text-emerald-700 dark:text-emerald-300",
-      );
-    }
-    if (status === "error") {
-      return clsx(
-        "bg-red-100/80 dark:bg-red-900/30",
-        "text-red-700 dark:text-red-300",
-      );
-    }
-    if (status === "cancelled") {
-      return clsx(
-        "bg-amber-100/80 dark:bg-amber-900/30",
-        "text-amber-700 dark:text-amber-300",
-      );
-    }
-    return clsx(
-      "bg-stone-100 dark:bg-stone-800",
-      "text-stone-600 dark:text-stone-400",
-    );
-  }
-
-  // default variant (for Sandbox)
-  if (status === "error") {
-    return clsx(
-      "bg-red-100/80 dark:bg-red-900/30",
-      "text-red-700 dark:text-red-300",
-    );
-  }
-  if (status === "cancelled") {
-    return clsx(
-      "bg-amber-100/80 dark:bg-amber-900/30",
-      "text-amber-700 dark:text-amber-300",
-    );
-  }
-  return clsx(
-    "bg-emerald-100/80 dark:bg-emerald-900/30",
-    "text-emerald-700 dark:text-emerald-300",
-  );
 }
 
 export function CollapsiblePill({
@@ -175,7 +91,7 @@ export function CollapsiblePill({
   suffix,
   defaultExpanded = false,
   onExpandChange,
-  variant = "default",
+  variant: _variant = "default",
   children,
   expandable = true,
   onPanelOpen,
@@ -210,18 +126,18 @@ export function CollapsiblePill({
       <button
         onClick={handleToggle}
         className={clsx(
-          "inline-flex items-center gap-2 px-2.5 py-2 rounded-full text-xs font-medium max-w-full",
+          "inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-medium max-w-full h-7",
           "transition-colors",
-          getButtonStyles(status, variant),
-          canExpand && "cursor-pointer",
+          statusStyles[status],
+          canExpand && "cursor-pointer hover:opacity-80",
           !canExpand && "cursor-default",
         )}
       >
-        <StatusIndicator status={status} variant={variant} />
+        <StatusIndicator status={status} />
         {icon}
         <span
           className={clsx(
-            "font-mono min-w-0 truncate overflow-hidden",
+            "font-mono min-w-0 truncate overflow-hidden leading-none",
             animatedDots && "typing-dots",
           )}
         >

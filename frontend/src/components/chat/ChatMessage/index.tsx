@@ -309,20 +309,20 @@ export const ChatMessage = memo(function ChatMessage({
         {/* Content */}
         <div className="min-w-0 min-h-0 py-1 sm:py-2">
           {/* Header: Avatar + Role label + Stop button */}
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-nowrap items-center gap-2">
             <AssistantAvatar
-              className="size-6 shrink-0 rounded-full"
+              className="size-5 sm:size-6 shrink-0 rounded-full"
               personaAvatar={personaAvatar}
             />
             <span
-              className="text-base sm:text-lg font-semibold tracking-tight font-serif"
+              className="min-w-0 truncate text-base sm:text-lg font-semibold leading-none tracking-tight font-serif"
               style={{ color: "var(--theme-text)" }}
             >
               {personaName || t("chat.message.assistant")}
             </span>
             {message.timestamp && (
               <span
-                className="text-xs ml-2 mt-0.5 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                className="self-center opacity-0 mt-0.5 sm:mt-1 shrink-0 whitespace-nowrap text-xs text-center leading-none tabular-nums transition-opacity duration-200 group-hover:opacity-100"
                 style={{ color: "var(--theme-text-secondary)" }}
               >
                 {message.timestamp
