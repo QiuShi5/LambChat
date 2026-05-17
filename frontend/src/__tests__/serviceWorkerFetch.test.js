@@ -10,6 +10,16 @@ test("service worker keeps a local offline navigation fallback", () => {
   assert.match(source, /getOfflineFallback/);
 });
 
+test("offline page offers retry and app return actions", () => {
+  const offlineSource = readFileSync(
+    new URL("../../public/offline.html", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(offlineSource, /location\.reload\(\)/);
+  assert.match(offlineSource, /href="\/chat"/);
+});
+
 test("service worker preserves push notification routing", () => {
   assert.match(source, /addEventListener\("push"/);
   assert.match(source, /showNotification/);

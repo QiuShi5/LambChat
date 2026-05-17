@@ -814,7 +814,7 @@ function MermaidViewer({
             <img
               src={svgBlobUrl}
               alt="mermaid diagram"
-              className="max-w-[90vw] max-h-[85vh] object-contain select-none"
+              className="max-w-[90vw] max-h-[85dvh] object-contain select-none"
               style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
                 transition: isDragging ? "none" : "transform 0.1s ease-out",

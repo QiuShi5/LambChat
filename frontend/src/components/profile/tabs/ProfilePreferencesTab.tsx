@@ -96,7 +96,7 @@ function SelectRow<T extends string>({
           >
             <div className="absolute inset-0 bg-black/40" />
             <div
-              className="relative z-10 w-[300px] max-h-[60vh] rounded-2xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-2xl overflow-hidden animate-scale-in"
+              className="relative z-10 w-[300px] max-h-[60dvh] rounded-2xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-2xl overflow-hidden animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 pt-4 pb-2">
@@ -104,7 +104,7 @@ function SelectRow<T extends string>({
                   {label}
                 </h4>
               </div>
-              <div className="overflow-y-auto max-h-[50vh] pb-2">
+              <div className="overflow-y-auto max-h-[50dvh] pb-2">
                 {options.map((opt) => (
                   <button
                     key={opt.key}

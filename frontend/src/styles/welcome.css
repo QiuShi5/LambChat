@@ -273,6 +273,7 @@
     height: var(--welcome-persona-card-height);
     min-width: 0;
     scroll-snap-align: start;
+    justify-content: center;
   }
 }
 
@@ -317,7 +318,7 @@
   }
 
   .welcome-persona-gallery {
-    --welcome-persona-card-height: 3.5rem;
+    --welcome-persona-card-height: 4rem;
     --welcome-persona-row-gap: 0.5rem;
     display: grid;
     grid-template-columns: 1fr;

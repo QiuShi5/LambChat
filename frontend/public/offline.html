@@ -55,9 +55,53 @@
         line-height: 1.6;
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      button,
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.5rem;
+        padding: 0 1rem;
+        border-radius: 8px;
+        font: inherit;
+        font-weight: 600;
+        line-height: 1;
+        text-decoration: none;
+      }
+
+      button {
+        border: 0;
+        color: #fff;
+        background: #292524;
+        cursor: pointer;
+      }
+
+      a {
+        color: #292524;
+        background: transparent;
+        border: 1px solid #d6d3d1;
+      }
+
       @media (prefers-color-scheme: dark) {
         p {
           color: #d6d3d1;
+        }
+
+        button {
+          color: #292524;
+          background: #f5f5f4;
+        }
+
+        a {
+          color: #f5f5f4;
+          border-color: #57534e;
         }
       }
     </style>
@@ -69,6 +113,10 @@
         Reconnect to continue chatting, load files, and sync the latest
         workspace state.
       </p>
+      <div class="actions" aria-label="Offline actions">
+        <button type="button" onclick="location.reload()">Try again</button>
+        <a href="/chat">Back to chat</a>
+      </div>
     </main>
   </body>
 </html>

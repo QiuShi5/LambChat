@@ -15,6 +15,7 @@ import {
   listenSessionTitleUpdated,
 } from "./utils/sessionTitleEvents";
 import { APP_TOASTER_CLASS_NAME } from "./components/layout/AppContent/appToastLayout";
+import { PwaStatusToasts } from "./components/pwa/PwaStatusToasts";
 
 const SharedPage = lazy(() =>
   import("./components/share/SharedPage").then((m) => ({
@@ -334,6 +335,7 @@ function App() {
             },
           }}
         />
+        <PwaStatusToasts />
         <SelectionActionPopover />
         <Suspense fallback={<ChatPageSkeleton />}>
           <Routes>

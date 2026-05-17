@@ -19,6 +19,7 @@ import "./styles/approval.css";
 import "./styles/landing.css";
 import "./styles/syntax-highlight.css";
 import "./styles/markdown.css";
+import "./styles/pwa.css";
 import "./styles/utilities.css";
 import { AuthProvider } from "./hooks/useAuth";
 import { SettingsProvider } from "./contexts/SettingsContext";

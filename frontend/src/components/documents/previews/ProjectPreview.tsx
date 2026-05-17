@@ -293,7 +293,7 @@ export default function ProjectPreview({
       <div
         className={clsx(
           "flex-1 min-h-0 h-auto",
-          isFullscreen && "h-[calc(100vh-120px)]",
+          isFullscreen && "h-[calc(100dvh-120px)]",
         )}
       >
         {useStackBlitz ? (

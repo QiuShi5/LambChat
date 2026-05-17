@@ -97,7 +97,7 @@ export function NotificationDialog({
       onClick={onClose}
     >
       <div
-        className="w-full h-[60vh] sm:h-[55vh] sm:max-w-2xl flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        className="w-full h-[60dvh] sm:h-[55dvh] sm:max-w-2xl flex flex-col rounded-t-2xl sm:rounded-2xl shadow-2xl"
         style={{
           backgroundColor: "var(--theme-bg-card)",
           border: "1px solid var(--theme-border)",

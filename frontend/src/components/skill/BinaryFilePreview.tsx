@@ -142,7 +142,7 @@ export function BinaryFilePreview({
               alt={fileName}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageLoaded(true)}
-              className="max-w-full max-h-[60vh] rounded-lg object-contain shadow-md hover:opacity-90 transition-opacity"
+              className="max-w-full max-h-[60dvh] rounded-lg object-contain shadow-md hover:opacity-90 transition-opacity"
             />
           </div>
         )}
@@ -165,7 +165,7 @@ export function BinaryFilePreview({
               autoPlay={false}
               onLoadedData={() => setVideoLoaded(true)}
               onError={() => setVideoLoaded(true)}
-              className={`w-full max-w-4xl max-h-[60vh] rounded-xl shadow-2xl ring-1 ring-white/10 transition-opacity duration-300 ${
+              className={`w-full max-w-4xl max-h-[60dvh] rounded-xl shadow-2xl ring-1 ring-white/10 transition-opacity duration-300 ${
                 videoLoaded ? "opacity-100" : "opacity-0"
               }`}
             >

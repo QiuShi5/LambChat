@@ -352,7 +352,7 @@ export const WelcomePage = memo(function WelcomePage({
                     }}
                   >
                     <span className="welcome-card-shimmer" aria-hidden="true" />
-                    <span className="welcome-persona-header relative flex items-start gap-3">
+                    <span className="welcome-persona-header relative flex items-center gap-3">
                       <PersonaAvatarWithLoading
                         preset={preset}
                         className="welcome-persona-avatar relative flex items-center justify-center size-11 rounded-xl shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105"

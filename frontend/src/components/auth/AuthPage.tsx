@@ -648,15 +648,15 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
               <span>GitHub</span>
             </a>
             <span className="text-stone-300 dark:text-stone-600">·</span>
-            <span>
-              Powered by{" "}
+            <span className="text-stone-600 dark:text-stone-400 font-serif transition-colors">
+              {t("auth.poweredBy")}{" "}
               <a
                 href={GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex align-[-0.25em] text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+                className="hover:text-stone-900 dark:hover:text-stone-200 font-serif transition-colors"
               >
-                <BrandWordmark decorative className="h-5 w-auto" />
+                {APP_NAME}
               </a>
             </span>
             <span className="text-stone-300 dark:text-stone-600">·</span>

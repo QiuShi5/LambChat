@@ -51,7 +51,7 @@ export function BlockPreviewPortal() {
         <img
           src={preview.src}
           alt={t("chat.message.toolOutput")}
-          className="max-w-full max-h-[70vh] object-contain rounded-lg"
+          className="max-w-full max-h-[70dvh] object-contain rounded-lg"
         />
       </div>
     );

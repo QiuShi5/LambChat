@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ImageViewer } from "../common/ImageViewer";
 import { useAuth } from "../../hooks/useAuth";
 import { useSEO } from "../../hooks/usePageTitle";
@@ -7,6 +8,7 @@ import { useScrollReveal } from "./hooks/useScrollReveal";
 import { useScrollProgress } from "./hooks/useScrollProgress";
 import { useActiveSection } from "./hooks/useActiveSection";
 import { SECTION_IDS } from "./constants";
+import { MAIN_SHOTS, MGMT_SHOTS, RESPONSIVE_SHOTS } from "./data";
 import { Navbar } from "./components/Navbar";
 import { MobileMenu } from "./components/MobileMenu";
 import { HeroSection } from "./components/HeroSection";
@@ -27,6 +29,7 @@ export function LandingPage() {
     omitSuffix: true,
   });
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const containerRef = useScrollReveal();
   const { isAuthenticated, isLoading } = useAuth();
   const scrollProgress = useScrollProgress();
@@ -36,15 +39,34 @@ export function LandingPage() {
   const [showNav, setShowNav] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
-  const [viewerAlt, setViewerAlt] = useState("");
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
-  const openViewer = useCallback((src: string, alt: string) => {
-    setViewerSrc(src);
-    setViewerAlt(alt);
-    setMobileMenuOpen(false);
-  }, []);
-  const closeViewer = useCallback(() => setViewerSrc(null), []);
+  const galleryItems = useMemo(
+    () => [
+      ...MAIN_SHOTS.map((s) => ({ src: s.src, alt: t(`landing.${s.altKey}`) })),
+      {
+        src: "/images/best-practice/architecture.webp",
+        alt: t("landing.architecture"),
+      },
+      ...MGMT_SHOTS.map((s) => ({ src: s.src, alt: t(`landing.${s.altKey}`) })),
+      ...RESPONSIVE_SHOTS.map((s) => ({
+        src: s.src,
+        alt: t(`landing.${s.altKey}`),
+      })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [i18n.language],
+  );
+
+  const openViewer = useCallback(
+    (src: string, _alt: string) => {
+      const idx = galleryItems.findIndex((item) => item.src === src);
+      setViewerIndex(idx >= 0 ? idx : null);
+      setMobileMenuOpen(false);
+    },
+    [galleryItems],
+  );
+  const closeViewer = useCallback(() => setViewerIndex(null), []);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) navigate("/chat", { replace: true });
@@ -184,10 +206,25 @@ export function LandingPage() {
       />
 
       <ImageViewer
-        src={viewerSrc ?? ""}
-        alt={viewerAlt}
-        isOpen={!!viewerSrc}
+        src={viewerIndex !== null ? galleryItems[viewerIndex].src : ""}
+        alt={viewerIndex !== null ? galleryItems[viewerIndex].alt : ""}
+        isOpen={viewerIndex !== null}
         onClose={closeViewer}
+        onPrevious={() =>
+          setViewerIndex((i) => (i !== null && i > 0 ? i - 1 : i))
+        }
+        onNext={() =>
+          setViewerIndex((i) =>
+            i !== null && i < galleryItems.length - 1 ? i + 1 : i,
+          )
+        }
+        hasPrevious={viewerIndex !== null && viewerIndex > 0}
+        hasNext={viewerIndex !== null && viewerIndex < galleryItems.length - 1}
+        positionLabel={
+          viewerIndex !== null
+            ? `${viewerIndex + 1} / ${galleryItems.length}`
+            : undefined
+        }
       />
     </div>
   );

@@ -271,13 +271,13 @@ export function ToolResultPanel({
             : isMobile && mobileFillViewport
               ? "h-full"
               : isMobile
-                ? `max-h-[92vh] rounded-t-2xl overflow-hidden shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.2)] dark:shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.5)] ${
+                ? `max-h-[92dvh] rounded-t-2xl overflow-hidden shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.2)] dark:shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.5)] ${
                     animateIn
                       ? "animate-[slide-up-fullscreen_280ms_cubic-bezier(0.16,1,0.3,1)_backwards]"
                       : ""
                   }`
                 : isCenter
-                  ? `overflow-hidden h-full relative transition-all duration-300 ease-out ${"sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl sm:h-[80vh] sm:rounded-2xl sm:my-auto"}`
+                  ? `overflow-hidden h-full relative transition-all duration-300 ease-out ${"sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl sm:h-[80dvh] sm:rounded-2xl sm:my-auto"}`
                   : `h-full relative shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.12)] dark:shadow-[-4px_0_24px_-4px_rgba(0,0,0,0.4)] ${
                       animateIn
                         ? "animate-[slide-in-right_200ms_ease-out_backwards]"

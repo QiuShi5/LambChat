@@ -282,7 +282,7 @@ export function SearchDialog({
 
         {/* Results list */}
         <div
-          className="h-[50vh] overflow-y-auto scroll-smooth py-2"
+          className="h-[50dvh] overflow-y-auto scroll-smooth py-2"
           style={{
             scrollbarWidth: "thin",
             scrollbarColor: "transparent transparent",

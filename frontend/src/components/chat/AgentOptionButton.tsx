@@ -77,7 +77,7 @@ export const AgentOptionButton = memo(function AgentOptionButton({
                   className="sm:rounded-2xl rounded-t-2xl shadow-2xl px-4 pt-3 pb-6 sm:pb-4 animate-in fade-in slide-in-from-bottom-4 sm:scale-in-95 sm:slide-in-from-bottom-0 duration-200 sm:w-[28rem] sm:max-w-[90vw]"
                   style={{
                     background: "var(--theme-bg-card)",
-                    maxHeight: "60vh",
+                    maxHeight: "60dvh",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -225,7 +225,7 @@ export const AgentOptionButton = memo(function AgentOptionButton({
                   className="relative rounded-t-2xl px-4 pt-3 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-200"
                   style={{
                     background: "var(--theme-bg-card)",
-                    maxHeight: "60vh",
+                    maxHeight: "60dvh",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >

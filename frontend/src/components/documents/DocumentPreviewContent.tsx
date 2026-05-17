@@ -210,7 +210,7 @@ export default function DocumentPreviewContent({
           <video
             controls
             autoPlay={false}
-            className="w-full max-h-[65vh] rounded-xl shadow-2xl ring-1 ring-white/10"
+            className="w-full max-h-[65dvh] rounded-xl shadow-2xl ring-1 ring-white/10"
             src={videoUrl}
             style={{ margin: "0 auto", display: "block" }}
           >

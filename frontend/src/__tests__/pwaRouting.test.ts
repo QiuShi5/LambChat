@@ -8,6 +8,10 @@ test("bypasses backend, streaming, non-GET, and cross-origin requests", () => {
   assert.equal(isBackendPath("/api/chat"), true);
   assert.equal(isBackendPath("/ws/session"), true);
   assert.equal(isBackendPath("/default/stream"), true);
+  assert.equal(isBackendPath("/tools/rebuild"), true);
+  assert.equal(isBackendPath("/human/approval"), true);
+  assert.equal(isBackendPath("/services/github"), true);
+  assert.equal(isBackendPath("/health"), true);
 
   assert.equal(
     getPwaRequestKind({
@@ -24,6 +28,16 @@ test("bypasses backend, streaming, non-GET, and cross-origin requests", () => {
       method: "GET",
       mode: "cors",
       url: `${ORIGIN}/api/chat`,
+      scopeOrigin: ORIGIN,
+      accept: "application/json",
+    }),
+    "bypass",
+  );
+  assert.equal(
+    getPwaRequestKind({
+      method: "GET",
+      mode: "cors",
+      url: `${ORIGIN}/tools/rebuild`,
       scopeOrigin: ORIGIN,
       accept: "application/json",
     }),

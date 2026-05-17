@@ -108,25 +108,28 @@ export function EditorSidebar({
           </>
         )}
 
-        {/* Mobile drag handle */}
-        {isMobile && (
-          <div ref={dragHandleRef} className="editor-sidebar-drag-handle" />
-        )}
-
         {/* Header */}
-        <div className="editor-sidebar-header">
-          <div className="editor-sidebar-header-left">
-            {icon && <div className="editor-sidebar-header-icon">{icon}</div>}
-            <div className="min-w-0">
-              <div className="editor-sidebar-header-title">{title}</div>
-              {subtitle && (
-                <div className="editor-sidebar-header-subtitle">{subtitle}</div>
-              )}
+        <div className="flex flex-col shrink-0 bg-gradient-to-r from-stone-50 to-white dark:from-stone-800 dark:to-[#292524]">
+          {/* Mobile drag handle */}
+          {isMobile && (
+            <div ref={dragHandleRef} className="editor-sidebar-drag-handle" />
+          )}
+          <div className="editor-sidebar-header">
+            <div className="editor-sidebar-header-left">
+              {icon && <div className="editor-sidebar-header-icon">{icon}</div>}
+              <div className="min-w-0">
+                <div className="editor-sidebar-header-title">{title}</div>
+                {subtitle && (
+                  <div className="editor-sidebar-header-subtitle">
+                    {subtitle}
+                  </div>
+                )}
+              </div>
             </div>
+            <button onClick={onClose} className="editor-sidebar-close-btn">
+              <X size={15} />
+            </button>
           </div>
-          <button onClick={onClose} className="editor-sidebar-close-btn">
-            <X size={18} />
-          </button>
         </div>
 
         {/* Body */}

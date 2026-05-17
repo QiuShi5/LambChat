@@ -52,7 +52,7 @@ const GlobItem = memo(function GlobItem({
         </div>
       </div>
       {paths.length > 0 && (
-        <div className="relative group rounded-lg border border-stone-200/60 dark:border-stone-700/50 bg-stone-50 dark:bg-stone-900 overflow-auto max-h-[60vh]">
+        <div className="relative group rounded-lg border border-stone-200/60 dark:border-stone-700/50 bg-stone-50 dark:bg-stone-900 overflow-auto max-h-[60dvh]">
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
             <CopyButton
               text={paths.join("\n")}

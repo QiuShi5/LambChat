@@ -4,7 +4,7 @@ const FULLSCREEN_FALLBACKS: Array<[string, string]> = [
   ["height", "auto"],
   ["min-width", "200px"],
   ["min-height", "100px"],
-  ["max-height", "85vh"],
+  ["max-height", "85dvh"],
 ];
 
 export function stripResponsiveWidthAttribute(svg: string): string {

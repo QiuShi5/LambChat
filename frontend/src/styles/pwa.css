@@ -1,0 +1,124 @@
+.pwa-status-toast {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: min(calc(100vw - 32px), 560px);
+  padding: 10px;
+  color: #292524;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(214, 211, 209, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(41, 37, 36, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.pwa-status-toast--offline {
+  border-color: rgba(234, 179, 8, 0.45);
+}
+
+.pwa-status-toast__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: #57534e;
+  background: #f5f5f4;
+  border-radius: 8px;
+}
+
+.pwa-status-toast__content {
+  min-width: 0;
+}
+
+.pwa-status-toast__title {
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.pwa-status-toast__body {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: #78716c;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.pwa-status-toast__action,
+.pwa-status-toast__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pwa-status-toast__action {
+  gap: 6px;
+  padding: 0 12px;
+  color: #fff;
+  background: #292524;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.pwa-status-toast__action:hover {
+  background: #44403c;
+}
+
+.pwa-status-toast__dismiss {
+  width: 32px;
+  color: #78716c;
+  background: transparent;
+}
+
+.pwa-status-toast__dismiss:hover {
+  color: #292524;
+  background: #f5f5f4;
+}
+
+.dark .pwa-status-toast {
+  color: #fafaf9;
+  background: rgba(28, 25, 23, 0.96);
+  border-color: rgba(87, 83, 78, 0.9);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+}
+
+.dark .pwa-status-toast--offline {
+  border-color: rgba(234, 179, 8, 0.5);
+}
+
+.dark .pwa-status-toast__icon,
+.dark .pwa-status-toast__dismiss:hover {
+  color: #d6d3d1;
+  background: #292524;
+}
+
+.dark .pwa-status-toast__body,
+.dark .pwa-status-toast__dismiss {
+  color: #a8a29e;
+}
+
+.dark .pwa-status-toast__action {
+  color: #292524;
+  background: #fafaf9;
+}
+
+.dark .pwa-status-toast__action:hover {
+  background: #e7e5e4;
+}
+
+@media (max-width: 520px) {
+  .pwa-status-toast {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .pwa-status-toast__action {
+    grid-column: 2 / 4;
+    width: 100%;
+  }
+}

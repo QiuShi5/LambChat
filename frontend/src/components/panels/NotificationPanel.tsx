@@ -228,7 +228,7 @@ function NotificationFormModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="w-full max-w-2xl max-h-[90vh] transform overflow-hidden rounded-2xl bg-[var(--theme-bg-card)] text-left align-middle shadow-xl transition-all flex flex-col"
+          className="w-full max-w-2xl max-h-[90dvh] transform overflow-hidden rounded-2xl bg-[var(--theme-bg-card)] text-left align-middle shadow-xl transition-all flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
