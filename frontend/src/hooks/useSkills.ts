@@ -20,7 +20,7 @@ import type {
   BinaryFileInfo,
 } from "../types/skill";
 
-export const DEFAULT_SKILL_LIST_LIMIT = 1000;
+export const DEFAULT_SKILL_LIST_LIMIT = 20;
 
 export function resolveSkillListParams(
   explicitParams?: SkillListParams,
