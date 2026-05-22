@@ -2,6 +2,7 @@ import base64
 import importlib.util
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -117,6 +118,11 @@ async def test_image_generate_calls_images_api_and_uploads_base64_result(
     monkeypatch.setattr(image_generation_tool, "get_or_init_storage", fake_get_or_init_storage)
     monkeypatch.setattr(image_generation_tool.settings, "IMAGE_GENERATION_API_KEY", "sk-test")
     monkeypatch.setattr(
+        image_generation_tool,
+        "utc_now",
+        lambda: datetime(2026, 5, 23, 12, 34, 56, tzinfo=timezone.utc),
+    )
+    monkeypatch.setattr(
         image_generation_tool.settings,
         "IMAGE_GENERATION_BASE_URL",
         "https://api.example.com/v1",
@@ -138,8 +144,8 @@ async def test_image_generate_calls_images_api_and_uploads_base64_result(
     assert result["success"] is True
     assert set(result.keys()) == {"success", "images"}
     assert result["images"][0] == {
-        "url": "https://app.example.com/api/upload/file/generated-images/user-1/a cat.png",
-        "key": "generated-images/user-1/a cat.png",
+        "url": "https://app.example.com/api/upload/file/generated-images/user-1/generated-20260523_123456-1.png",
+        "key": "generated-images/user-1/generated-20260523_123456-1.png",
         "content_type": "image/png",
         "revised_prompt": "a cat",
     }
@@ -149,6 +155,7 @@ async def test_image_generate_calls_images_api_and_uploads_base64_result(
     assert captured["kwargs"]["json"] == {
         "model": "gpt-image-2",
         "prompt": "draw a cat",
+        "background": "auto",
         "size": "1024x1024",
         "quality": "high",
         "n": 1,
@@ -156,17 +163,30 @@ async def test_image_generate_calls_images_api_and_uploads_base64_result(
     }
     assert captured["upload"]["data"] == image_bytes
     assert captured["upload"]["folder"] == "generated-images/user-1"
+    assert captured["upload"]["filename"] == "generated-20260523_123456-1.png"
     assert captured["upload"]["content_type"] == "image/png"
 
 
-def test_image_generate_schema_is_text_to_image_only() -> None:
+def test_image_generate_schema_describes_supported_parameters() -> None:
     from src.infra.tool.image_generation_tool import get_image_generation_tool
 
     tool = get_image_generation_tool()
     fields = set(tool.args_schema.model_fields)
 
-    assert "input_images" not in fields
+    supported_fields = {
+        "prompt",
+        "input_images",
+        "background",
+        "input_fidelity",
+        "size",
+        "quality",
+        "n",
+        "output_format",
+    }
+    assert supported_fields.issubset(fields)
     assert "mask_url" not in fields
+    for field_name in supported_fields:
+        assert tool.args_schema.model_fields[field_name].description
 
 
 @pytest.mark.asyncio
@@ -185,6 +205,105 @@ async def test_image_generate_returns_error_when_api_key_missing(
     )
 
     assert result == {"error": "IMAGE_GENERATION_API_KEY is not configured"}
+
+
+@pytest.mark.asyncio
+async def test_image_generate_with_input_images_uses_edits_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import image_generation_tool
+
+    captured: dict[str, object] = {}
+    image_bytes = b"edit-source"
+    b64_image = base64.b64encode(image_bytes).decode("ascii")
+
+    class _FakeResponse:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return self._payload
+
+    class _FakeHttpClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, request_url: str):
+            captured.setdefault("download_urls", []).append(request_url)
+            return SimpleNamespace(
+                content=image_bytes,
+                headers={"content-type": "image/png"},
+                raise_for_status=lambda: None,
+            )
+
+        async def post(self, request_url: str, **kwargs):
+            captured["request_url"] = request_url
+            captured["kwargs"] = kwargs
+            return _FakeResponse({"data": [{"b64_json": b64_image}]})
+
+    class _FakeStorage:
+        is_local = False
+
+        async def upload_bytes(self, data: bytes, folder: str, filename: str, content_type: str):
+            captured["upload"] = {
+                "data": data,
+                "folder": folder,
+                "filename": filename,
+                "content_type": content_type,
+            }
+            return SimpleNamespace(
+                key=f"{folder}/{filename}",
+                url="https://oss.example.com/edit.png",
+            )
+
+    async def fake_get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(
+        image_generation_tool.httpx, "AsyncClient", lambda **kwargs: _FakeHttpClient()
+    )
+    monkeypatch.setattr(image_generation_tool, "get_or_init_storage", fake_get_or_init_storage)
+    monkeypatch.setattr(image_generation_tool.settings, "IMAGE_GENERATION_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        image_generation_tool,
+        "utc_now",
+        lambda: datetime(2026, 5, 23, 12, 34, 56, tzinfo=timezone.utc),
+    )
+    monkeypatch.setattr(
+        image_generation_tool.settings,
+        "IMAGE_GENERATION_BASE_URL",
+        "https://api.example.com/v1",
+    )
+    monkeypatch.setattr(image_generation_tool.settings, "IMAGE_GENERATION_MODEL", "gpt-image-2")
+
+    result = json.loads(
+        await image_generation_tool.image_generate.coroutine(
+            prompt="make it brighter",
+            input_images=["/api/upload/file/generated-images/user-1/source.png"],
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert captured["request_url"] == "https://api.example.com/v1/images/edits"
+    assert captured["download_urls"] == [
+        "https://app.example.com/api/upload/file/generated-images/user-1/source.png"
+    ]
+    assert captured["kwargs"]["data"]["prompt"] == "make it brighter"
+    assert captured["kwargs"]["data"]["background"] == "auto"
+    assert captured["kwargs"]["data"]["input_fidelity"] == "low"
+    assert captured["kwargs"]["files"][0][0] == "image"
+    assert (
+        result["images"][0]["url"]
+        == "https://app.example.com/api/upload/file/generated-images/user-1/generated-20260523_123456-1.png"
+    )
+    assert captured["upload"]["filename"] == "generated-20260523_123456-1.png"
+    assert "mask_url" not in result
 
 
 @pytest.mark.asyncio

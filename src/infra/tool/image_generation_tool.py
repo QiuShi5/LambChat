@@ -19,6 +19,7 @@ from src.infra.tool.backend_utils import (
     get_base_url_from_runtime,
     get_user_id_from_runtime,
 )
+from src.infra.utils.datetime import utc_now
 from src.kernel.config import settings
 
 try:
@@ -51,6 +52,12 @@ def _strip_data_url_prefix(value: str) -> tuple[str, str]:
 def _guess_mime(filename: str, fallback: str = "image/png") -> str:
     mime, _ = mimetypes.guess_type(filename)
     return mime or fallback
+
+
+def _generated_filename(mime: str, index: int) -> str:
+    ext = (mimetypes.guess_extension(mime) or ".png").lstrip(".")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
+    return f"generated-{timestamp}-{index + 1}.{ext}"
 
 
 def _filename_from_url(url: str, index: int) -> str:
@@ -149,6 +156,7 @@ async def _convert_result_item(
     *,
     user_id: str,
     runtime: ToolRuntime | None,
+    index: int,
 ) -> dict[str, Any]:
     payload = item.get("result") if isinstance(item.get("result"), dict) else item
     if not isinstance(payload, dict):
@@ -156,13 +164,10 @@ async def _convert_result_item(
 
     image_bytes, mime = _extract_image_payload(payload)
     if not image_bytes and isinstance(payload.get("url"), str):
-        source_bytes, source_mime, filename = await _download_image_source(payload["url"], runtime)
+        source_bytes, source_mime, _ = await _download_image_source(payload["url"], runtime)
         image_bytes = source_bytes
         mime = source_mime
-        if not filename:
-            filename = "image.png"
-    else:
-        filename = f"{payload.get('revised_prompt') or 'image'}.png"
+    filename = _generated_filename(mime, index)
 
     uploaded = await _upload_image_bytes(
         image_bytes,
@@ -179,7 +184,6 @@ async def _convert_result_item(
     result: dict[str, Any] = {
         "url": proxy_url,
         "key": uploaded["key"],
-        "size": uploaded["size"],
         "content_type": uploaded["content_type"],
     }
     if payload.get("revised_prompt"):
@@ -190,6 +194,7 @@ async def _convert_result_item(
 async def _call_generation_api(
     *,
     prompt: str,
+    background: str,
     size: str,
     quality: str,
     n: int,
@@ -211,6 +216,7 @@ async def _call_generation_api(
     payload: dict[str, Any] = {
         "model": model,
         "prompt": prompt,
+        "background": background,
         "size": size,
         "quality": quality,
         "n": n,
@@ -241,8 +247,97 @@ async def _call_generation_api(
         }
 
     images = []
-    for item in items:
-        images.append(await _convert_result_item(item, user_id=user_id, runtime=runtime))
+    for index, item in enumerate(items):
+        images.append(
+            await _convert_result_item(
+                item,
+                user_id=user_id,
+                runtime=runtime,
+                index=index,
+            )
+        )
+
+    return {
+        "success": True,
+        "images": images,
+    }
+
+
+async def _call_edit_api(
+    *,
+    prompt: str,
+    input_images: list[str],
+    background: str,
+    input_fidelity: str,
+    size: str,
+    quality: str,
+    n: int,
+    output_format: str,
+    runtime: ToolRuntime | None,
+) -> dict[str, Any]:
+    api_key = getattr(settings, "IMAGE_GENERATION_API_KEY", "") or ""
+    if not api_key:
+        return {"error": "IMAGE_GENERATION_API_KEY is not configured"}
+
+    base_url = _resolve_base_url()
+    model = _resolve_model()
+    timeout = getattr(settings, "IMAGE_GENERATION_TIMEOUT", 120) or 120
+    user_id = get_user_id_from_runtime(runtime) or "anonymous"
+
+    files: list[tuple[str, tuple[str, bytes, str]]] = []
+    for index, image_url in enumerate(input_images[:16]):
+        image_bytes, content_type, filename = await _download_image_source(
+            image_url,
+            runtime,
+            index=index,
+        )
+        files.append(("image", (filename, image_bytes, content_type)))
+
+    data: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "background": background,
+        "input_fidelity": input_fidelity,
+        "size": size,
+        "quality": quality,
+        "n": n,
+        "output_format": output_format,
+    }
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(
+            f"{base_url}/images/edits",
+            headers={"Authorization": f"Bearer {api_key}"},
+            data=data,
+            files=files,
+        )
+        response.raise_for_status()
+        body = response.json()
+
+    items = []
+    if isinstance(body, dict):
+        raw_items = body.get("data")
+        if isinstance(raw_items, list):
+            items = [item for item in raw_items if isinstance(item, dict)]
+        elif isinstance(raw_items, dict):
+            items = [raw_items]
+
+    if not items:
+        return {
+            "error": "Image API did not return any image data",
+            "raw_response": body,
+        }
+
+    images = []
+    for index, item in enumerate(items):
+        images.append(
+            await _convert_result_item(
+                item,
+                user_id=user_id,
+                runtime=runtime,
+                index=index,
+            )
+        )
 
     return {
         "success": True,
@@ -252,24 +347,60 @@ async def _call_generation_api(
 
 @tool
 async def image_generate(
-    prompt: Annotated[str, "The prompt used to generate the image"],
-    size: Annotated[str, "Image size, e.g. 1024x1024 or auto"] = "1024x1024",
-    quality: Annotated[str, "Image quality"] = "auto",
-    n: Annotated[int, "Number of images to generate"] = 1,
-    output_format: Annotated[str, "Output format"] = "png",
+    prompt: Annotated[str, "Describe the image you want to create or edit."],
+    input_images: Annotated[
+        list[str] | None,
+        "Optional source image URLs or project file URLs. Provide one or more images to switch to image-to-image mode; leave empty for pure text-to-image.",
+    ] = None,
+    background: Annotated[
+        str,
+        "Background mode. Use auto, opaque, or transparent when supported by the model.",
+    ] = "auto",
+    input_fidelity: Annotated[
+        str,
+        "How closely the result should preserve the input images. Use low or high when supported.",
+    ] = "low",
+    size: Annotated[
+        str,
+        "Image size, such as 1024x1024, 1024x1536, 1536x1024, or auto depending on the model.",
+    ] = "1024x1024",
+    quality: Annotated[
+        str,
+        "Image quality level. Usually auto, low, medium, or high depending on the model.",
+    ] = "auto",
+    output_format: Annotated[
+        str,
+        "Output format for the generated image, usually png, jpeg, or webp.",
+    ] = "png",
     runtime: Annotated[ToolRuntime, InjectedToolArg] = None,  # type: ignore[assignment]
 ) -> str:
-    """Generate images with an OpenAI-compatible image API."""
+    """Generate or edit images with an OpenAI-compatible image API.
+
+    Use prompt alone for text-to-image. Add input_images to switch to image-to-image.
+    """
     try:
-        safe_n = max(1, min(int(n), 4))
-        result = await _call_generation_api(
-            prompt=prompt,
-            size=size,
-            quality=quality,
-            n=safe_n,
-            output_format=output_format,
-            runtime=runtime,
-        )
+        if input_images:
+            result = await _call_edit_api(
+                prompt=prompt,
+                input_images=list(input_images),
+                background=background,
+                input_fidelity=input_fidelity,
+                size=size,
+                quality=quality,
+                n=1,
+                output_format=output_format,
+                runtime=runtime,
+            )
+        else:
+            result = await _call_generation_api(
+                prompt=prompt,
+                background=background,
+                size=size,
+                quality=quality,
+                n=1,
+                output_format=output_format,
+                runtime=runtime,
+            )
         return _json(result)
     except Exception as exc:
         logger.warning("[image_generate] failed: %s", exc)
