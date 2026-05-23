@@ -37,7 +37,6 @@ export function TeamPickerModal({
     }
   }, [isOpen]);
 
-  // Prevent background scroll when modal is open
   useEffect(() => {
     if (!isOpen) return;
     const previous = document.body.style.overflow;
@@ -47,7 +46,6 @@ export function TeamPickerModal({
     };
   }, [isOpen]);
 
-  // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,7 +74,7 @@ export function TeamPickerModal({
     <>
       <div
         data-yields-sidebar
-        className="fixed inset-0 z-[300] bg-black/50 animate-fade-in"
+        className="fixed inset-0 z-[300] bg-black/40 animate-fade-in"
         onClick={onClose}
       />
       <div
@@ -85,58 +83,54 @@ export function TeamPickerModal({
       >
         <div
           ref={sheetRef as React.Ref<HTMLDivElement>}
-          className="sm:rounded-2xl rounded-t-2xl shadow-2xl w-full sm:w-[40%] sm:min-w-[400px] min-h-[30vh] sm:max-h-[70vh] max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden"
+          className="sm:rounded-xl rounded-t-xl shadow-2xl w-full sm:w-[420px] max-h-[70vh] sm:max-h-[65vh] flex flex-col overflow-hidden"
           style={{ background: "var(--theme-bg-card)" }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Mobile drag handle */}
+          <div className="flex justify-center pt-2 sm:hidden">
+            <div className="w-6 h-1 rounded-full bg-stone-300 dark:bg-stone-600" />
+          </div>
+
           {/* Header */}
           <div
-            className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b relative"
+            className="flex items-center justify-between px-4 sm:px-5 py-3 border-b"
             style={{ borderColor: "var(--theme-border)" }}
           >
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 w-10 h-1 rounded-full bg-stone-300 dark:bg-stone-600 sm:hidden" />
-            <div className="flex items-center gap-3 mt-2 sm:mt-0">
-              <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 dark:from-blue-500/20 dark:to-indigo-500/20 flex items-center justify-center">
-                <Users
-                  size={16}
-                  className="text-stone-500 dark:text-blue-400 sm:w-[18px] sm:h-[18px]"
-                />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-semibold text-stone-900 dark:text-stone-100 font-serif">
-                  {t("team.selectTeam", "选择团队")}
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  {t("team.selectTeamDesc", "选择一个团队进行协作")}
-                </p>
-              </div>
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--theme-text)]">
+                {t("team.selectTeam", "选择团队")}
+              </h2>
+              <p className="text-xs text-[var(--theme-text-secondary)] mt-0.5">
+                {t("team.selectTeamDesc", "选择一个团队进行协作")}
+              </p>
             </div>
-            <div className="flex items-center gap-1 mt-2 sm:mt-0">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleCreateNew}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-stone-900 dark:bg-stone-600 text-white dark:text-stone-100 hover:bg-stone-800 dark:hover:bg-stone-500 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)] text-white dark:text-stone-100 hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3 w-3" />
                 {t("common.new", "新建")}
               </button>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 active:bg-stone-200 dark:active:bg-stone-600 transition-colors"
+                className="p-1.5 rounded-md hover:bg-[var(--theme-bg)] transition-colors"
               >
-                <X size={18} className="text-stone-400 dark:text-stone-500" />
+                <X size={16} className="text-[var(--theme-text-secondary)]" />
               </button>
             </div>
           </div>
 
           {/* Team list */}
-          <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4 space-y-1.5">
+          <div className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5">
             {loading && (
-              <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-8">
+              <p className="text-xs text-[var(--theme-text-secondary)] text-center py-8">
                 {t("common.loading", "加载中...")}
               </p>
             )}
             {!loading && teams.length === 0 && (
-              <p className="text-sm text-stone-400 dark:text-stone-500 text-center py-8">
+              <p className="text-xs text-[var(--theme-text-secondary)] text-center py-8">
                 {t("team.noTeams", "暂无团队。创建一个团队以开始协作。")}
               </p>
             )}
@@ -147,46 +141,51 @@ export function TeamPickerModal({
                   <button
                     key={team.id}
                     type="button"
-                    className={`flex w-full items-center gap-3 px-3 sm:px-3.5 py-3 sm:py-3.5 rounded-xl text-left transition-all duration-200 ${
+                    className={`relative flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors duration-150 overflow-hidden ${
                       isActive
-                        ? "bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/15"
-                        : "hover:bg-stone-50 dark:hover:bg-stone-700/30 active:bg-stone-100/80 dark:active:bg-stone-600/40"
+                        ? "bg-[var(--theme-primary-light)]"
+                        : "hover:bg-[var(--theme-bg)]"
                     }`}
                     onClick={() => handleSelect(team.id)}
                   >
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-white dark:bg-stone-700 shadow-sm border border-stone-100 dark:border-stone-600">
+                    {/* Color bar for selected */}
+                    {isActive && (
+                      <div
+                        className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r"
+                        style={{ background: "var(--theme-primary)" }}
+                      />
+                    )}
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-[var(--theme-border)] bg-[var(--theme-bg-card)]">
                       <Users
-                        size={17}
-                        className={`sm:w-[18px] sm:h-[18px] ${
+                        size={15}
+                        className={`${
                           isActive
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-stone-500 dark:text-stone-400"
+                            ? "text-[var(--theme-primary)]"
+                            : "text-[var(--theme-text-secondary)]"
                         }`}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span
-                        className={`text-[13px] sm:text-sm font-medium truncate block ${
+                        className={`text-[13px] font-medium truncate block ${
                           isActive
-                            ? "text-blue-700 dark:text-blue-400"
-                            : "text-stone-700 dark:text-stone-200"
+                            ? "text-[var(--theme-text)]"
+                            : "text-[var(--theme-text-secondary)]"
                         }`}
                       >
                         {team.name}
                       </span>
-                      <p className="text-xs text-stone-400 dark:text-stone-500 truncate mt-0.5 leading-relaxed">
+                      <p className="text-[11px] text-[var(--theme-text-secondary)] truncate mt-0.5">
                         {team.members.filter((m) => m.enabled).length}{" "}
                         {t("team.members", "成员")}
                       </p>
                     </div>
                     {isActive && (
-                      <div className="w-5 h-5 rounded-full bg-blue-500 dark:bg-blue-500 flex items-center justify-center shrink-0">
-                        <Check
-                          size={12}
-                          className="text-white"
-                          strokeWidth={3}
-                        />
-                      </div>
+                      <Check
+                        size={16}
+                        className="text-[var(--theme-primary)] shrink-0"
+                        strokeWidth={2.5}
+                      />
                     )}
                   </button>
                 );
@@ -194,10 +193,13 @@ export function TeamPickerModal({
           </div>
 
           {/* Footer */}
-          <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-t border-stone-200 dark:border-stone-700 bg-stone-50/80 dark:bg-stone-800/50 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div
+            className="px-4 sm:px-5 py-2.5 border-t bg-[var(--theme-bg)] pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+            style={{ borderColor: "var(--theme-border)" }}
+          >
             <button
               onClick={onClose}
-              className="w-full py-2.5 px-4 bg-stone-900 dark:bg-stone-600 text-white dark:text-stone-100 rounded-xl font-medium text-sm hover:bg-stone-800 dark:hover:bg-stone-500 active:bg-stone-700 dark:active:bg-stone-600 transition-colors"
+              className="w-full py-2 px-4 rounded-lg text-sm font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
             >
               {t("common.done", "完成")}
             </button>
