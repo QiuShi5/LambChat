@@ -218,6 +218,18 @@ export type {
 export type { VersionInfo } from "./common";
 
 // ============================================
+// Team Types
+// ============================================
+export type {
+  Team,
+  TeamMember,
+  TeamCreateRequest,
+  TeamUpdateRequest,
+  TeamMemberCreateRequest,
+  TeamListResponse,
+} from "./team";
+
+// ============================================
 // Project Types
 // ============================================
 
