@@ -136,23 +136,20 @@
 
 .glass-tab-active {
   position: relative;
+  transition: color 0.2s ease;
 }
 
 .glass-tab-active::after {
   content: "";
   position: absolute;
-  bottom: 0;
-  left: 1rem;
-  right: 1rem;
+  bottom: -1px;
+  left: 0;
+  right: 0;
   height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--theme-primary) 60%, transparent),
-    var(--theme-primary),
-    color-mix(in srgb, var(--theme-primary) 60%, transparent)
-  );
-  box-shadow: 0 0 8px color-mix(in srgb, var(--theme-primary) 20%, transparent);
+  border-radius: 1px 1px 0 0;
+  background: var(--theme-primary);
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
 }
 
 .glass-divider {

@@ -66,6 +66,10 @@ export enum Permission {
   ENVVAR_READ = "envvar:read",
   ENVVAR_WRITE = "envvar:write",
   ENVVAR_DELETE = "envvar:delete",
+  // Team
+  TEAM_READ = "team:read",
+  TEAM_WRITE = "team:write",
+  TEAM_DELETE = "team:delete",
   // Notification
   NOTIFICATION_MANAGE = "notification:manage",
 }

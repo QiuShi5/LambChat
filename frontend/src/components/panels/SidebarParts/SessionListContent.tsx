@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../hooks/useAuth";
+import { Permission } from "../../../types/auth";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { BrandWordmark } from "../../common/BrandWordmark";
 import type { BackendSession } from "../../../services/api";
@@ -120,6 +122,8 @@ export function SessionListContent({
 }: SessionListContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canReadTeam = hasPermission(Permission.TEAM_READ);
 
   const chatsUnreadCount = getUnreadCountForUncategorized({
     loadedSessions: uncategorizedSessions,
@@ -204,13 +208,15 @@ export function SessionListContent({
           <span>{t("personaPresets.title", "角色广场")}</span>
         </button>
 
-        <button
-          onClick={() => navigate("/team")}
-          className="sidebar-nav-btn w-full h-9 rounded-[10px] flex items-center gap-3 px-[9px] focus:outline-none transition-colors"
-        >
-          <Users size={20} />
-          <span>{t("nav.team", "团队构建")}</span>
-        </button>
+        {canReadTeam && (
+          <button
+            onClick={() => navigate("/team")}
+            className="sidebar-nav-btn w-full h-9 rounded-[10px] flex items-center gap-3 px-[9px] focus:outline-none transition-colors"
+          >
+            <Users size={20} />
+            <span>{t("nav.team", "团队构建")}</span>
+          </button>
+        )}
 
         <button
           onClick={() => navigate("/files")}

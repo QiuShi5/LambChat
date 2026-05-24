@@ -29,6 +29,7 @@ import { personaPresetApi } from "../../services/api/personaPreset";
 import { uploadApi } from "../../services/api";
 import { compressImageFile } from "../../utils/imageCompression";
 import toast from "react-hot-toast";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import {
   PersonaAvatarIcon,
   PersonaAvatarImage,
@@ -126,13 +127,17 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [rolePickerOpen, setRolePickerOpen] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const rolePickerRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
       handleSave,
       handleClone,
-      handleDelete,
+      handleDelete: () => {
+        if (existingTeamId) setShowDeleteConfirm(true);
+      },
     }));
 
     const hasTeamName = teamName.trim().length > 0;
@@ -324,14 +329,17 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
 
     const handleDelete = async () => {
       if (!existingTeamId) return;
-      if (!window.confirm(t("team.deleteConfirm"))) return;
+      setIsDeleting(true);
       try {
         await teamApi.delete(existingTeamId);
         toast.success(t("team.deleteSuccess", "团队已删除"));
+        setShowDeleteConfirm(false);
         onClose?.();
       } catch (e) {
         console.error("Failed to delete team:", e);
         toast.error(t("team.deleteFailed", "删除失败"));
+      } finally {
+        setIsDeleting(false);
       }
     };
 
@@ -754,6 +762,21 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
             )}
           </div>
         </form>
+
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title={t("team.confirmDelete", "确认删除")}
+          message={t(
+            "team.confirmDeleteMessage",
+            "确定要删除该团队吗？此操作不可撤销。",
+          )}
+          confirmText={t("common.delete", "删除")}
+          cancelText={t("common.cancel", "取消")}
+          variant="danger"
+          loading={isDeleting}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     );
   },

@@ -33,6 +33,7 @@ import type { LocalizedText, PersonaStarterPrompt } from "../../types";
 import { EditorSidebar } from "../common/EditorSidebar";
 import { PanelHeader } from "../common/PanelHeader";
 import { nameToGradient } from "../common/cardUtils";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { PersonaScopeDropdown } from "../persona/PersonaScopeDropdown";
 import { PersonaTagFilterDropdown } from "../persona/PersonaTagFilterDropdown";
 import type { ScopeFilter } from "../persona/usePersonaPlaza";
@@ -181,6 +182,8 @@ export function TeamBuilderWrapper() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [footerState, setFooterState] = useState<TeamBuilderFooterState>({
     saving: false,
     existingTeamId: null,
@@ -296,15 +299,19 @@ export function TeamBuilderWrapper() {
     [],
   );
 
-  const handleDeleteTeam = async (teamId: string) => {
-    if (!window.confirm(t("team.deleteConfirm"))) return;
+  const handleDeleteTeam = async () => {
+    if (!deleteConfirmId) return;
+    setIsDeleting(true);
     try {
-      await teamApi.delete(teamId);
+      await teamApi.delete(deleteConfirmId);
       toast.success(t("team.deleteSuccess", "团队已删除"));
-      setTeams((prev) => prev.filter((t) => t.id !== teamId));
+      setTeams((prev) => prev.filter((t) => t.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
     } catch (e) {
       console.error("Failed to delete team:", e);
       toast.error(t("team.deleteFailed", "删除失败"));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -750,7 +757,7 @@ export function TeamBuilderWrapper() {
                           <Copy size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteTeam(team.id)}
+                          onClick={() => setDeleteConfirmId(team.id)}
                           className="scb__action-btn scb__action-btn--ghost team-card__delete-action"
                           title={t("team.delete")}
                         >
@@ -837,6 +844,21 @@ export function TeamBuilderWrapper() {
         onToggleTag={toggleTag}
         onClearFilters={clearFilters}
         onClose={() => setIsFilterOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title={t("team.confirmDelete", "确认删除")}
+        message={t(
+          "team.confirmDeleteMessage",
+          "确定要删除该团队吗？此操作不可撤销。",
+        )}
+        confirmText={t("common.delete", "删除")}
+        cancelText={t("common.cancel", "取消")}
+        variant="danger"
+        loading={isDeleting}
+        onConfirm={handleDeleteTeam}
+        onCancel={() => setDeleteConfirmId(null)}
       />
     </div>
   );

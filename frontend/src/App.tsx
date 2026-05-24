@@ -511,7 +511,7 @@ function App() {
             <Route
               path="/team"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute permissions={[Permission.TEAM_READ]}>
                   <TeamPage />
                 </ProtectedRoute>
               }

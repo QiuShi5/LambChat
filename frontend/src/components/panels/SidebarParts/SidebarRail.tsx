@@ -8,6 +8,8 @@ import {
   Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../../../hooks/useAuth";
+import { Permission } from "../../../types/auth";
 import { APP_NAME } from "../../../constants";
 
 const railBtn =
@@ -50,6 +52,8 @@ export function SidebarRail({
   onShowProfile,
 }: SidebarRailProps) {
   const { t } = useTranslation();
+  const { hasPermission } = useAuth();
+  const canReadTeam = hasPermission(Permission.TEAM_READ);
 
   return (
     <nav
@@ -120,15 +124,17 @@ export function SidebarRail({
         >
           <UserRound size={20} />
         </button>
-        <button
-          type="button"
-          onClick={onOpenTeamBuilder}
-          className={railBtn}
-          title={t("nav.team", "团队构建")}
-          aria-label={t("nav.team", "团队构建")}
-        >
-          <Users size={20} />
-        </button>
+        {canReadTeam && (
+          <button
+            type="button"
+            onClick={onOpenTeamBuilder}
+            className={railBtn}
+            title={t("nav.team", "团队构建")}
+            aria-label={t("nav.team", "团队构建")}
+          >
+            <Users size={20} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpenFileLibrary}

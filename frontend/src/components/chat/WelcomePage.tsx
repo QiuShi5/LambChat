@@ -289,12 +289,18 @@ export const WelcomePage = memo(function WelcomePage({
   const showStarterPrompts =
     isAgentReady &&
     currentAgent !== "team" &&
-    !!selectedPersonaPresetId &&
-    personaStarterPrompts.length > 0;
+    (!!selectedPersonaPresetId
+      ? personaStarterPrompts.length > 0
+      : !personaPresetsLoading &&
+        roleCards.length === 0 &&
+        defaultSuggestions.length > 0);
   const showTeamStarterPrompts =
     currentAgent === "team" &&
-    !!selectedTeamId &&
-    teamStarterPrompts.length > 0;
+    (!!selectedTeamId
+      ? teamStarterPrompts.length > 0
+      : !teamCardsLoading &&
+        welcomeTeamCards.length === 0 &&
+        defaultSuggestions.length > 0);
   const canChangePersona =
     isAgentReady &&
     currentAgent !== "team" &&
@@ -304,7 +310,13 @@ export const WelcomePage = memo(function WelcomePage({
     currentAgent === "team" && !!selectedTeamId && !!onSelectTeam;
   const showSelectionActions = canChangePersona || canChangeTeam;
   const activeStarterPrompts =
-    currentAgent === "team" ? teamStarterPrompts : personaStarterPrompts;
+    currentAgent === "team"
+      ? teamStarterPrompts.length > 0
+        ? teamStarterPrompts
+        : defaultSuggestions
+      : personaStarterPrompts.length > 0
+        ? personaStarterPrompts
+        : defaultSuggestions;
   const displayCards = mentionQuery ? filteredCards : roleCards;
   const displayTeamCards = mentionQuery ? filteredTeamCards : welcomeTeamCards;
   const personaSkeletonCount = getWelcomePersonaSkeletonCount(
@@ -315,10 +327,15 @@ export const WelcomePage = memo(function WelcomePage({
     teamCardsLoading,
     displayTeamCards.length,
   );
+  // Whether data has loaded but is empty
+  const isTeamEmpty =
+    showTeamCards && !teamCardsLoading && displayTeamCards.length === 0;
+  const isPersonaEmpty =
+    showPersonaCards && !personaPresetsLoading && displayCards.length === 0;
   // Whether to show the choice-card gallery section (persona or team).
-  // Always true when agent is ready and no selection is made, so that
-  // skeleton cards hold the space from the very first render.
-  const showGallerySection = showPersonaCards || showTeamCards;
+  // Hide when data has finished loading and there are no cards.
+  const showGallerySection =
+    (showPersonaCards && !isPersonaEmpty) || (showTeamCards && !isTeamEmpty);
   // Whether the gallery has any real content (used for container width variant)
   const showChoiceCards = showGallerySection;
 
