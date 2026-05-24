@@ -200,7 +200,10 @@ export const FeatureMenu = memo(function FeatureMenu({
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return { display: "none" };
     const vw = window.innerWidth;
-    const dropdownW = Math.min(vw < 640 ? 336 : 320, vw - 16);
+    const dropdownW = Math.min(
+      vw < 640 ? Math.min(240, vw - 40) : 320,
+      vw - 16,
+    );
     const left = Math.max(8, Math.min(rect.left, vw - dropdownW - 8));
     return {
       position: "fixed",
