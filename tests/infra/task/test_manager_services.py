@@ -89,6 +89,7 @@ async def test_recovery_service_resume_session_submits_localized_recovery_messag
             "disabled_skills": ["demo-skill"],
             "disabled_mcp_tools": ["mcp.tool"],
             "project_id": "project-1",
+            "team_id": "team-1",
         },
     )
     storage = _FakeStorage(session)
@@ -135,10 +136,12 @@ async def test_recovery_service_resume_session_submits_localized_recovery_messag
     assert submit_calls[0]["session_id"] == "session-1"
     assert submit_calls[0]["project_id"] == "project-1"
     assert submit_calls[0]["disabled_tools"] == ["bash"]
+    assert submit_calls[0]["team_id"] == "team-1"
     assert submit_calls[0]["message"] == "请继续处理当前会话中未完成的内容。"
     assert submit_calls[0]["enabled_skills"] is None
     assert redis.set_calls
     assert storage.updates[-1][0] == "session-1"
+    assert storage.updates[-1][1].metadata["team_id"] == "team-1"
 
 
 @pytest.mark.asyncio

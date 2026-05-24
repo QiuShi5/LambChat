@@ -15,11 +15,7 @@ Skills Store Backend
 import fnmatch
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from deepagents.backends.utils import (
-    create_file_data,
-    format_content_with_line_numbers,
-    slice_read_response,
-)
+from deepagents.backends.utils import create_file_data, format_content_with_line_numbers
 from langgraph.config import get_config
 
 from src.infra.backend._skills_path_utils import (
@@ -63,10 +59,25 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _slice_file_data(content: str, offset: int, limit: int):
+    try:
+        from deepagents.backends.utils import slice_read_response
+
+        return slice_read_response(create_file_data(content), offset, limit)
+    except ImportError:
+        lines = content.splitlines(keepends=True)
+        if offset >= len(lines):
+            return ReadResult(
+                error=f"Line offset {offset} exceeds file length ({len(lines)} lines)"
+            )
+        sliced = "".join(lines[offset : offset + limit]) if limit >= 0 else "".join(lines[offset:])
+        return sliced
+
+
 def _slice_text_read(content: str, offset: int, limit: int) -> str | ReadResult:
     if not content:
         return ""
-    sliced = slice_read_response(create_file_data(content), offset, limit)
+    sliced = _slice_file_data(content, offset, limit)
     if is_read_result(sliced):
         error = getattr(sliced, "error", None)
         return ReadResult(error=str(error) if error is not None else read_result_to_string(sliced))
@@ -76,7 +87,7 @@ def _slice_text_read(content: str, offset: int, limit: int) -> str | ReadResult:
 def _slice_text_content(content: str, offset: int, limit: int) -> str | ReadResult:
     if not content:
         return ""
-    sliced = slice_read_response(create_file_data(content), offset, limit)
+    sliced = _slice_file_data(content, offset, limit)
     if is_read_result(sliced):
         error = getattr(sliced, "error", None)
         return ReadResult(error=str(error) if error is not None else read_result_to_string(sliced))

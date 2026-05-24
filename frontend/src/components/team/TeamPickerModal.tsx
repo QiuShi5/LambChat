@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Users, Plus, Check, X } from "lucide-react";
-import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { Plus, Search, Settings2, Sparkles, UsersRound, X } from "lucide-react";
+import { nameToGradient } from "../panels/MarketplacePanel/constants";
 import { teamApi } from "../../services/api/team";
 import type { Team } from "../../types/team";
+import { TeamAvatar } from "./TeamAvatar";
+import { getTeamFallbackAvatar, getTeamFallbackTag } from "./teamAvatarUtils";
 
 interface TeamPickerModalProps {
   isOpen: boolean;
@@ -12,6 +14,7 @@ interface TeamPickerModalProps {
   onSelect: (teamId: string | null) => void;
   onClose: () => void;
   onCreateNew: () => void;
+  onManageTeams?: () => void;
 }
 
 export function TeamPickerModal({
@@ -20,21 +23,21 @@ export function TeamPickerModal({
   onSelect,
   onClose,
   onCreateNew,
+  onManageTeams,
 }: TeamPickerModalProps) {
   const { t } = useTranslation();
   const [teams, setTeams] = useState<Team[]>([]);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const sheetRef = useSwipeToClose({ onClose });
 
   useEffect(() => {
-    if (isOpen) {
-      setLoading(true);
-      teamApi
-        .list(0, 50)
-        .then((res) => setTeams(res.teams))
-        .catch((err) => console.error("Failed to load teams:", err))
-        .finally(() => setLoading(false));
-    }
+    if (!isOpen) return;
+    setLoading(true);
+    teamApi
+      .list(0, 50)
+      .then((res) => setTeams(res.teams))
+      .catch((err) => console.error("Failed to load teams:", err))
+      .finally(() => setLoading(false));
   }, [isOpen]);
 
   useEffect(() => {
@@ -55,6 +58,22 @@ export function TeamPickerModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const filteredTeams = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return teams;
+    return teams.filter(
+      (team) =>
+        team.name.toLowerCase().includes(q) ||
+        team.description?.toLowerCase().includes(q) ||
+        (team.tags ?? []).some((tag) => tag.toLowerCase().includes(q)) ||
+        team.members.some(
+          (member) =>
+            member.role_name.toLowerCase().includes(q) ||
+            member.role_tags.some((tag) => tag.toLowerCase().includes(q)),
+        ),
+    );
+  }, [query, teams]);
+
   const handleSelect = useCallback(
     (teamId: string) => {
       onSelect(teamId);
@@ -62,6 +81,11 @@ export function TeamPickerModal({
     },
     [onSelect, onClose],
   );
+
+  const handleClear = useCallback(() => {
+    onSelect(null);
+    onClose();
+  }, [onSelect, onClose]);
 
   const handleCreateNew = useCallback(() => {
     onCreateNew();
@@ -71,142 +95,244 @@ export function TeamPickerModal({
   if (!isOpen) return null;
 
   return createPortal(
-    <>
+    <div
+      data-yields-sidebar
+      className="fixed inset-0 z-[250] flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-6"
+      onClick={onClose}
+    >
       <div
-        data-yields-sidebar
-        className="fixed inset-0 z-[300] bg-black/40 animate-fade-in"
-        onClick={onClose}
-      />
-      <div
-        className="fixed z-[301] sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 inset-x-0 bottom-0 animate-slide-up sm:animate-scale-in"
-        onClick={onClose}
+        className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl sm:rounded-2xl"
+        style={{ background: "var(--theme-bg-card)" }}
+        onClick={(event) => event.stopPropagation()}
       >
         <div
-          ref={sheetRef as React.Ref<HTMLDivElement>}
-          className="sm:rounded-xl rounded-t-xl shadow-2xl w-full sm:w-[420px] max-h-[70vh] sm:max-h-[65vh] flex flex-col overflow-hidden"
-          style={{ background: "var(--theme-bg-card)" }}
-          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-between border-b px-5 py-4"
+          style={{ borderColor: "var(--theme-border)" }}
         >
-          {/* Mobile drag handle */}
-          <div className="flex justify-center pt-2 sm:hidden">
-            <div className="w-6 h-1 rounded-full bg-stone-300 dark:bg-stone-600" />
-          </div>
-
-          {/* Header */}
-          <div
-            className="flex items-center justify-between px-4 sm:px-5 py-3 border-b"
-            style={{ borderColor: "var(--theme-border)" }}
-          >
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800">
+              <UsersRound size={18} style={{ color: "var(--theme-primary)" }} />
+            </div>
             <div>
-              <h2 className="text-sm font-semibold text-[var(--theme-text)]">
-                {t("team.selectTeam", "选择团队")}
+              <h2
+                className="text-base font-semibold"
+                style={{ color: "var(--theme-text)" }}
+              >
+                {t("team.plaza", "团队广场")}
               </h2>
-              <p className="text-xs text-[var(--theme-text-secondary)] mt-0.5">
+              <p
+                className="text-xs"
+                style={{ color: "var(--theme-text-secondary)" }}
+              >
                 {t("team.selectTeamDesc", "选择一个团队进行协作")}
               </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleCreateNew}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-[var(--theme-primary)] text-white dark:text-stone-100 hover:opacity-90 transition-opacity"
-              >
-                <Plus className="h-3 w-3" />
-                {t("common.new", "新建")}
-              </button>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-md hover:bg-[var(--theme-bg)] transition-colors"
-              >
-                <X size={16} className="text-[var(--theme-text-secondary)]" />
-              </button>
-            </div>
           </div>
-
-          {/* Team list */}
-          <div className="flex-1 overflow-y-auto py-2 px-3 space-y-0.5">
-            {loading && (
-              <p className="text-xs text-[var(--theme-text-secondary)] text-center py-8">
-                {t("common.loading", "加载中...")}
-              </p>
-            )}
-            {!loading && teams.length === 0 && (
-              <p className="text-xs text-[var(--theme-text-secondary)] text-center py-8">
-                {t("team.noTeams", "暂无团队。创建一个团队以开始协作。")}
-              </p>
-            )}
-            {!loading &&
-              teams.map((team) => {
-                const isActive = team.id === selectedTeamId;
-                return (
-                  <button
-                    key={team.id}
-                    type="button"
-                    className={`relative flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors duration-150 overflow-hidden ${
-                      isActive
-                        ? "bg-[var(--theme-primary-light)]"
-                        : "hover:bg-[var(--theme-bg)]"
-                    }`}
-                    onClick={() => handleSelect(team.id)}
-                  >
-                    {/* Color bar for selected */}
-                    {isActive && (
-                      <div
-                        className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r"
-                        style={{ background: "var(--theme-primary)" }}
-                      />
-                    )}
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border border-[var(--theme-border)] bg-[var(--theme-bg-card)]">
-                      <Users
-                        size={15}
-                        className={`${
-                          isActive
-                            ? "text-[var(--theme-primary)]"
-                            : "text-[var(--theme-text-secondary)]"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span
-                        className={`text-[13px] font-medium truncate block ${
-                          isActive
-                            ? "text-[var(--theme-text)]"
-                            : "text-[var(--theme-text-secondary)]"
-                        }`}
-                      >
-                        {team.name}
-                      </span>
-                      <p className="text-[11px] text-[var(--theme-text-secondary)] truncate mt-0.5">
-                        {team.members.filter((m) => m.enabled).length}{" "}
-                        {t("team.members", "成员")}
-                      </p>
-                    </div>
-                    {isActive && (
-                      <Check
-                        size={16}
-                        className="text-[var(--theme-primary)] shrink-0"
-                        strokeWidth={2.5}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-          </div>
-
-          {/* Footer */}
-          <div
-            className="px-4 sm:px-5 py-2.5 border-t bg-[var(--theme-bg)] pb-[max(0.625rem,env(safe-area-inset-bottom))]"
-            style={{ borderColor: "var(--theme-border)" }}
-          >
+          <div className="flex items-center gap-1">
             <button
+              type="button"
+              className="rounded-lg p-2 hover:bg-stone-100 dark:hover:bg-stone-800"
               onClick={onClose}
-              className="w-full py-2 px-4 rounded-lg text-sm font-medium text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] transition-colors"
             >
-              {t("common.done", "完成")}
+              <X size={18} />
             </button>
           </div>
         </div>
+
+        <div className="space-y-3 border-b px-5 py-3 border-stone-200/70 dark:border-stone-700/70">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                background: "var(--theme-primary)",
+                color: "var(--theme-bg)",
+              }}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Plus size={13} />
+                {t("common.new", "新建")}
+              </span>
+            </button>
+            {selectedTeamId && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                style={{
+                  borderColor: "var(--theme-border)",
+                  color: "var(--theme-text-secondary)",
+                }}
+              >
+                {t("team.clearCurrent", "清除当前团队")}
+              </button>
+            )}
+            {onManageTeams && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onManageTeams();
+                }}
+                className="ml-auto rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                style={{
+                  borderColor: "var(--theme-border)",
+                  color: "var(--theme-text-secondary)",
+                }}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Settings2 size={13} />
+                  {t("team.manage", "管理")}
+                </span>
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+            />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("team.search", "搜索团队")}
+              className="w-full rounded-lg border bg-transparent py-2 pl-9 pr-3 text-sm outline-none"
+              style={{
+                borderColor: "var(--theme-border)",
+                color: "var(--theme-text)",
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="py-10 text-center text-sm text-stone-500">
+              {t("common.loading", "加载中...")}
+            </div>
+          ) : filteredTeams.length === 0 ? (
+            <div className="py-10 text-center text-sm text-stone-500">
+              {t("team.noTeams", "暂无团队。创建一个团队以开始协作。")}
+            </div>
+          ) : (
+            <div className="grid auto-grid-cols gap-3">
+              {filteredTeams.map((team, index) => {
+                const selected = selectedTeamId === team.id;
+                const gradient = nameToGradient(team.name);
+                const activeCount = team.members.filter(
+                  (m) => m.enabled,
+                ).length;
+                return (
+                  <div
+                    key={team.id}
+                    className="pps-card group flex h-full flex-col overflow-hidden rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div
+                      className="pps-card__banner relative h-12 shrink-0"
+                      style={{
+                        background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+                      }}
+                    >
+                      {selected && (
+                        <span className="pps-card__status-badge">
+                          {t("personaPresets.using", "使用中")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col p-4 pt-5">
+                      <div className="flex items-start gap-3">
+                        <TeamAvatar
+                          avatar={team.avatar}
+                          fallbackAvatar={getTeamFallbackAvatar(team)}
+                          fallbackTag={getTeamFallbackTag(team)}
+                          label={team.name}
+                          className="team-picker-avatar"
+                          iconSize={20}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-base font-semibold text-[var(--theme-text)] leading-tight">
+                            {team.name}
+                          </h3>
+                          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[var(--theme-text-secondary)]">
+                            <span>
+                              {t("team.memberCount", "{{count}} 人", {
+                                count: activeCount,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-[13px] leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
+                        {team.description ||
+                          t("team.defaultDescription", "协同工作的角色团队")}
+                      </p>
+
+                      {team.members.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {team.members.slice(0, 3).map((member) => (
+                            <span
+                              key={member.member_id}
+                              className="scb__mini-tag"
+                              style={{ cursor: "default" }}
+                            >
+                              {member.role_name}
+                            </span>
+                          ))}
+                          {team.members.length > 3 && (
+                            <span
+                              className="scb__mini-tag"
+                              style={{ cursor: "default", opacity: 0.7 }}
+                            >
+                              +{team.members.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {(team.tags ?? []).length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(team.tags ?? []).slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="scb__mini-tag"
+                              style={{ cursor: "default", opacity: 0.82 }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex-1" />
+
+                      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--theme-border)] pt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(team.id)}
+                          className={`pps-card__action ${
+                            selected
+                              ? "pps-card__action--active"
+                              : "pps-card__action--primary"
+                          }`}
+                        >
+                          <Sparkles size={13} />
+                          {selected
+                            ? t("personaPresets.using", "使用中")
+                            : t("personaPresets.use", "使用")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </>,
+    </div>,
     document.body,
   );
 }

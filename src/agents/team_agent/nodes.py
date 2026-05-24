@@ -31,20 +31,31 @@ from src.agents.core.thinking import build_thinking_config
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
 from src.agents.team_agent.context import TeamAgentContext
 from src.agents.team_agent.prompt import (
+    SANDBOX_RUNTIME_SECTION,
+    SANDBOX_SYSTEM_PROMPT,
     TEAM_ROUTER_SYSTEM_PROMPT,
+    build_team_member_subagent_type,
     build_team_members_description,
+    build_team_subagent_avatars,
+    build_team_subagent_display_names,
 )
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    EnvVarPromptMiddleware,
     PromptCachingMiddleware,
+    SandboxMCPMiddleware,
     SectionPromptMiddleware,
     ToolResultBinaryMiddleware,
     create_retry_middleware,
 )
 from src.infra.agent.middleware_subagent import SubagentActivityMiddleware
-from src.infra.backend.deepagent import create_persistent_backend_factory
+from src.infra.backend import (
+    create_persistent_backend_factory,
+    create_sandbox_backend_factory,
+)
 from src.infra.llm.client import LLMClient
 from src.infra.logging import get_logger
+from src.infra.sandbox.session_manager import get_session_sandbox_manager
 from src.infra.skill.loader import build_skills_prompt
 from src.infra.storage.checkpoint import get_async_checkpointer
 from src.infra.storage.mongodb_store import acreate_store
@@ -154,13 +165,15 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 team.active_members[0] if team.active_members else None,
             )
             default_role = (
-                (default_member.role_name or default_member.member_id)
+                build_team_member_subagent_type(default_member)
                 if default_member
                 else "general-purpose"
             )
         else:
             default_role = (
-                team.active_members[0].role_name if team.active_members else "general-purpose"
+                build_team_member_subagent_type(team.active_members[0])
+                if team.active_members
+                else "general-purpose"
             )
         system_prompt = TEAM_ROUTER_SYSTEM_PROMPT.format(
             team_members_description=team_members_desc,
@@ -171,11 +184,57 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     # 创建 backend
     backend_start = time.time()
-    backend_factory = create_persistent_backend_factory(
-        assistant_id=assistant_id, user_id=context.user_id
-    )
+    sandbox_backend = None
+    sandbox_work_dir = None
+
+    if not settings.ENABLE_SANDBOX:
+        backend_factory = create_persistent_backend_factory(
+            assistant_id=assistant_id, user_id=context.user_id
+        )
+        logger.info(
+            f"[TeamAgent] Sandbox disabled, using PersistentBackend for assistant: {assistant_id}"
+        )
+    else:
+        if not context.user_id:
+            raise ValueError("Sandbox requires authenticated user (user_id is required)")
+
+        sandbox_manager = get_session_sandbox_manager()
+        try:
+            await presenter.emit_sandbox_starting()
+        except Exception as e:
+            logger.warning(f"Failed to emit sandbox:starting event: {e}")
+
+        try:
+            sandbox_backend, sandbox_work_dir = await sandbox_manager.get_or_create(
+                session_id=state.get("session_id", str(uuid.uuid4())),
+                user_id=context.user_id,
+            )
+            try:
+                sandbox_id = getattr(sandbox_backend.default, "id", "unknown")
+                await presenter.emit_sandbox_ready(
+                    sandbox_id=sandbox_id,
+                    work_dir=sandbox_work_dir,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to emit sandbox:ready event: {e}")
+
+            backend_factory = create_sandbox_backend_factory(
+                sandbox_backend.default,
+                assistant_id,
+                user_id=context.user_id,
+            )
+            system_prompt = f"{SANDBOX_SYSTEM_PROMPT}\n\n{system_prompt}"
+            logger.info(
+                f"[TeamAgent] Sandbox enabled, using sandbox backend for assistant: {assistant_id}"
+            )
+        except Exception as e:
+            try:
+                await presenter.emit_sandbox_error(f"沙箱初始化失败: {str(e)}")
+            except Exception as emit_err:
+                logger.warning(f"Failed to emit sandbox:error event: {emit_err}")
+            raise
+
     backend = backend_factory(None) if callable(backend_factory) else backend_factory
-    logger.info(f"[TeamAgent] Using PersistentBackend for assistant: {assistant_id}")
     backend_init_time = time.time() - backend_start
     logger.debug(f"[TeamAgent] Backend init: {backend_init_time * 1000:.3f}ms")
 
@@ -208,18 +267,20 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     # ── 子代理配置 ──
     subagent_base_url = configurable.get("base_url", "")
 
-    def _build_subagent_middleware() -> list:
+    def _build_subagent_middleware(subagent_type: str = "general-purpose") -> list:
         """Build the middleware stack for a single subagent."""
         mw = [
             *create_retry_middleware(fallback_model=fallback_model_value, thinking=thinking_config),
             ToolResultBinaryMiddleware(base_url=subagent_base_url),
             SubagentActivityMiddleware(backend=backend),
         ]
+        if sandbox_backend:
+            mw.append(EnvVarPromptMiddleware(user_id=context.user_id or "default"))
         if context.deferred_manager is not None:
             from src.infra.agent.middleware import ToolSearchMiddleware
 
             subagent_deferred_manager = context.deferred_manager.fork_for_scope(
-                "subagent:general-purpose"
+                f"subagent:{subagent_type}"
             )
             mw.append(
                 ToolSearchMiddleware(
@@ -231,6 +292,8 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         return mw
 
     custom_subagents: list[SubAgent | CompiledSubAgent] = []
+    subagent_display_names: dict[str, str] = {}
+    subagent_avatars: dict[str, str] = {}
 
     if team and team.active_members:
         # ── 多角色子代理 ──
@@ -238,8 +301,12 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             from src.infra.persona_preset.manager import get_persona_preset_manager
 
             preset_mgr = get_persona_preset_manager()
+            subagent_display_names = build_team_subagent_display_names(team)
+            subagent_avatars = build_team_subagent_avatars(team)
 
             for member in team.active_members:
+                subagent_type = build_team_member_subagent_type(member)
+                role_name = member.role_name or subagent_type
                 try:
                     # 解析 persona preset 获取 system_prompt
                     preset_snapshot = await preset_mgr.use_preset(
@@ -248,7 +315,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                         is_admin=False,
                     )
                     role_prompt = build_role_subagent_prompt(
-                        role_name=member.role_name,
+                        role_name=role_name,
                         role_system_prompt=preset_snapshot.system_prompt,
                         team_name=team.name,
                         team_instructions=team.team_instructions or None,
@@ -260,7 +327,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                         f"Using fallback prompt."
                     )
                     role_prompt = build_role_subagent_prompt(
-                        role_name=member.role_name,
+                        role_name=role_name,
                         role_system_prompt="",
                         team_name=team.name,
                         team_instructions=team.team_instructions or None,
@@ -268,15 +335,15 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
                 custom_subagents.append(
                     {
-                        "name": member.role_name,
+                        "name": subagent_type,
                         "description": (
-                            f"Team member '{member.role_name}' "
+                            f"Team member '{role_name}' "
                             f"(member_id: {member.member_id}). "
                             f"Dispatch tasks matching this role's expertise."
                             + (f" {member.role_instructions}" if member.role_instructions else "")
                         ),
                         "system_prompt": role_prompt,
-                        "middleware": _build_subagent_middleware(),
+                        "middleware": _build_subagent_middleware(subagent_type),
                     }
                 )
 
@@ -307,8 +374,15 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         for s in (*MAIN_AGENT_PROMPT_SECTIONS, *persona_sections, skills_prompt, memory_guide)
         if s
     ]
+    if sandbox_backend and sandbox_work_dir:
+        _prompt_sections.append(SANDBOX_RUNTIME_SECTION.format(work_dir=sandbox_work_dir))
     if _prompt_sections:
         user_middleware.append(SectionPromptMiddleware(sections=_prompt_sections))
+    if sandbox_backend:
+        user_middleware.append(
+            SandboxMCPMiddleware(backend=sandbox_backend, user_id=context.user_id or "default")
+        )
+        user_middleware.append(EnvVarPromptMiddleware(user_id=context.user_id or "default"))
     if settings.ENABLE_MEMORY and settings.NATIVE_MEMORY_INDEX_ENABLED and context.user_id:
         from src.infra.agent.middleware import MemoryIndexMiddleware
 
@@ -361,7 +435,12 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     # 创建事件处理器
     logger.info("[TeamAgent] Creating AgentEventProcessor")
-    event_processor = AgentEventProcessor(presenter, base_url=configurable.get("base_url", ""))
+    event_processor = AgentEventProcessor(
+        presenter,
+        base_url=configurable.get("base_url", ""),
+        subagent_display_names=subagent_display_names,
+        subagent_avatars=subagent_avatars,
+    )
 
     logger.info("[TeamAgent] Starting astream_events")
     try:

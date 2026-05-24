@@ -255,7 +255,7 @@ export function SkillsList({
       )}
 
       {/* Skills List */}
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4">
+      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 lg:px-8 lg:py-8">
         {filteredSkills.length === 0 ? (
           <div className="skill-empty-state">
             <div className="skill-empty-state__icon">

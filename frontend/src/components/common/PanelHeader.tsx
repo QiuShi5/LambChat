@@ -43,19 +43,19 @@ export function PanelHeader({
 }: PanelHeaderProps) {
   return (
     <div className={className ? `panel-header ${className}` : "panel-header"}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 lg:gap-4">
+        <div className="flex min-w-0 items-center gap-3 lg:gap-4">
           {icon && (
-            <div className="[&>svg]:size-[24px] flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-stone-100 to-stone-50 text-stone-600 shadow-sm ring-1 ring-stone-200/60 dark:from-stone-800 dark:to-stone-900 dark:text-stone-300 dark:ring-stone-700/50">
+            <div className="[&>svg]:size-5 flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-theme-bg-subtle to-theme-bg text-theme-text-secondary shadow-sm ring-1 ring-stone-200/60 lg:[&>svg]:size-[22px] lg:size-14 dark:from-theme-bg-subtle dark:to-theme-bg dark:text-theme-text-secondary dark:ring-stone-700/50">
               {icon}
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-stone-900 dark:text-stone-50 font-serif">
+            <h1 className="truncate text-lg font-bold tracking-tight text-theme-text font-serif lg:text-xl">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-0.5 truncate text-sm leading-snug text-stone-500 dark:text-stone-400">
+              <p className="mt-0.5 truncate text-sm leading-snug text-theme-text-secondary lg:text-[0.85rem]">
                 {subtitle}
               </p>
             )}
@@ -70,11 +70,11 @@ export function PanelHeader({
 
       {/* 搜索框 */}
       {onSearchChange !== undefined && (
-        <div className="mt-2 flex items-center gap-2 sm:mt-3">
+        <div className="mt-2 flex items-center gap-2 sm:mt-3 lg:mt-4">
           <div className="relative min-w-0 flex-1">
             <Search
               size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-text-tertiary"
             />
             <input
               type="text"

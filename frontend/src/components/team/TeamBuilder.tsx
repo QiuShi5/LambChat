@@ -1,16 +1,66 @@
-import { useState, useEffect, useCallback } from "react";
-import { Copy, MessageSquareText, Save, Trash2, Users } from "lucide-react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Camera,
+  ChevronDown,
+  Loader2,
+  MessageSquareText,
+  Plus,
+  Search,
+  Smile,
+  Sparkles,
+  Tag,
+  Users,
+  X,
+} from "lucide-react";
+import type { PersonaPreset } from "../../types";
+import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
+import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
 import { personaPresetApi } from "../../services/api/personaPreset";
-import type { PersonaPreset } from "../../types";
-import type { Team, TeamMember } from "../../types/team";
-import { RoleSquare } from "./RoleSquare";
-import { TeamRoster } from "./TeamRoster";
+import { uploadApi } from "../../services/api";
+import { compressImageFile } from "../../utils/imageCompression";
+import {
+  PersonaAvatarIcon,
+  PersonaAvatarImage,
+} from "../persona/PersonaAvatarIcon";
+import {
+  getEmojiAvatarUrl,
+  isEmojiAvatar,
+  isPersonaImageAvatar,
+} from "../persona/personaAvatar";
+import {
+  draftRowsToStarterPrompts,
+  starterPromptsToDraftRows,
+  type StarterPromptDraftRow,
+} from "../persona/personaPresetEditor";
+
+export interface TeamBuilderHandle {
+  handleSave: () => void;
+  handleClone: () => void;
+  handleDelete: () => void;
+}
+
+export interface TeamBuilderFooterState {
+  saving: boolean;
+  existingTeamId: string | null;
+  hasTeamName: boolean;
+}
 
 interface TeamBuilderProps {
   teamId?: string | null;
   onSave?: (team: Team) => void;
   onClose?: () => void;
+  surface?: "page" | "sidebar";
+  onFormStateChange?: (state: TeamBuilderFooterState) => void;
 }
 
 function generateMemberId(): string {
@@ -19,246 +69,681 @@ function generateMemberId(): string {
     .slice(2, 8)}`;
 }
 
-export function TeamBuilder({ teamId, onSave, onClose }: TeamBuilderProps) {
-  const [presets, setPresets] = useState<PersonaPreset[]>([]);
-  const [presetsLoading, setPresetsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+const TEAM_AVATAR_EMOJIS = [
+  "✨",
+  "🤖",
+  "🎓",
+  "💻",
+  "✍️",
+  "🛡️",
+  "📊",
+  "⚡",
+  "📦",
+  "🎨",
+  "🧠",
+  "💬",
+];
 
-  const [teamName, setTeamName] = useState("");
-  const [teamDescription, setTeamDescription] = useState("");
-  const [teamInstructions, setTeamInstructions] = useState("");
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [defaultMemberId, setDefaultMemberId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [existingTeamId, setExistingTeamId] = useState<string | null>(null);
+function tagsToInput(tags: string[] | undefined): string {
+  return (tags ?? []).join(", ");
+}
 
-  useEffect(() => {
-    personaPresetApi
-      .list({ limit: 100 })
-      .then((res) => {
-        setPresets(res.presets);
-        setPresetsLoading(false);
-      })
-      .catch(() => {
-        setPresetsLoading(false);
+function inputToTags(value: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of value.split(/[,，\n]/)) {
+    const tag = raw.trim();
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+  return result;
+}
+
+export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
+  function TeamBuilder(
+    { teamId, onSave, onClose, surface = "page", onFormStateChange },
+    ref,
+  ) {
+    const { t } = useTranslation();
+    const [presets, setPresets] = useState<PersonaPreset[]>([]);
+    const [presetsLoading, setPresetsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const [teamName, setTeamName] = useState("");
+    const [teamDescription, setTeamDescription] = useState("");
+    const [teamAvatar, setTeamAvatar] = useState<string | null>(null);
+    const [teamTagsInput, setTeamTagsInput] = useState("");
+    const [teamInstructions, setTeamInstructions] = useState("");
+    const [starterPromptRows, setStarterPromptRows] = useState<
+      StarterPromptDraftRow[]
+    >([]);
+    const [members, setMembers] = useState<TeamMember[]>([]);
+    const [defaultMemberId, setDefaultMemberId] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [existingTeamId, setExistingTeamId] = useState<string | null>(null);
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [rolePickerOpen, setRolePickerOpen] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+    const rolePickerRef = useRef<HTMLDivElement>(null);
+
+    useImperativeHandle(ref, () => ({
+      handleSave,
+      handleClone,
+      handleDelete,
+    }));
+
+    const hasTeamName = teamName.trim().length > 0;
+
+    useEffect(() => {
+      onFormStateChange?.({
+        saving,
+        existingTeamId,
+        hasTeamName,
       });
-  }, []);
+    }, [saving, existingTeamId, hasTeamName, onFormStateChange]);
 
-  useEffect(() => {
-    if (teamId) {
-      teamApi.get(teamId).then((team) => {
-        setExistingTeamId(team.id);
-        setTeamName(team.name);
-        setTeamDescription(team.description);
-        setTeamInstructions(team.team_instructions);
-        setMembers(team.members);
-        setDefaultMemberId(team.default_member_id ?? null);
-      });
-    }
-  }, [teamId]);
+    useEffect(() => {
+      personaPresetApi
+        .list({ limit: 100 })
+        .then((res) => {
+          setPresets(res.presets);
+          setPresetsLoading(false);
+        })
+        .catch(() => {
+          setPresetsLoading(false);
+        });
+    }, []);
 
-  const handleAddRole = useCallback(
-    (preset: PersonaPreset) => {
-      const newMember: TeamMember = {
-        member_id: generateMemberId(),
-        persona_preset_id: preset.id,
-        role_name: preset.name,
-        role_avatar: preset.avatar,
-        role_tags: preset.tags,
-        role_instructions: "",
-        position: members.length,
-        enabled: true,
+    useEffect(() => {
+      if (!rolePickerOpen) return;
+      const handleClick = (e: MouseEvent) => {
+        if (
+          rolePickerRef.current &&
+          !rolePickerRef.current.contains(e.target as Node)
+        ) {
+          setRolePickerOpen(false);
+        }
       };
-      setMembers((prev) => [...prev, newMember]);
-      if (!defaultMemberId) setDefaultMemberId(newMember.member_id);
-    },
-    [members.length, defaultMemberId],
-  );
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }, [rolePickerOpen]);
 
-  const handleRemoveMember = useCallback((memberId: string) => {
-    setMembers((prev) => prev.filter((m) => m.member_id !== memberId));
-    setDefaultMemberId((prev) => (prev === memberId ? null : prev));
-  }, []);
+    useEffect(() => {
+      if (teamId) {
+        teamApi.get(teamId).then((team) => {
+          setExistingTeamId(team.id);
+          setTeamName(team.name);
+          setTeamDescription(team.description);
+          setTeamAvatar(team.avatar ?? null);
+          setTeamTagsInput(tagsToInput(team.tags));
+          setTeamInstructions(team.team_instructions);
+          setStarterPromptRows(starterPromptsToDraftRows(team.starter_prompts));
+          setMembers(team.members);
+          setDefaultMemberId(team.default_member_id ?? null);
+        });
+      } else {
+        setExistingTeamId(null);
+        setTeamName("");
+        setTeamDescription("");
+        setTeamAvatar(null);
+        setTeamTagsInput("");
+        setTeamInstructions("");
+        setStarterPromptRows([]);
+        setMembers([]);
+        setDefaultMemberId(null);
+      }
+    }, [teamId]);
 
-  const handleInstructionsChange = useCallback(
-    (memberId: string, text: string) => {
+    const handleAddRole = useCallback(
+      (preset: PersonaPreset) => {
+        const newMember: TeamMember = {
+          member_id: generateMemberId(),
+          persona_preset_id: preset.id,
+          role_name: preset.name,
+          role_avatar: preset.avatar,
+          role_tags: preset.tags,
+          role_instructions: "",
+          position: members.length,
+          enabled: true,
+        };
+        setMembers((prev) => [...prev, newMember]);
+        if (!defaultMemberId) setDefaultMemberId(newMember.member_id);
+      },
+      [members.length, defaultMemberId],
+    );
+
+    const handleRemoveMember = useCallback(
+      (memberId: string) => {
+        const nextMembers = members.filter((m) => m.member_id !== memberId);
+        setMembers(nextMembers);
+        setDefaultMemberId((current) =>
+          current === memberId ? nextMembers[0]?.member_id ?? null : current,
+        );
+      },
+      [members],
+    );
+
+    const handleInstructionsChange = useCallback(
+      (memberId: string, text: string) => {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.member_id === memberId ? { ...m, role_instructions: text } : m,
+          ),
+        );
+      },
+      [],
+    );
+
+    const handleToggleEnabled = useCallback((memberId: string) => {
       setMembers((prev) =>
         prev.map((m) =>
-          m.member_id === memberId ? { ...m, role_instructions: text } : m,
+          m.member_id === memberId ? { ...m, enabled: !m.enabled } : m,
         ),
       );
-    },
-    [],
-  );
+    }, []);
 
-  const handleToggleEnabled = useCallback((memberId: string) => {
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.member_id === memberId ? { ...m, enabled: !m.enabled } : m,
-      ),
+    const handleSave = async () => {
+      if (!teamName.trim()) return;
+      setSaving(true);
+      try {
+        const payload: TeamCreateRequest = {
+          name: teamName,
+          description: teamDescription,
+          avatar: teamAvatar,
+          tags: inputToTags(teamTagsInput),
+          team_instructions: teamInstructions,
+          starter_prompts: draftRowsToStarterPrompts(starterPromptRows),
+          default_member_id: defaultMemberId,
+          members: members.map((m, idx) => ({
+            member_id: m.member_id,
+            persona_preset_id: m.persona_preset_id,
+            role_name: m.role_name,
+            role_avatar: m.role_avatar ?? null,
+            role_tags: m.role_tags,
+            role_instructions: m.role_instructions,
+            position: idx,
+            enabled: m.enabled,
+          })),
+        };
+        const team = existingTeamId
+          ? await teamApi.update(existingTeamId, payload)
+          : await teamApi.create(payload);
+        setExistingTeamId(team.id);
+        onSave?.(team);
+      } catch (e) {
+        console.error("Failed to save team:", e);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    const handleClone = async () => {
+      if (!existingTeamId) return;
+      try {
+        const cloned = await teamApi.clone(existingTeamId);
+        setExistingTeamId(cloned.id);
+        setTeamName(cloned.name);
+        setTeamDescription(cloned.description);
+        setTeamAvatar(cloned.avatar ?? null);
+        setTeamTagsInput(tagsToInput(cloned.tags));
+        setTeamInstructions(cloned.team_instructions);
+        setStarterPromptRows(starterPromptsToDraftRows(cloned.starter_prompts));
+        setMembers(cloned.members);
+        setDefaultMemberId(cloned.default_member_id ?? null);
+      } catch (e) {
+        console.error("Failed to clone team:", e);
+      }
+    };
+
+    const handleAvatarUpload = async (file: File) => {
+      setUploadingAvatar(true);
+      try {
+        const compressed = await compressImageFile(file);
+        const upload = uploadApi.uploadFile(compressed, {
+          folder: "persona-avatars",
+        });
+        const result = await upload.promise;
+        setTeamAvatar(result.url);
+      } catch (e) {
+        console.error("Team avatar upload failed:", e);
+      } finally {
+        setUploadingAvatar(false);
+      }
+    };
+
+    const handleDelete = async () => {
+      if (!existingTeamId) return;
+      if (!window.confirm(t("team.deleteConfirm"))) return;
+      try {
+        await teamApi.delete(existingTeamId);
+        onClose?.();
+      } catch (e) {
+        console.error("Failed to delete team:", e);
+      }
+    };
+
+    const activeMemberCount = members.filter((member) => member.enabled).length;
+    const configuredMemberCount = members.filter((member) =>
+      member.role_instructions.trim(),
+    ).length;
+    const filteredPresets = useMemo(() => {
+      if (!searchQuery.trim()) return presets;
+      const q = searchQuery.toLowerCase();
+      return presets.filter(
+        (preset) =>
+          preset.name.toLowerCase().includes(q) ||
+          preset.description.toLowerCase().includes(q) ||
+          preset.tags.some((tag) => tag.toLowerCase().includes(q)),
+      );
+    }, [presets, searchQuery]);
+    const defaultMember = members.find(
+      (member) => member.member_id === defaultMemberId,
     );
-  }, []);
-
-  const handleSave = async () => {
-    if (!teamName.trim()) return;
-    setSaving(true);
-    try {
-      const payload = {
-        name: teamName,
-        description: teamDescription,
-        team_instructions: teamInstructions,
-        default_member_id: defaultMemberId,
-        members: members.map((m, idx) => ({
-          member_id: m.member_id,
-          persona_preset_id: m.persona_preset_id,
-          role_instructions: m.role_instructions,
-          position: idx,
-          enabled: m.enabled,
-        })),
-      };
-      const team = existingTeamId
-        ? await teamApi.update(existingTeamId, payload)
-        : await teamApi.create(payload);
-      setExistingTeamId(team.id);
-      onSave?.(team);
-    } catch (e) {
-      console.error("Failed to save team:", e);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleClone = async () => {
-    if (!existingTeamId) return;
-    try {
-      const cloned = await teamApi.clone(existingTeamId);
-      setExistingTeamId(cloned.id);
-      setTeamName(cloned.name);
-      setMembers(cloned.members);
-      setDefaultMemberId(cloned.default_member_id ?? null);
-    } catch (e) {
-      console.error("Failed to clone team:", e);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!existingTeamId) return;
-    if (!window.confirm("Are you sure you want to delete this team?")) return;
-    try {
-      await teamApi.delete(existingTeamId);
-      onClose?.();
-    } catch (e) {
-      console.error("Failed to delete team:", e);
-    }
-  };
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Header bar */}
-      <div className="flex items-center justify-between border-b border-[var(--theme-border)] px-4 py-2.5 sm:px-5">
-        <div className="flex items-center gap-2">
-          <Users size={16} className="text-[var(--theme-text-secondary)]" />
-          <span className="text-sm font-semibold text-[var(--theme-text)]">
-            {existingTeamId ? "Edit Team" : "New Team"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || !teamName.trim()}
-            className="btn-primary h-8 text-xs disabled:opacity-50"
-          >
-            <Save size={14} />
-            {saving ? "Saving..." : "Save"}
-          </button>
-          {existingTeamId && (
-            <>
-              <button
-                onClick={handleClone}
-                className="btn-secondary h-8 px-2.5 text-xs"
-                title="Clone team"
+    return (
+      <div
+        className={`team-editor-shell ${
+          surface === "sidebar" ? "team-editor-shell--sidebar" : ""
+        }`}
+      >
+        <form
+          className="es-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          {/* Profile: Avatar + Name + Description */}
+          <div className="ppe-profile-section">
+            <div className="ppe-avatar-upload">
+              <div
+                className="ppe-avatar-preview"
+                onClick={() =>
+                  !teamAvatar &&
+                  !uploadingAvatar &&
+                  avatarInputRef.current?.click()
+                }
               >
-                <Copy size={14} />
-              </button>
+                {isEmojiAvatar(teamAvatar) ? (
+                  <>
+                    <PersonaAvatarImage
+                      avatar={getEmojiAvatarUrl(teamAvatar)}
+                      alt=""
+                      className="ppe-avatar-img"
+                    />
+                    <button
+                      type="button"
+                      className="ppe-avatar-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTeamAvatar(null);
+                      }}
+                      title={t("team.remove")}
+                    >
+                      <X size={12} />
+                    </button>
+                  </>
+                ) : isPersonaImageAvatar(teamAvatar) ? (
+                  <>
+                    <PersonaAvatarImage
+                      avatar={teamAvatar}
+                      alt=""
+                      className="ppe-avatar-img"
+                      onError={() => setTeamAvatar(null)}
+                    />
+                    <button
+                      type="button"
+                      className="ppe-avatar-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTeamAvatar(null);
+                      }}
+                      title={t("team.remove")}
+                    >
+                      <X size={12} />
+                    </button>
+                  </>
+                ) : teamAvatar ? (
+                  <>
+                    <div className="ppe-avatar-placeholder">
+                      <PersonaAvatarIcon avatar={teamAvatar} size={20} />
+                    </div>
+                    <button
+                      type="button"
+                      className="ppe-avatar-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTeamAvatar(null);
+                      }}
+                      title={t("team.remove")}
+                    >
+                      <X size={12} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="ppe-avatar-placeholder">
+                    <Camera size={18} />
+                  </div>
+                )}
+                {uploadingAvatar && (
+                  <div className="ppe-avatar-uploading">
+                    <Loader2 size={16} className="animate-spin" />
+                  </div>
+                )}
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingAvatar}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarUpload(file);
+                  e.target.value = "";
+                }}
+              />
+              <div className="relative">
+                <button
+                  type="button"
+                  className="ppe-avatar-hint-btn"
+                  disabled={uploadingAvatar}
+                  onClick={() => setAvatarPickerOpen((v) => !v)}
+                >
+                  <Smile size={12} />
+                  {t("team.chooseIcon")}
+                </button>
+                {avatarPickerOpen && (
+                  <div className="ppe-icon-picker">
+                    {TEAM_AVATAR_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        className="ppe-icon-picker-item"
+                        onClick={() => {
+                          setTeamAvatar(emoji);
+                          setAvatarPickerOpen(false);
+                        }}
+                        title={emoji}
+                      >
+                        <img
+                          src={getEmojiAvatarUrl(emoji)}
+                          alt=""
+                          width={20}
+                          height={20}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="ppe-profile-fields">
+              <div className="ppe-field">
+                <label className="ppe-label">
+                  {t("team.teamName")} <span className="ppe-required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder={t("team.teamNamePlaceholder")}
+                  className="ppe-input"
+                />
+              </div>
+              <div className="ppe-field">
+                <label className="ppe-label">{t("team.description")}</label>
+                <input
+                  type="text"
+                  value={teamDescription}
+                  onChange={(e) => setTeamDescription(e.target.value)}
+                  placeholder={t("team.descriptionPlaceholder")}
+                  className="ppe-input"
+                />
+              </div>
+              <div className="ppe-field">
+                <label className="ppe-label">
+                  <Tag size={13} className="ppe-label-icon" />
+                  {t("team.tags", "标签")}
+                </label>
+                <input
+                  type="text"
+                  value={teamTagsInput}
+                  onChange={(e) => setTeamTagsInput(e.target.value)}
+                  placeholder={t("team.tagsPlaceholder", "例如：研究, 写作")}
+                  className="ppe-input"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Team instructions */}
+          <div className="ppe-field">
+            <label className="ppe-label">
+              <MessageSquareText size={13} className="ppe-label-icon" />
+              {t("team.instructions")}
+            </label>
+            <div className="ppe-textarea-wrap">
+              <textarea
+                value={teamInstructions}
+                onChange={(e) => setTeamInstructions(e.target.value)}
+                placeholder={t("team.instructionsPlaceholder")}
+                className="ppe-textarea"
+                rows={4}
+              />
+            </div>
+            <span
+              style={{
+                fontSize: "0.6875rem",
+                color: "var(--theme-text-secondary)",
+                opacity: 0.75,
+                lineHeight: "1.4",
+                marginTop: "0.25rem",
+                display: "block",
+              }}
+            >
+              {t("team.instructionsHint")}
+            </span>
+          </div>
+
+          {/* Starter prompts */}
+          <div className="ppe-field">
+            <label className="ppe-label">
+              <Sparkles size={13} className="ppe-label-icon" />
+              {t("personaPresets.starterPrompts", "Starter Prompts")}
+            </label>
+            <div className="ppe-starter-list">
+              {starterPromptRows.map((prompt, index) => (
+                <div key={index} className="ppe-starter-row">
+                  <input
+                    value={prompt.icon}
+                    onChange={(e) =>
+                      setStarterPromptRows((prev) =>
+                        prev.map((item, i) =>
+                          i === index
+                            ? { ...item, icon: e.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    className="ppe-input ppe-starter-icon"
+                    placeholder={t("personaPresets.starterIcon", "Icon")}
+                  />
+                  <input
+                    value={prompt.text}
+                    onChange={(e) =>
+                      setStarterPromptRows((prev) =>
+                        prev.map((item, i) =>
+                          i === index
+                            ? { ...item, text: e.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                    className="ppe-input ppe-starter-text"
+                    placeholder={t(
+                      "personaPresets.starterPromptPlaceholder",
+                      'Enter a prompt, or use {"zh":"...","en":"..."}',
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="ppe-starter-remove"
+                    onClick={() =>
+                      setStarterPromptRows((prev) =>
+                        prev.filter((_, i) => i !== index),
+                      )
+                    }
+                    title={t("common.delete", "Delete")}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="ppe-starter-add"
+              onClick={() =>
+                setStarterPromptRows((prev) => [
+                  ...prev,
+                  { icon: "", text: "" },
+                ])
+              }
+            >
+              <Plus size={13} />
+              {t("personaPresets.addStarterPrompt", "Add starter prompt")}
+            </button>
+          </div>
+
+          {/* Team members */}
+          <div className="ppe-field" style={{ gap: "0.75rem" }}>
+            <div className="tmb-header">
+              <div className="tmb-header__row">
+                <label className="ppe-label">
+                  <Users size={13} className="ppe-label-icon" />
+                  {t("team.teamMembers")}
+                </label>
+                <span className="tmb-default">
+                  <Users size={11} />
+                  <span>{defaultMember?.role_name || t("team.notSet")}</span>
+                </span>
+              </div>
+              <div className="tmb-stats">
+                <span className="tmb-stat">
+                  <span className="tmb-stat__dot" />
+                  {t("team.selected", { count: members.length })}
+                </span>
+                <span className="tmb-stat tmb-stat--active">
+                  <span className="tmb-stat__dot" />
+                  {t("team.active", { count: activeMemberCount })}
+                </span>
+                <span className="tmb-stat tmb-stat--configured">
+                  <span className="tmb-stat__dot" />
+                  {t("team.configured", { count: configuredMemberCount })}
+                </span>
+              </div>
+            </div>
+
+            <div ref={rolePickerRef}>
               <button
-                onClick={handleDelete}
-                className="btn-secondary h-8 px-2.5 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
-                title="Delete team"
+                type="button"
+                onClick={() => {
+                  setRolePickerOpen((v) => !v);
+                  setSearchQuery("");
+                }}
+                className={`team-role-picker-trigger ${
+                  rolePickerOpen ? "team-role-picker-trigger--open" : ""
+                }`}
               >
-                <Trash2 size={14} />
+                <Plus size={14} />
+                <span>
+                  {members.length === 0
+                    ? t("team.addRoles")
+                    : t("team.addAnotherRole")}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`team-role-picker-trigger__chevron ${
+                    rolePickerOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
-            </>
-          )}
-        </div>
-      </div>
 
-      {/* Form area */}
-      <div className="border-b border-[var(--theme-border)] px-4 py-3 sm:px-5">
-        <div className="team-editor-summary">
-          <label className="ppe-field">
-            <span className="ppe-label text-[0.6875rem] uppercase tracking-wider">
-              Team name
-            </span>
-            <input
-              type="text"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              placeholder="My team..."
-              className="ppe-input text-base font-semibold"
-            />
-          </label>
-          <label className="ppe-field">
-            <span className="ppe-label text-[0.6875rem] uppercase tracking-wider">
-              Description
-            </span>
-            <input
-              type="text"
-              value={teamDescription}
-              onChange={(e) => setTeamDescription(e.target.value)}
-              placeholder="What this team does..."
-              className="ppe-input"
-            />
-          </label>
-        </div>
-        <label className="ppe-field mt-3">
-          <span className="ppe-label text-[0.6875rem] uppercase tracking-wider">
-            <MessageSquareText size={12} className="ppe-label-icon" />
-            Team-wide instructions
-          </span>
-          <textarea
-            value={teamInstructions}
-            onChange={(e) => setTeamInstructions(e.target.value)}
-            placeholder="Shared instructions applied to every member..."
-            className="ppe-textarea min-h-[3.5rem]"
-            rows={2}
-          />
-        </label>
-      </div>
+              {rolePickerOpen && (
+                <div className="team-role-picker-dropdown">
+                  <div className="team-role-picker-dropdown__search">
+                    <Search
+                      size={14}
+                      className="team-role-picker-dropdown__search-icon"
+                    />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={t("team.searchRoles")}
+                      className="ppe-input"
+                      style={{ paddingLeft: "2.25rem" }}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="team-role-picker-dropdown__list">
+                    {presetsLoading && (
+                      <div className="team-form-empty">
+                        {t("team.loadingRoles")}
+                      </div>
+                    )}
+                    {!presetsLoading && filteredPresets.length === 0 && (
+                      <div className="team-form-empty">
+                        {t("team.noRolesFound")}
+                      </div>
+                    )}
+                    {filteredPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className="team-form-role-option"
+                        onClick={() => handleAddRole(preset)}
+                      >
+                        <span className="team-form-role-option__name">
+                          {preset.name}
+                        </span>
+                        {preset.description && (
+                          <span className="team-form-role-option__desc">
+                            {preset.description}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
-      {/* Two-pane layout */}
-      <div className="flex-1 overflow-hidden">
-        <div className="team-builder-layout h-full">
-          <section className="team-builder-pane">
-            <RoleSquare
-              presets={presets}
-              loading={presetsLoading}
-              onAddRole={handleAddRole}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
-          </section>
-          <section className="team-builder-pane">
-            <TeamRoster
-              members={members}
-              defaultMemberId={defaultMemberId}
-              onRemoveMember={handleRemoveMember}
-              onSetDefault={setDefaultMemberId}
-              onToggleEnabled={handleToggleEnabled}
-              onInstructionsChange={handleInstructionsChange}
-            />
-          </section>
-        </div>
+            {members.length > 0 && (
+              <div className="team-form-selected__list">
+                {members.map((member) => (
+                  <TeamMemberCard
+                    key={member.member_id}
+                    member={member}
+                    isDefault={member.member_id === defaultMemberId}
+                    onRemove={() => handleRemoveMember(member.member_id)}
+                    onSetDefault={() => setDefaultMemberId(member.member_id)}
+                    onToggleEnabled={() =>
+                      handleToggleEnabled(member.member_id)
+                    }
+                    onInstructionsChange={(text) =>
+                      handleInstructionsChange(member.member_id, text)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </form>
       </div>
-    </div>
-  );
-}
+    );
+  },
+);

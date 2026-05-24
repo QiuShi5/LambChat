@@ -89,6 +89,7 @@ async def test_resume_session_submits_localized_recovery_message(
             "disabled_skills": ["demo-skill"],
             "disabled_mcp_tools": ["mcp.tool"],
             "project_id": "project-1",
+            "team_id": "team-1",
         },
     )
     storage = _FakeStorage(session)
@@ -588,6 +589,7 @@ async def test_submit_recovery_run_reuses_trace_for_queued_recovery(
             "disabled_skills": ["demo-skill"],
             "disabled_mcp_tools": ["mcp.tool"],
             "project_id": "project-1",
+            "team_id": "team-1",
         },
     )
     storage = _FakeStorage(session)
@@ -648,8 +650,10 @@ async def test_submit_recovery_run_reuses_trace_for_queued_recovery(
 
     assert result["success"] is True
     assert result["message"] == "任务恢复已加入队列"
+    assert captured_task_context["team_id"] == "team-1"
     assert captured_task_context["user_message_written"] is True
     assert captured_task_context["trace_id"] == "generated-trace"
+    assert storage.updates[-1][1].metadata["team_id"] == "team-1"
     assert manager._run_info[result["run_id"]]["trace_id"] == "generated-trace"
     assert (
         presenter_calls[-1] == "由于系统重启，上一轮任务已中断。请继续处理当前会话中未完成的内容。"

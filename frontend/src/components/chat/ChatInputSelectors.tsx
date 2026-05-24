@@ -1,12 +1,10 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users } from "lucide-react";
 import { ToolSelector } from "../selectors/ToolSelector";
 import { SkillSelector } from "../selectors/SkillSelector";
 import { AgentModeSelector } from "../selectors/AgentModeSelector";
 import { PersonaPresetSelector } from "../persona/PersonaPresetSelector";
-import { AgentOptionButton } from "./AgentOptionButton";
 import { TeamPickerModal } from "../team/TeamPickerModal";
+import { AgentOptionButton } from "./AgentOptionButton";
 import type { FeaturePanel } from "../selectors/FeatureMenu";
 import type {
   ToolState,
@@ -67,14 +65,13 @@ export interface ChatInputSelectorsProps {
   agents?: { id: string; name: string; description: string }[];
   currentAgent?: string;
   onSelectAgent?: (id: string) => void;
+  selectedTeamId?: string | null;
+  onSelectTeam?: (teamId: string | null) => void;
+  onOpenTeamBuilder?: () => void;
   // Agent options
   agentOptions?: Record<string, AgentOption>;
   agentOptionValues?: Record<string, boolean | string | number>;
   onToggleAgentOption?: (key: string, value: boolean | string | number) => void;
-  // Team picker
-  selectedTeamId?: string | null;
-  onSelectTeam?: (teamId: string | null) => void;
-  onOpenTeamBuilder?: () => void;
 }
 
 export function ChatInputSelectors({
@@ -114,15 +111,14 @@ export function ChatInputSelectors({
   agents = [],
   currentAgent,
   onSelectAgent,
-  agentOptions,
-  agentOptionValues = {},
-  onToggleAgentOption,
   selectedTeamId,
   onSelectTeam,
   onOpenTeamBuilder,
+  agentOptions,
+  agentOptionValues = {},
+  onToggleAgentOption,
 }: ChatInputSelectorsProps) {
   const navigate = useNavigate();
-  const [teamPickerOpen, setTeamPickerOpen] = useState(false);
 
   return (
     <>
@@ -190,36 +186,20 @@ export function ChatInputSelectors({
         onOpenChange={(open) => onActivePanelChange(open ? "agent" : null)}
       />
       {currentAgent === "team" && onSelectTeam && (
-        <>
-          <button
-            type="button"
-            className={`chat-tool-btn ${
-              !selectedTeamId ? "text-amber-500 ring-1 ring-amber-400/50" : ""
-            }`}
-            title={
-              selectedTeamId
-                ? "Change team"
-                : "Select a team to use with the team agent"
+        <TeamPickerModal
+          isOpen={activePanel === "team"}
+          selectedTeamId={selectedTeamId ?? null}
+          onSelect={onSelectTeam}
+          onClose={() => onActivePanelChange(null)}
+          onCreateNew={() => {
+            if (onOpenTeamBuilder) {
+              onOpenTeamBuilder();
+            } else {
+              navigate("/team");
             }
-            onClick={() => setTeamPickerOpen(true)}
-            data-active={selectedTeamId ? "" : undefined}
-          >
-            <Users size={18} />
-          </button>
-          <TeamPickerModal
-            isOpen={teamPickerOpen}
-            selectedTeamId={selectedTeamId ?? null}
-            onSelect={onSelectTeam}
-            onClose={() => setTeamPickerOpen(false)}
-            onCreateNew={() => {
-              if (onOpenTeamBuilder) {
-                onOpenTeamBuilder();
-              } else {
-                navigate("/team");
-              }
-            }}
-          />
-        </>
+          }}
+          onManageTeams={() => navigate("/team")}
+        />
       )}
       {agentOptions &&
         onToggleAgentOption &&

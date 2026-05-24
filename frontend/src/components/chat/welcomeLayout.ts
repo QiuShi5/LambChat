@@ -12,6 +12,17 @@ interface WelcomePersonaLike {
   starter_prompts?: PersonaStarterPrompt[];
 }
 
+interface WelcomeTeamLike {
+  id: string;
+  name: string;
+  is_favorite?: boolean;
+  is_pinned?: boolean;
+  last_used_at?: string | null;
+  updated_at?: string;
+  created_at?: string;
+  starter_prompts?: PersonaStarterPrompt[];
+}
+
 export interface WelcomeStarterPrompt {
   icon: string | null;
   text: string;
@@ -27,10 +38,10 @@ export function getWelcomePersonaCardClass(_index: number): string {
     "min-w-[15.75rem]",
     "snap-start",
     "flex-col",
-    "gap-1.5",
+    "py-3",
+    "px-3",
     "rounded-2xl",
     "border",
-    "p-3",
     "text-left",
     "cursor-pointer",
     "transition-all",
@@ -95,23 +106,34 @@ export function getWelcomePersonaCards<T extends WelcomePersonaLike>(
   return typeof limit === "number" ? cards.slice(0, limit) : cards;
 }
 
+export function getWelcomeTeamCards<T extends WelcomeTeamLike>(
+  teams: T[],
+  selectedTeamId: string | null | undefined,
+  limit?: number,
+): T[] {
+  if (selectedTeamId) return [];
+  const cards = [...teams].sort(compareWelcomePersonas);
+  return typeof limit === "number" ? cards.slice(0, limit) : cards;
+}
+
 function timeValue(value: string | null | undefined): number {
   if (!value) return 0;
   const time = Date.parse(value);
   return Number.isFinite(time) ? time : 0;
 }
 
-export function compareWelcomePersonas<T extends WelcomePersonaLike>(
-  a: T,
-  b: T,
-): number {
+export function compareWelcomePersonas<
+  T extends WelcomePersonaLike | WelcomeTeamLike,
+>(a: T, b: T): number {
+  const aUsage = "usage_count" in a ? a.usage_count : 0;
+  const bUsage = "usage_count" in b ? b.usage_count : 0;
   return (
     Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned)) ||
     Number(Boolean(b.is_favorite)) - Number(Boolean(a.is_favorite)) ||
     timeValue(b.updated_at) - timeValue(a.updated_at) ||
     timeValue(b.created_at) - timeValue(a.created_at) ||
     timeValue(b.last_used_at) - timeValue(a.last_used_at) ||
-    Number(b.usage_count || 0) - Number(a.usage_count || 0)
+    Number(bUsage || 0) - Number(aUsage || 0)
   );
 }
 
@@ -121,7 +143,35 @@ export function getSelectedPersonaStarterPrompts(
   language = "en",
   fallbackPrompts: WelcomeStarterPrompt[] = [],
 ): WelcomeStarterPrompt[] {
-  const selected = personas.find((persona) => persona.id === selectedPersonaId);
+  return getSelectedStarterPrompts(
+    personas,
+    selectedPersonaId,
+    language,
+    fallbackPrompts,
+  );
+}
+
+export function getSelectedTeamStarterPrompts(
+  teams: WelcomeTeamLike[],
+  selectedTeamId: string | null | undefined,
+  language = "en",
+  fallbackPrompts: WelcomeStarterPrompt[] = [],
+): WelcomeStarterPrompt[] {
+  return getSelectedStarterPrompts(
+    teams,
+    selectedTeamId,
+    language,
+    fallbackPrompts,
+  );
+}
+
+function getSelectedStarterPrompts<T extends WelcomeTeamLike>(
+  items: T[],
+  selectedItemId: string | null | undefined,
+  language: string,
+  fallbackPrompts: WelcomeStarterPrompt[],
+): WelcomeStarterPrompt[] {
+  const selected = items.find((item) => item.id === selectedItemId);
   if (!selected) return fallbackPrompts;
 
   const prompts = (selected.starter_prompts ?? [])

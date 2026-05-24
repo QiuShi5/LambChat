@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   getSelectedPersonaStarterPrompts,
+  getSelectedTeamStarterPrompts,
   getWelcomePersonaCards,
   getWelcomePersonaCardClass,
   getWelcomePersonaSkeletonCount,
@@ -43,6 +44,28 @@ test("caps welcome persona choices to two rows with vertical scrolling", () => {
   assert.match(
     welcomeCss,
     /@media \(min-width: 640px\) \{[\s\S]*\.welcome-persona-gallery\s*\{[\s\S]*--welcome-persona-card-height: 6rem;[\s\S]*max-height: calc\(\s*var\(--welcome-persona-card-height\) \* 2 \+ var\(--welcome-persona-row-gap\)\s*\);[\s\S]*overflow-y: auto;/,
+  );
+});
+
+test("keeps welcome content centered on mobile when suggestions are visible", () => {
+  assert.match(
+    welcomeCss,
+    /\.welcome-root\s*\{[\s\S]*justify-content: safe center;/,
+  );
+  assert.doesNotMatch(
+    welcomeCss,
+    /@media \(max-width: 639px\) \{[\s\S]*\.welcome-root\s*\{[\s\S]*justify-content: flex-start;/,
+  );
+});
+
+test("keeps mobile welcome cards readable with stable touch targets", () => {
+  assert.match(
+    welcomeCss,
+    /@media \(max-width: 639px\) \{[\s\S]*\.welcome-persona-gallery\s*\{[\s\S]*--welcome-persona-card-height: 4\.75rem;/,
+  );
+  assert.match(
+    welcomeCss,
+    /@media \(max-width: 639px\) \{[\s\S]*\.welcome-suggestions-grid-wrapper\s*\{[\s\S]*max-height: min\(38dvh,/,
   );
 });
 
@@ -101,7 +124,7 @@ test("shows all welcome persona cards with pinned and favorite cards first", () 
 });
 
 test("reserves persona skeleton cards while presets are loading", () => {
-  assert.equal(getWelcomePersonaSkeletonCount(true, 0), 6);
+  assert.equal(getWelcomePersonaSkeletonCount(true, 0), 12);
   assert.equal(getWelcomePersonaSkeletonCount(true, 3), 0);
   assert.equal(getWelcomePersonaSkeletonCount(false, 0), 0);
 });
@@ -138,4 +161,26 @@ test("falls back to default suggestions when selected persona has no starter pro
   );
 
   assert.deepEqual(prompts, [{ icon: "🐍", text: "创建一个 Python 脚本" }]);
+});
+
+test("uses selected team starter prompts before default suggestions", () => {
+  const prompts = getSelectedTeamStarterPrompts(
+    [
+      {
+        id: "team-1",
+        name: "Research Team",
+        starter_prompts: [
+          {
+            icon: "🧭",
+            text: { zh: "组织一次研究评审", en: "Review research" },
+          },
+        ],
+      },
+    ],
+    "team-1",
+    "zh-CN",
+    [{ icon: "✨", text: "默认建议" }],
+  );
+
+  assert.deepEqual(prompts, [{ icon: "🧭", text: "组织一次研究评审" }]);
 });

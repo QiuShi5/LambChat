@@ -792,10 +792,13 @@ export function ChatView({
               selectedPersonaSnapshot={selectedPersonaSnapshot}
               personaPresetsLoading={personaPresetsLoading}
               personaPresetsMutating={personaPresetsMutating}
+              currentAgent={currentAgent}
+              selectedTeamId={selectedTeamId}
               canSendMessage={canSendMessage}
               chatInputProps={chatInputProps}
               onUsePersonaPreset={onUsePersonaPreset}
               onClearPersonaPreset={onClearPersonaPreset}
+              onSelectTeam={onSelectTeam}
             />
           )
         ) : (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save } from "lucide-react";
+import { Bot, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AgentPanelSkeleton } from "../../../skeletons";
 import { RoleSelector } from "../shared/RoleSelector";
@@ -80,8 +80,8 @@ export function RolesAgentTab({
     : false;
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-stone-500 dark:text-stone-400 px-1 leading-relaxed">
+    <div className="space-y-4">
+      <p className="hidden px-1 text-sm leading-relaxed text-theme-text-secondary sm:block">
         {t("agentConfig.rolesDescription")}
       </p>
 
@@ -93,47 +93,58 @@ export function RolesAgentTab({
 
       {selectedRole && (
         <>
-          <div className="glass-card rounded-xl p-5">
-            <h4 className="mb-4 text-sm font-medium text-stone-900 dark:text-stone-100">
-              {t("agentConfig.selectAgentsForRole", {
-                roleName: selectedRoleData?.name,
-              })}
-            </h4>
-            <div className="grid gap-2.5">
-              {availableAgents.map((agent) => (
+          <div className="glass-card divide-y divide-[var(--glass-border)] overflow-hidden rounded-xl">
+            <div className="bg-[var(--glass-bg-subtle)] px-4 py-2.5">
+              <h4 className="truncate text-xs font-medium uppercase tracking-wider text-theme-text-secondary">
+                {t("agentConfig.selectAgentsForRole", {
+                  roleName: selectedRoleData?.name,
+                })}
+              </h4>
+            </div>
+            {availableAgents.map((agent, index) => {
+              const isSelected = currentRoleAgents.includes(agent.id);
+              return (
                 <label
                   key={agent.id}
-                  className={`flex cursor-pointer items-center gap-3.5 rounded-lg bg-[var(--glass-bg-subtle)] p-3.5 transition-all duration-150 ${
-                    currentRoleAgents.includes(agent.id)
-                      ? "ring-2 ring-stone-500/50 dark:ring-stone-400/50 shadow-sm"
-                      : "hover:bg-[var(--glass-bg)]"
+                  className={`flex cursor-pointer items-center gap-3.5 px-4 py-3.5 transition-colors duration-150 ${
+                    isSelected
+                      ? "bg-[var(--glass-bg-subtle)]"
+                      : "hover:bg-[var(--glass-bg-hover)]"
                   }`}
+                  style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <input
                     type="checkbox"
-                    checked={currentRoleAgents.includes(agent.id)}
+                    checked={isSelected}
                     onChange={() => toggleAgent(agent.id)}
-                    className="h-4.5 w-4.5 rounded border-[var(--glass-border)] text-stone-600 focus:ring-stone-500"
+                    className="h-4 w-4 rounded border-[var(--glass-border)] text-stone-600 focus:ring-stone-500"
                   />
+                  <div className="flex size-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--glass-bg-subtle)] text-theme-text-secondary ring-1 ring-[var(--glass-border)]">
+                    <Bot size={16} />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
+                    <div className="truncate text-sm font-medium text-theme-text">
                       {t(agent.name)}
                     </div>
-                    <div className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5 hidden sm:block">
+                    <div className="mt-0.5 hidden truncate text-xs text-theme-text-secondary sm:block">
                       {t(agent.description)}
                     </div>
                   </div>
                 </label>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           {hasChanges && (
-            <div className="flex justify-end pt-2">
+            <div className="glass-divider mt-4 flex items-center justify-between pt-4">
+              <span className="flex items-center gap-1.5 text-xs text-theme-text-tertiary">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                {currentRoleAgents.length} / {availableAgents.length}
+              </span>
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50"
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm"
               >
                 <Save size={16} />
                 {t("common.save")}

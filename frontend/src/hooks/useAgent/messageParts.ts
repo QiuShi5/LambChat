@@ -72,12 +72,14 @@ export function createSubagentPart(
   input: string,
   depth: number,
   timestamp?: string,
+  agentAvatar?: string,
 ): SubagentPart {
   const startedAt = timestamp ? parseDate(timestamp).getTime() : Date.now();
   return {
     type: "subagent",
     agent_id: agentId,
     agent_name: agentName,
+    agent_avatar: agentAvatar,
     input: input,
     isPending: true,
     status: "running",

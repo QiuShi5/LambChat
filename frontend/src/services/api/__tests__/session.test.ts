@@ -72,6 +72,26 @@ test("includes persona preset fields in the submit chat body", () => {
   );
 });
 
+test("includes team_id in the submit chat body when a team is selected", () => {
+  assert.deepEqual(
+    buildSubmitChatBody({
+      message: "hello",
+      teamId: "team-1",
+    }),
+    {
+      message: "hello",
+      session_id: undefined,
+      agent_options: undefined,
+      attachments: undefined,
+      disabled_skills: undefined,
+      enabled_skills: undefined,
+      persona_preset_id: undefined,
+      disabled_mcp_tools: undefined,
+      team_id: "team-1",
+    },
+  );
+});
+
 test("builds the message fork url", () => {
   assert.equal(
     buildMessageForkUrl("session-1", "message-1"),

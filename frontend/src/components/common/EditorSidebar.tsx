@@ -17,6 +17,8 @@ export interface EditorSidebarProps {
   footer?: React.ReactNode;
   /** "default" (30%) | "wide" (larger min-width) */
   width?: "default" | "wide";
+  defaultWidthPct?: number;
+  widthStorageKey?: string;
 }
 
 export function EditorSidebar({
@@ -28,6 +30,8 @@ export function EditorSidebar({
   children,
   footer,
   width = "default",
+  defaultWidthPct = DEFAULT_WIDTH,
+  widthStorageKey = STORAGE_KEY,
 }: EditorSidebarProps) {
   const {
     isMobile,
@@ -41,9 +45,9 @@ export function EditorSidebar({
   } = useSidebarPanel({
     open,
     onClose,
-    widthStorageKey: STORAGE_KEY,
+    widthStorageKey,
     widthCssVar: CSS_VAR,
-    defaultWidthPct: DEFAULT_WIDTH,
+    defaultWidthPct,
     dataAttr: "data-editor-sidebar",
   });
 

@@ -17,14 +17,9 @@ const SettingsPanel = lazy(() =>
     default: m.SettingsPanel,
   })),
 );
-const AgentConfigPanel = lazy(() =>
-  import("../../panels/AgentPanel").then((m) => ({
-    default: m.AgentConfigPanel,
-  })),
-);
-const ModelPanel = lazy(() =>
-  import("../../panels/ModelPanel").then((m) => ({
-    default: m.ModelPanel,
+const AgentModelPanel = lazy(() =>
+  import("../../panels/AgentModelPanel").then((m) => ({
+    default: m.AgentModelPanel,
   })),
 );
 const MCPPanel = lazy(() =>
@@ -76,8 +71,7 @@ const panelMap: Record<
   mcp: MCPPanel,
   feedback: FeedbackPanel,
   channels: ChannelsPage,
-  agents: AgentConfigPanel,
-  models: ModelPanel,
+  agents: AgentModelPanel,
   files: RevealedFilesPage,
   persona: PersonaPlazaPanel,
   team: TeamBuilderPanel,
@@ -103,8 +97,8 @@ export function TabContent({ activeTab }: { activeTab: TabType }) {
   if (!Panel) return null;
 
   return (
-    <main className="flex-1 overflow-hidden">
-      <div className="mx-auto max-w-4xl sm:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-8xl w-full h-full flex flex-col">
+    <main className="flex-1 overflow-hidden bg-[var(--theme-bg)]">
+      <div className="mx-auto w-full h-full flex flex-col overflow-hidden lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] sm:px-4">
         <Suspense fallback={<PanelLoader />}>
           <Panel />
         </Suspense>

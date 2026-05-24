@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Search, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { PersonaPreset } from "../../types";
 import { nameToGradient } from "../common/cardUtils";
 import {
@@ -58,6 +59,7 @@ export function RoleSquare({
   searchQuery,
   onSearchChange,
 }: RoleSquareProps) {
+  const { t } = useTranslation();
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return presets;
     const q = searchQuery.toLowerCase();
@@ -72,30 +74,35 @@ export function RoleSquare({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="team-pane-header">
-        <h2 className="team-pane-title">
-          Role library
-          <span className="team-pane-count">{filtered.length}</span>
-        </h2>
+        <div>
+          <p className="team-pane-eyebrow">{t("team.select")}</p>
+          <h2 className="team-pane-title">
+            {t("team.roleLibrary")}
+            <span className="team-pane-count">{filtered.length}</span>
+          </h2>
+        </div>
       </div>
-      <div className="team-pane-search">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--theme-text-secondary)] pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search roles..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="panel-search"
-        />
+      <div className="team-pane-tools">
+        <div className="team-pane-search">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--theme-text-secondary)] pointer-events-none" />
+          <input
+            type="text"
+            placeholder={t("team.searchRoles")}
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="panel-search"
+          />
+        </div>
       </div>
       <div className="team-role-list">
         {loading && (
           <p className="py-8 text-center text-xs text-[var(--theme-text-secondary)]">
-            Loading roles...
+            {t("team.loadingRoles")}
           </p>
         )}
         {!loading && filtered.length === 0 && (
           <p className="py-8 text-center text-xs text-[var(--theme-text-secondary)]">
-            No roles found.
+            {t("team.noRolesFound")}
           </p>
         )}
         {filtered.map((preset) => {
@@ -107,20 +114,27 @@ export function RoleSquare({
               style={{ "--team-accent": colors[0] } as React.CSSProperties}
             >
               {renderAvatar(preset)}
-              <span className="team-role-card__name">{preset.name}</span>
-              {preset.tags.length > 0 && (
-                <div className="team-role-card__tags">
-                  {preset.tags.slice(0, 2).map((tag) => (
-                    <span key={tag} className="scb__mini-tag">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div className="team-role-card__body">
+                <span className="team-role-card__name">{preset.name}</span>
+                {preset.description && (
+                  <span className="team-role-card__desc">
+                    {preset.description}
+                  </span>
+                )}
+                {preset.tags.length > 0 && (
+                  <div className="team-role-card__tags">
+                    {preset.tags.slice(0, 3).map((tag) => (
+                      <span key={tag} className="scb__mini-tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => onAddRole(preset)}
-                className="scb__action-btn scb__action-btn--ghost shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                title="Add to team"
+                className="team-role-card__add"
+                title={t("team.addToTeam")}
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

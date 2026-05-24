@@ -495,6 +495,7 @@ class Presenter:
         agent_name: str,
         input_message: str,
         depth: int = 1,
+        agent_avatar: Optional[str] = None,
     ) -> Dict[str, Any]:
         """输出子 Agent 调用
 
@@ -510,6 +511,7 @@ class Presenter:
             {
                 "step": self._step_count,
                 "agent_name": agent_name,
+                "agent_avatar": agent_avatar,
                 "input": input_message,
                 "timestamp": utc_now_iso(),
             },

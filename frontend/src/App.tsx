@@ -1,5 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Routes, Route, useParams, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useParams,
+  useNavigate,
+  Navigate,
+} from "react-router-dom";
 import { Toaster, ToastBar, toast } from "react-hot-toast";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -234,15 +240,6 @@ function AgentsPage() {
   return <AppContent key="agents" activeTab="agents" />;
 }
 
-function ModelsPage() {
-  useSEO({
-    title: "seo.models.title",
-    description: "seo.models.description",
-    path: "/models",
-  });
-  return <AppContent key="models" activeTab="models" />;
-}
-
 function FilesPage() {
   useSEO({
     title: "seo.files.title",
@@ -254,8 +251,8 @@ function FilesPage() {
 
 function TeamPage() {
   useSEO({
-    title: "Team Builder",
-    description: "Compose and manage role-based agent teams",
+    title: "seo.team.title",
+    description: "seo.team.description",
     path: "/team",
   });
   return <AppContent key="team" activeTab="team" />;
@@ -510,14 +507,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/models"
-              element={
-                <ProtectedRoute>
-                  <ModelsPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/models" element={<Navigate to="/agents" replace />} />
             <Route
               path="/team"
               element={

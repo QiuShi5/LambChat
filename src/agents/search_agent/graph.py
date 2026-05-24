@@ -29,7 +29,7 @@ from src.agents.search_agent.state import SearchAgentState
 # 设置用户上下文，供 backend 使用
 from src.infra.backend.context import set_user_context
 from src.infra.logging import get_logger
-from src.infra.task.manager import TaskInterruptedError
+from src.infra.task.exceptions import TaskInterruptedError
 from src.infra.writer.present import Presenter, PresenterConfig
 from src.kernel.config import settings
 

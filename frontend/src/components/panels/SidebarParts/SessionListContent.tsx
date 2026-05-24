@@ -7,6 +7,7 @@ import {
   MessageSquarePlus,
   MoreHorizontal,
   UserRound,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -201,6 +202,14 @@ export function SessionListContent({
         >
           <UserRound size={20} />
           <span>{t("personaPresets.title", "角色广场")}</span>
+        </button>
+
+        <button
+          onClick={() => navigate("/team")}
+          className="sidebar-nav-btn w-full h-9 rounded-[10px] flex items-center gap-3 px-[9px] text-sm focus:outline-none transition-colors"
+        >
+          <Users size={20} />
+          <span>{t("nav.team", "团队构建")}</span>
         </button>
 
         <button

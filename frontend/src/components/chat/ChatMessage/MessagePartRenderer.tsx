@@ -220,6 +220,7 @@ export function MessagePartRenderer({
       <SubagentBlock
         agent_id={part.agent_id}
         agent_name={part.agent_name}
+        agent_avatar={part.agent_avatar}
         input={part.input}
         result={part.result}
         success={part.success}

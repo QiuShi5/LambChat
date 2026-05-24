@@ -40,6 +40,7 @@ export interface EventData {
   session_id?: string;
   agent_id?: string;
   agent_name?: string;
+  agent_avatar?: string;
   tool?: string;
   tool_call_id?: string;
   args?: Record<string, unknown>;
@@ -229,6 +230,7 @@ export interface SessionConfig {
   persona_preset_name?: string;
   persona_snapshot?: PersonaPresetSnapshot;
   disabled_mcp_tools?: string[];
+  team_id?: string;
 }
 
 // Backend session type (simplified)

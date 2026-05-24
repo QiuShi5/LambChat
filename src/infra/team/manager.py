@@ -10,6 +10,7 @@ from src.kernel.schemas.team import (
     TeamCreate,
     TeamListResponse,
     TeamMemberResponse,
+    TeamPreferenceUpdate,
     TeamResponse,
     TeamUpdate,
 )
@@ -70,9 +71,14 @@ class TeamManager:
             owner_user_id=owner_user_id,
             name=team_data.name,
             description=team_data.description,
+            avatar=team_data.avatar,
+            tags=team_data.tags,
             members=members_data,
             default_member_id=team_data.default_member_id,
             team_instructions=team_data.team_instructions,
+            starter_prompts=[
+                prompt.model_dump(mode="json") for prompt in team_data.starter_prompts
+            ],
         )
         return await self._hydrate_member_display_metadata(team)
 
@@ -94,17 +100,42 @@ class TeamManager:
         owner_user_id: str,
         skip: int = 0,
         limit: int = 100,
+        favorite: bool | None = None,
+        pinned: bool | None = None,
+        q: str | None = None,
+        tag: str | None = None,
     ) -> TeamListResponse:
         """List teams for an owner."""
         teams, total = await self.storage.list_teams(
             owner_user_id=owner_user_id,
             skip=skip,
             limit=limit,
+            favorite=favorite,
+            pinned=pinned,
+            q=q,
+            tag=tag,
         )
         hydrated = []
         for team in teams:
             hydrated.append(await self._hydrate_member_display_metadata(team))
         return TeamListResponse(teams=hydrated, total=total, skip=skip, limit=limit)
+
+    async def update_preference(
+        self,
+        team_id: str,
+        preference: TeamPreferenceUpdate,
+        *,
+        owner_user_id: str,
+    ) -> TeamResponse:
+        """Update the current user's favorite/pinned state for a team."""
+        team = await self.get_team(team_id, owner_user_id=owner_user_id)
+        update = preference.model_dump(mode="json")
+        pref = await self.storage.update_user_preference(
+            user_id=owner_user_id,
+            team_id=team_id,
+            update=update,
+        )
+        return team.model_copy(update=pref)
 
     async def update_team(
         self,
@@ -173,12 +204,14 @@ class TeamManager:
                         member.member_id,
                         member.persona_preset_id,
                     )
+                    continue
             except Exception:
                 logger.warning(
                     "Failed to validate member %s (preset %s)",
                     member.member_id,
                     member.persona_preset_id,
                 )
+                continue
             validated.append(member)
         return validated
 
@@ -195,7 +228,10 @@ class TeamManager:
             return None
         if not team.active_members:
             return None
-        return team
+        validated_members = await self.validate_team_members(team)
+        if not validated_members:
+            return None
+        return team.model_copy(update={"members": validated_members})
 
 
 _team_manager: Optional[TeamManager] = None

@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { ArrowUp, Square, Lock, X, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { FeatureMenu, type FeaturePanel } from "../selectors/FeatureMenu";
@@ -7,8 +7,15 @@ import {
   PersonaAvatarImage,
 } from "../persona/PersonaAvatarIcon";
 import { isEmojiAvatar, getEmojiAvatarUrl } from "../persona/personaAvatar";
+import { teamApi } from "../../services/api/team";
 import type { AgentOption, FileCategory } from "../../types";
+import type { Team } from "../../types/team";
 import type { UploadLimits } from "../../hooks/useFileUpload";
+import { TeamAvatar } from "../team/TeamAvatar";
+import {
+  getTeamFallbackAvatar,
+  getTeamFallbackTag,
+} from "../team/teamAvatarUtils";
 
 export interface ChatInputToolbarProps {
   activePanel: FeaturePanel;
@@ -34,6 +41,9 @@ export interface ChatInputToolbarProps {
   selectedPersonaName?: string | null;
   personaAvatar: { avatar?: string; primaryTag: string } | null;
   onClearPersonaPreset?: () => void;
+  currentAgent?: string;
+  selectedTeamId?: string | null;
+  onSelectTeam?: (teamId: string | null) => void;
   agentOptions?: Record<string, AgentOption>;
   agentOptionValues?: Record<string, boolean | string | number>;
   onToggleAgentOption?: (key: string, value: boolean | string | number) => void;
@@ -72,6 +82,9 @@ export function ChatInputToolbar({
   selectedPersonaName,
   personaAvatar,
   onClearPersonaPreset,
+  currentAgent,
+  selectedTeamId,
+  onSelectTeam,
   agentOptions,
   agentOptionValues = {},
   onToggleAgentOption,
@@ -82,6 +95,27 @@ export function ChatInputToolbar({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFileCategory, setSelectedFileCategory] =
     useState<FileCategory | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [totalTeamCount, setTotalTeamCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    teamApi
+      .list(0, 50)
+      .then((res) => {
+        if (cancelled) return;
+        setTotalTeamCount(res.total);
+        if (selectedTeamId) {
+          const team = res.teams.find((t) => t.id === selectedTeamId);
+          setSelectedTeam(team ?? null);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTeamId]);
+
   const booleanAgentOptions = agentOptions
     ? Object.fromEntries(
         Object.entries(agentOptions).filter(
@@ -107,10 +141,11 @@ export function ChatInputToolbar({
     },
     [uploadFiles, selectedFileCategory],
   );
+  const selectedTeamName = selectedTeam?.name ?? null;
 
   return (
-    <div className="flex justify-between flex-nowrap pt-3 pb-3 px-2 mx-0.5 max-w-full">
-      <div className="flex items-center gap-1 sm:gap-2 self-end flex-1 min-w-0 overflow-x-auto no-scrollbar">
+    <div className="flex max-w-full flex-nowrap justify-between gap-2 px-2 pb-3 pt-3 mx-0.5">
+      <div className="flex min-h-10 min-w-0 flex-1 items-center gap-1 overflow-x-auto no-scrollbar sm:gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -125,8 +160,10 @@ export function ChatInputToolbar({
           totalToolsCount={totalToolsCount}
           enabledSkillsCount={enabledSkillsCount}
           totalSkillsCount={totalSkillsCount}
-          hasPersonaSelector={hasPersonaSelector}
+          hasPersonaSelector={hasPersonaSelector && currentAgent !== "team"}
           personaName={personaName}
+          hasTeamSelector={currentAgent === "team" && !!onSelectTeam}
+          totalTeamCount={totalTeamCount}
           hasAgentSelector={hasAgentSelector}
           agentName={agentName}
           hasThinkingOption={hasThinkingOption}
@@ -139,7 +176,7 @@ export function ChatInputToolbar({
           agentOptionValues={agentOptionValues}
           onToggleAgentOption={onToggleAgentOption}
         />
-        {selectedPersonaName && (
+        {selectedPersonaName && currentAgent !== "team" && (
           <button
             type="button"
             className="chat-tool-btn group shrink min-w-0"
@@ -190,9 +227,46 @@ export function ChatInputToolbar({
             </div>
           </button>
         )}
+        {currentAgent === "team" && onSelectTeam && selectedTeamId && (
+          <button
+            type="button"
+            className="chat-tool-btn group shrink min-w-0"
+            onClick={() => onActivePanelChange("team")}
+            title={selectedTeamName ?? t("chat.teamSelected")}
+          >
+            <div className="flex min-w-0 flex-row items-center gap-1.5">
+              <span className="relative h-[18px] w-[18px] shrink-0 inline-flex items-center justify-center">
+                <TeamAvatar
+                  avatar={selectedTeam?.avatar}
+                  fallbackAvatar={
+                    selectedTeam ? getTeamFallbackAvatar(selectedTeam) : null
+                  }
+                  fallbackTag={
+                    selectedTeam ? getTeamFallbackTag(selectedTeam) : ""
+                  }
+                  label={selectedTeamName ?? t("chat.teamSelected")}
+                  className="team-toolbar-avatar transition-opacity group-hover:opacity-0"
+                  iconSize={18}
+                />
+                <X
+                  size={18}
+                  className="absolute inset-0 m-auto opacity-0 transition-opacity group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectTeam?.(null);
+                  }}
+                />
+              </span>
+              <span className="max-w-40 truncate text-sm font-semibold text-[var(--theme-primary)]">
+                {selectedTeamName ?? t("chat.teamSelected")}
+              </span>
+              <ChevronDown size={14} className="shrink-0 opacity-50" />
+            </div>
+          </button>
+        )}
       </div>
 
-      <div className="self-end flex space-x-1.5 flex-shrink-0">
+      <div className="flex shrink-0 items-center gap-1.5 self-end">
         {!canSend ? (
           <button
             type="button"

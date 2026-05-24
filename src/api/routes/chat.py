@@ -16,6 +16,7 @@ from src.agents.core import resolve_agent_name
 from src.agents.core.base import AgentFactory
 from src.api.deps import get_current_user_required, require_permissions
 from src.api.routes.auth.utils import _get_language
+from src.api.routes.chat_validation import validate_team_agent_request
 from src.api.routes.session import verify_session_ownership
 from src.infra.chat.user_message_timestamp import format_user_message_with_timestamp
 from src.infra.logging import get_logger
@@ -286,6 +287,7 @@ async def chat_stream(
         request.message,
         request.user_timezone,
     )
+    validate_team_agent_request(agent_id, request)
 
     # 如果用户传入了 session_id，验证所有权
     if request.session_id:

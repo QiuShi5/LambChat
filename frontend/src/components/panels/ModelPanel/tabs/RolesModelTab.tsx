@@ -39,7 +39,6 @@ export function RolesModelTab({
     setLocalRoleModels(roleModelsMap);
   }, [roleModelsMap]);
 
-  // Reset selectedRole if it no longer exists in the roles list
   useEffect(() => {
     if (selectedRole && !roles.find((r) => r.id === selectedRole)) {
       setSelectedRole(roles.length > 0 ? roles[0].id : null);
@@ -123,8 +122,8 @@ export function RolesModelTab({
   const selectedRoleData = roles.find((r) => r.id === selectedRole);
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-glass-enter">
-      <p className="text-sm text-stone-500 dark:text-stone-400 px-1 leading-relaxed hidden sm:block">
+    <div className="space-y-4 animate-glass-enter">
+      <p className="hidden px-1 text-sm leading-relaxed text-stone-500 sm:block dark:text-stone-400">
         {t("agentConfig.modelsDescription")}
       </p>
 
@@ -136,31 +135,33 @@ export function RolesModelTab({
 
       {selectedRole && (
         <>
-          <div className="glass-card rounded-xl">
-            <div className="px-4 sm:px-5 pt-3.5 sm:pt-4 pb-2.5 sm:pb-3 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-stone-900 dark:text-stone-100">
+          <div className="agent-config-list overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] divide-y divide-[var(--glass-border)]">
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-3 bg-[var(--glass-bg-subtle)] px-3.5 py-2.5 sm:px-4">
+              <h4 className="min-w-0 truncate text-xs font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
                 {t("agentConfig.selectModelsForRole", {
                   roleName: selectedRoleData?.name,
                 })}
               </h4>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={handleSelectAll}
-                  className="text-xs px-2 py-1 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-white/50 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-700/40 transition-all duration-200"
+                  className="text-xs px-2 py-1 rounded-md text-stone-500 hover:text-stone-700 hover:bg-white/50 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-700/40 transition-colors duration-150"
                 >
                   {t("agentConfig.selectAll")}
                 </button>
+                <span className="text-stone-300 dark:text-stone-600">|</span>
                 <button
                   onClick={handleClearAll}
-                  className="text-xs px-2 py-1 rounded-lg text-stone-500 hover:text-stone-700 hover:bg-white/50 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-700/40 transition-all duration-200"
+                  className="text-xs px-2 py-1 rounded-md text-stone-500 hover:text-stone-700 hover:bg-white/50 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-700/40 transition-colors duration-150"
                 >
                   {t("agentConfig.clearAll")}
                 </button>
               </div>
             </div>
 
-            {/* Status indicator */}
-            <div className="px-4 sm:px-5 pb-2.5 sm:pb-3">
+            {/* Status pill */}
+            <div className="px-3.5 py-2 sm:px-4">
               <div className="glass-pill glass-pill--info">
                 <List size={14} />
                 <span>
@@ -172,20 +173,21 @@ export function RolesModelTab({
               </div>
             </div>
 
-            <div className="px-2.5 sm:px-3 pb-2.5 sm:pb-3 space-y-1">
+            {/* Model rows */}
+            <div className="divide-y divide-[var(--glass-border)]">
               {availableModels.map((model) => {
                 const isSelected = currentRoleModels.includes(model.id);
                 const hasDesc = !!model.description;
                 return (
                   <div
                     key={model.id}
-                    className={`rounded-lg transition-all duration-200 ${
+                    className={`transition-colors duration-150 ${
                       isSelected
-                        ? "glass-card"
-                        : "hover:bg-white/50 dark:hover:bg-stone-800/40"
+                        ? "bg-[var(--glass-bg-subtle)]"
+                        : "hover:bg-[var(--glass-bg-hover)]"
                     }`}
                   >
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 sm:py-3 sm:gap-3.5">
+                    <label className="flex min-h-14 cursor-pointer items-center gap-3 px-3.5 py-3 sm:px-4 sm:gap-3.5">
                       <Checkbox
                         checked={isSelected}
                         onChange={() => toggleModel(model.id)}
@@ -198,7 +200,7 @@ export function RolesModelTab({
                         size={20}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-stone-900 dark:text-stone-100 truncate">
+                        <div className="truncate text-sm font-medium text-stone-950 dark:text-stone-100">
                           {model.label}
                         </div>
                         <div className="text-xs font-mono text-stone-400 dark:text-stone-500 truncate sm:hidden mt-0.5">
@@ -227,7 +229,7 @@ export function RolesModelTab({
                       )}
                     </label>
                     {expandedModel === model.id && hasDesc && (
-                      <div className="px-3 pb-2.5 pt-0 pl-10 sm:pl-11">
+                      <div className="px-3.5 pb-3 pl-[3.25rem] pt-0 sm:px-4 sm:pl-[3.75rem]">
                         <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
                           {model.description}
                         </p>
@@ -240,11 +242,11 @@ export function RolesModelTab({
           </div>
 
           {hasChanges && (
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end">
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50 hover:shadow-lg hover:shadow-stone-500/10 transition-shadow duration-200"
+                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-50"
               >
                 <Save size={16} />
                 {t("common.save")}

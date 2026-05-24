@@ -16,6 +16,8 @@ logger = get_logger(__name__)
 class SubagentEventMixin:
     checkpoint_to_agent: dict[str, tuple[str, str]]
     _agent_context_cache: dict[str, tuple[str | None, int]]
+    _subagent_display_names: dict[str, str]
+    _subagent_avatars: dict[str, str]
     _presenter_emit: Any
     presenter: Any
 
@@ -63,6 +65,8 @@ class SubagentEventMixin:
 
         subagent_type = inp.get("subagent_type", "unknown") if isinstance(inp, dict) else "unknown"
         description = inp.get("description", "") if isinstance(inp, dict) else ""
+        subagent_display_name = self._subagent_display_names.get(subagent_type, subagent_type)
+        subagent_avatar = self._subagent_avatars.get(subagent_type)
         run_id = event.get("run_id", uuid.uuid4().hex)
 
         metadata = event.get("metadata", {})
@@ -95,9 +99,10 @@ class SubagentEventMixin:
         await self._presenter_emit(
             self.presenter.present_agent_call(
                 agent_id=instance_id,
-                agent_name=subagent_type,
+                agent_name=subagent_display_name,
                 input_message=description,
                 depth=current_depth,
+                agent_avatar=subagent_avatar,
             )
         )
 

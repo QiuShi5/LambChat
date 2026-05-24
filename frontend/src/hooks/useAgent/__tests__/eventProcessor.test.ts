@@ -49,3 +49,49 @@ test("merges streamed summary chunks inside a subagent by summary id", () => {
   assert.equal(summaries?.length, 1);
   assert.equal(summaries?.[0]?.content, "first second");
 });
+
+test("agent call uses provided team role display name", () => {
+  const result = processMessageEvent(
+    "agent:call",
+    {
+      agent_id: "team-m-1-researcher_abc",
+      agent_name: "Researcher",
+      input: "Find the facts",
+    },
+    [],
+    "",
+    [],
+    1,
+    [],
+    true,
+    "message-1",
+  );
+
+  assert.equal(result.parts.length, 1);
+  const subagent = result.parts[0];
+  assert.equal(subagent.type, "subagent");
+  assert.equal(subagent.agent_name, "Researcher");
+});
+
+test("agent call preserves team role avatar url", () => {
+  const result = processMessageEvent(
+    "agent:call",
+    {
+      agent_id: "team-m-1-designer_abc",
+      agent_name: "Designer",
+      agent_avatar: "https://cdn.example.com/designer.png",
+      input: "Sketch the flow",
+    },
+    [],
+    "",
+    [],
+    1,
+    [],
+    true,
+    "message-1",
+  );
+
+  const subagent = result.parts[0];
+  assert.equal(subagent.type, "subagent");
+  assert.equal(subagent.agent_avatar, "https://cdn.example.com/designer.png");
+});

@@ -15,10 +15,24 @@ import {
   Users,
   Box,
   Loader2,
+  Palette,
+  Code2,
+  FlaskConical,
+  Search,
+  PenTool,
+  Database,
+  ShieldCheck,
+  type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LoadingSpinner, CollapsiblePill, CopyButton } from "../../common";
 import type { CollapsibleStatus } from "../../common";
+import { PersonaAvatarIcon } from "../../persona/PersonaAvatarIcon";
+import {
+  getEmojiAvatarUrl,
+  isEmojiAvatar,
+  isPersonaImageAvatar,
+} from "../../persona/personaAvatar";
 import type { MessagePart } from "../../../types";
 import { MarkdownContent } from "./MarkdownContent";
 import { MessagePartRenderer } from "./MessagePartRenderer";
@@ -63,6 +77,175 @@ function formatSubagentName(agentName: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
+}
+
+type SubagentRoleIconKind =
+  | "design"
+  | "code"
+  | "test"
+  | "research"
+  | "writing"
+  | "data"
+  | "review"
+  | "general";
+
+type SubagentRoleIconMeta = {
+  kind: SubagentRoleIconKind;
+  icon: LucideIcon;
+  className: string;
+  bgClassName: string;
+};
+
+const SUBAGENT_ROLE_ICON_META: Record<
+  SubagentRoleIconKind,
+  SubagentRoleIconMeta
+> = {
+  design: {
+    kind: "design",
+    icon: Palette,
+    className: "text-fuchsia-600 dark:text-fuchsia-300",
+    bgClassName: "bg-fuchsia-500/10 dark:bg-fuchsia-400/10",
+  },
+  code: {
+    kind: "code",
+    icon: Code2,
+    className: "text-sky-600 dark:text-sky-300",
+    bgClassName: "bg-sky-500/10 dark:bg-sky-400/10",
+  },
+  test: {
+    kind: "test",
+    icon: FlaskConical,
+    className: "text-violet-600 dark:text-violet-300",
+    bgClassName: "bg-violet-500/10 dark:bg-violet-400/10",
+  },
+  research: {
+    kind: "research",
+    icon: Search,
+    className: "text-blue-600 dark:text-blue-300",
+    bgClassName: "bg-blue-500/10 dark:bg-blue-400/10",
+  },
+  writing: {
+    kind: "writing",
+    icon: PenTool,
+    className: "text-amber-600 dark:text-amber-300",
+    bgClassName: "bg-amber-500/10 dark:bg-amber-400/10",
+  },
+  data: {
+    kind: "data",
+    icon: Database,
+    className: "text-teal-600 dark:text-teal-300",
+    bgClassName: "bg-teal-500/10 dark:bg-teal-400/10",
+  },
+  review: {
+    kind: "review",
+    icon: ShieldCheck,
+    className: "text-emerald-600 dark:text-emerald-300",
+    bgClassName: "bg-emerald-500/10 dark:bg-emerald-400/10",
+  },
+  general: {
+    kind: "general",
+    icon: Users,
+    className: "text-stone-600 dark:text-stone-300",
+    bgClassName: "bg-stone-500/10 dark:bg-stone-400/10",
+  },
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function getSubagentRoleIconMeta(
+  agentName: string,
+): SubagentRoleIconMeta {
+  const name = agentName.toLowerCase();
+  if (/(设计|design|视觉|ui|ux|brand|creative)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.design;
+  }
+  if (
+    /(code|coding|dev|developer|engineer|frontend|backend|程序|开发|工程)/i.test(
+      name,
+    )
+  ) {
+    return SUBAGENT_ROLE_ICON_META.code;
+  }
+  if (/(test|qa|quality|验收|测试)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.test;
+  }
+  if (/(research|search|investigate|analysis|分析|研究|调研)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.research;
+  }
+  if (/(write|writer|copy|content|editor|文案|写作|编辑)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.writing;
+  }
+  if (/(data|database|db|analytics|数据)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.data;
+  }
+  if (/(review|security|audit|critic|审查|审核|安全)/i.test(name)) {
+    return SUBAGENT_ROLE_ICON_META.review;
+  }
+  return SUBAGENT_ROLE_ICON_META.general;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function getSubagentAvatarImageUrl(
+  avatar: string | null | undefined,
+): string | null {
+  if (isEmojiAvatar(avatar)) {
+    return getEmojiAvatarUrl(avatar);
+  }
+  if (isPersonaImageAvatar(avatar)) {
+    return avatar;
+  }
+  return null;
+}
+
+function SubagentStatusIcon({
+  status,
+  className,
+  size = 13,
+}: {
+  status: SubagentPanelData["status"] | "pending" | undefined;
+  className?: string;
+  size?: number;
+}) {
+  if (status === "running") {
+    return (
+      <Loader2
+        size={size}
+        className={clsx(
+          "text-amber-500 dark:text-amber-300 animate-spin",
+          className,
+        )}
+      />
+    );
+  }
+  if (status === "complete") {
+    return (
+      <CheckCircle
+        size={size}
+        className={clsx("text-emerald-500 dark:text-emerald-300", className)}
+      />
+    );
+  }
+  if (status === "error") {
+    return (
+      <XCircle
+        size={size}
+        className={clsx("text-red-500 dark:text-red-300", className)}
+      />
+    );
+  }
+  if (status === "cancelled") {
+    return (
+      <Ban
+        size={size}
+        className={clsx("text-amber-500 dark:text-amber-300", className)}
+      />
+    );
+  }
+  return (
+    <ChevronRight
+      size={size}
+      className={clsx("text-stone-400 dark:text-stone-500", className)}
+    />
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -325,6 +508,7 @@ export function ThinkingBlock({
 export function SubagentBlock({
   agent_id,
   agent_name,
+  agent_avatar,
   input,
   result,
   success,
@@ -337,6 +521,7 @@ export function SubagentBlock({
 }: {
   agent_id: string;
   agent_name: string;
+  agent_avatar?: string;
   input: string;
   result?: string;
   success?: boolean;
@@ -366,7 +551,10 @@ export function SubagentBlock({
     completedAt,
     status,
   });
-  // Keep sidebar panel data in sync
+  const { t } = useTranslation();
+  const roleIconMeta = getSubagentRoleIconMeta(formattedAgentName);
+  const RoleIcon = roleIconMeta.icon;
+  const agentAvatarUrl = getSubagentAvatarImageUrl(agent_avatar);
   useEffect(() => {
     subagentPanelStore.set({
       agentId: agent_id,
@@ -401,7 +589,7 @@ export function SubagentBlock({
     ) {
       openPersistentToolPanel({
         title: formattedAgentName,
-        icon: <Users size={16} />,
+        icon: <RoleIcon size={16} />,
         status: panelStatus,
         subtitle,
         panelKey,
@@ -425,6 +613,7 @@ export function SubagentBlock({
     panelStatus,
     subtitle,
     formattedAgentName,
+    RoleIcon,
     panelKey,
   ]);
 
@@ -438,19 +627,19 @@ export function SubagentBlock({
     resetSubagentPanelAutoOpenDismissal();
     openPersistentToolPanel({
       title: formattedAgentName,
-      icon: <Users size={16} />,
+      icon: <RoleIcon size={16} />,
       status: panelStatus,
       subtitle,
       panelKey,
       children: <SubagentPanelContent agentId={agent_id} />,
       onUserClose: dismissSubagentPanelAutoOpen,
     });
-  }, [formattedAgentName, panelStatus, subtitle, panelKey, agent_id]);
+  }, [formattedAgentName, RoleIcon, panelStatus, subtitle, panelKey, agent_id]);
 
   return (
     <div
       className={clsx(
-        "my-1.5 rounded-xl overflow-hidden min-w-0 group",
+        "my-1.5 rounded-xl overflow-hidden min-w-0 group relative",
         "border transition-all duration-200",
         effectiveStatus === "running" &&
           "border-stone-200/60 dark:border-stone-700/40 bg-stone-50/50 dark:bg-stone-800/30",
@@ -465,38 +654,47 @@ export function SubagentBlock({
       )}
     >
       <div
-        className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-white/60 dark:hover:bg-white/5"
+        className={clsx(
+          "absolute right-2.5 top-2.5 z-[1] flex h-5 w-5 items-center justify-center rounded-full",
+          "bg-white/90 shadow-sm ring-1 ring-stone-200/70 dark:bg-stone-900/90 dark:ring-stone-700/70",
+        )}
+        aria-label={t("chat.subagentStatus", {
+          status: effectiveStatus || "pending",
+        })}
+      >
+        <SubagentStatusIcon status={effectiveStatus} size={11} />
+      </div>
+      <div
+        className="flex items-center gap-3 px-3.5 py-2.5 pr-10 cursor-pointer transition-colors hover:bg-white/60 dark:hover:bg-white/5"
         onClick={handleOpenInPanel}
       >
         <div
           className={clsx(
-            "flex h-7 w-7 items-center justify-center rounded-lg shrink-0",
-            effectiveStatus === "running" && "bg-amber-500/10",
-            effectiveStatus === "complete" && "bg-emerald-500/10",
-            effectiveStatus === "error" && "bg-red-500/10",
-            effectiveStatus === "cancelled" && "bg-amber-500/10",
-            (!effectiveStatus || effectiveStatus === "pending") &&
-              "bg-stone-500/10",
+            "flex h-8 w-8 items-center justify-center rounded-lg shrink-0 overflow-hidden",
+            "ring-1 ring-inset ring-black/5 dark:ring-white/10",
+            agentAvatarUrl
+              ? "bg-white dark:bg-stone-800"
+              : roleIconMeta.bgClassName,
           )}
         >
-          {effectiveStatus === "running" ? (
-            <Loader2
-              size={13}
-              className="text-amber-500 dark:text-amber-400 animate-spin"
+          <RoleIcon size={15} className={roleIconMeta.className} />
+          {agentAvatarUrl && (
+            <img
+              src={agentAvatarUrl}
+              alt=""
+              className="absolute h-8 w-8 object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
             />
-          ) : effectiveStatus === "complete" ? (
-            <CheckCircle
-              size={13}
-              className="text-emerald-500 dark:text-emerald-400"
-            />
-          ) : effectiveStatus === "error" ? (
-            <XCircle size={13} className="text-red-500 dark:text-red-400" />
-          ) : effectiveStatus === "cancelled" ? (
-            <Ban size={13} className="text-amber-500 dark:text-amber-400" />
-          ) : (
-            <ChevronRight
-              size={13}
-              className="text-stone-400 dark:text-stone-500"
+          )}
+          {agent_avatar && !agentAvatarUrl && (
+            <PersonaAvatarIcon
+              avatar={agent_avatar}
+              size={15}
+              className="absolute"
             />
           )}
         </div>
@@ -575,7 +773,7 @@ export function SandboxItem({
         <div className="mt-1 ml-4 pl-3 border-l-2 border-stone-300 dark:border-stone-600 max-h-40 overflow-y-auto">
           {status === "ready" && sandboxId && (
             <div className="text-xs text-stone-600 dark:text-stone-300 pl-1 py-1 font-mono">
-              ID: {sandboxId}
+              {t("chat.sandboxId", { id: sandboxId })}
             </div>
           )}
           {status === "error" && error && (

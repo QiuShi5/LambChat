@@ -109,6 +109,7 @@ export const AttachmentCard = memo(function AttachmentCard({
             <img
               src={attachment.url}
               alt={attachment.name}
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
           ) : (
@@ -212,6 +213,7 @@ export const AttachmentCard = memo(function AttachmentCard({
             <img
               src={attachment.url}
               alt={attachment.name}
+              referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

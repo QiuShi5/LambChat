@@ -34,7 +34,7 @@ export interface PersonaRouteState {
   personaSnapshot?: PersonaPresetSnapshot;
 }
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 20;
 
 function timeValue(value: string | null | undefined): number {
   if (!value) return 0;

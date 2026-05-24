@@ -30,7 +30,7 @@ export function FilesContentSkeleton() {
 
       {/* Content: session groups with grid cards */}
       <div className="flex-1 overflow-y-auto min-h-0 relative z-[1]">
-        <div className="flex flex-col pb-6 px-5 @md:px-6 gap-3 @md:gap-6">
+        <div className="flex flex-col pb-6 px-4 @md:px-6 gap-3 @md:gap-6">
           {/* Session group 1 */}
           <div className="w-full flex flex-col gap-2.5 @md:gap-3">
             <div className="flex items-center justify-between gap-2 pt-4 @md:pt-5">
@@ -126,7 +126,7 @@ export function FilesPageSkeleton() {
         </header>
 
         <main className="flex-1 overflow-hidden">
-          <div className="w-full h-full sm:mx-auto max-w-4xl sm:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-8xl">
+          <div className="w-full h-full sm:mx-auto lg:max-w-[80rem] xl:max-w-[96rem] 2xl:max-w-[120rem] px-4">
             <FilesContentSkeleton />
           </div>
         </main>

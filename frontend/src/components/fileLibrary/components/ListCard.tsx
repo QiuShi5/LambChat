@@ -32,21 +32,21 @@ export function ListCard({
       <div
         onClick={() => onPreview(file)}
         onContextMenu={(e) => ctx.show(e, file)}
-        className="group/card relative flex items-center gap-3.5 px-4 py-3 rounded-xl bg-white dark:bg-stone-900/40 border border-stone-200/60 dark:border-stone-700/40 cursor-pointer select-none transition-all duration-150 hover:bg-stone-50 dark:hover:bg-stone-800/30 hover:border-stone-300/80 dark:hover:border-stone-600/50 hover:shadow-sm hover:shadow-stone-900/[0.04] dark:hover:shadow-black/10"
+        className="group/card relative flex items-center gap-3.5 px-4 py-3 rounded-xl bg-theme-bg-card border border-theme-border cursor-pointer select-none transition-all duration-150 hover:bg-theme-bg-subtle hover:border-theme-border-hover hover:shadow-sm"
       >
         {/* Icon / thumbnail */}
         <div className="shrink-0">
-          <div className="h-10 w-10 overflow-hidden rounded-lg ring-1 ring-stone-200/50 dark:ring-stone-700/40">
+          <div className="h-10 w-10 overflow-hidden rounded-lg ring-1 ring-stone-200/60 dark:ring-stone-700/50">
             <FileCardPreview preview={cardPreview} icon={FileIcon} compact />
           </div>
         </div>
 
         {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-stone-800 dark:text-stone-200 truncate leading-snug">
+          <p className="text-[13px] font-medium text-theme-text truncate leading-snug">
             {file.file_name}
           </p>
-          <p className="mt-0.5 text-[11px] text-stone-400 dark:text-stone-500 truncate">
+          <p className="mt-0.5 text-[11px] text-theme-text-tertiary truncate">
             {meta}
           </p>
         </div>
@@ -57,7 +57,7 @@ export function ListCard({
             e.stopPropagation();
             ctx.show(e, file);
           }}
-          className="shrink-0 p-1.5 rounded-md text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-all"
+          className="shrink-0 p-1.5 rounded-md text-theme-text-tertiary hover:text-theme-text-secondary hover:bg-theme-bg-subtle transition-all"
         >
           <MoreHorizontal size={16} />
         </button>

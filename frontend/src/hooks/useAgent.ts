@@ -340,6 +340,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
             disabled_mcp_tools:
               (sessionData.metadata?.disabled_mcp_tools as string[]) ||
               undefined,
+            team_id: (sessionData.metadata?.team_id as string) || undefined,
           };
 
           // 并行发起 events、status 和 feedback 请求，减少串行等待时间
@@ -599,6 +600,9 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
           if (projectId) {
             conversationConfig.project_id = projectId;
           }
+          if (selectedTeamId) {
+            conversationConfig.team_id = selectedTeamId;
+          }
 
           const newSession: BackendSession = {
             id: newSessionId,
@@ -644,6 +648,9 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
             persona_preset_id: personaPresetId,
             disabled_mcp_tools: disabledMcpTools,
           };
+          if (selectedTeamId) {
+            conversationConfig.team_id = selectedTeamId;
+          }
 
           setNewlyCreatedSession((prev) =>
             prev

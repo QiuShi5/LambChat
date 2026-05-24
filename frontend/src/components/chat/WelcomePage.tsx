@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useCallback, useRef } from "react";
+import { memo, useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { RefreshCw, Sparkles, UserRound, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -7,15 +7,24 @@ import type { ChatInputProps } from "./ChatInput";
 import { ContactAdminDialog } from "../common/ContactAdminDialog";
 import {
   getSelectedPersonaStarterPrompts,
+  getSelectedTeamStarterPrompts,
   getWelcomePersonaCards,
   getWelcomePersonaCardClass,
   getWelcomePersonaSkeletonCount,
+  getWelcomeTeamCards,
   getWelcomeSuggestionsContainerClass,
   getWelcomeSuggestionButtonClass,
 } from "./welcomeLayout";
 import { PersonaAvatarWithLoading } from "../persona/PersonaAvatarWithLoading";
 import { useSettingsContext } from "../../contexts/SettingsContext";
+import { teamApi } from "../../services/api/team";
 import type { PersonaPreset, PersonaPresetSnapshot } from "../../types";
+import type { Team } from "../../types/team";
+import { TeamAvatar } from "../team/TeamAvatar";
+import {
+  getTeamFallbackAvatar,
+  getTeamFallbackTag,
+} from "../team/teamAvatarUtils";
 
 const WELCOME_ICON_SRC = "/images/lamb.webp";
 
@@ -34,12 +43,15 @@ interface WelcomePageProps {
   selectedPersonaSnapshot?: PersonaPresetSnapshot | null;
   personaPresetsLoading?: boolean;
   personaPresetsMutating?: boolean;
+  currentAgent?: string;
+  selectedTeamId?: string | null;
   canSendMessage: boolean;
   chatInputProps: ChatInputProps;
   onUsePersonaPreset?: (
     preset: PersonaPreset,
   ) => Promise<PersonaPresetSnapshot | null>;
   onClearPersonaPreset?: () => void;
+  onSelectTeam?: (teamId: string | null) => void;
 }
 
 function WelcomeIcon({
@@ -74,10 +86,13 @@ export const WelcomePage = memo(function WelcomePage({
   selectedPersonaSnapshot,
   personaPresetsLoading = false,
   personaPresetsMutating = false,
+  currentAgent,
+  selectedTeamId,
   canSendMessage,
   chatInputProps,
   onUsePersonaPreset,
   onClearPersonaPreset,
+  onSelectTeam,
 }: WelcomePageProps) {
   const { i18n, t } = useTranslation();
   const navigate = useNavigate();
@@ -86,6 +101,8 @@ export const WelcomePage = memo(function WelcomePage({
   const [contactAdminOpen, setContactAdminOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [pendingInput, setPendingInput] = useState<string | null>(null);
+  const [teamCards, setTeamCards] = useState<Team[]>([]);
+  const [teamCardsLoading, setTeamCardsLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +137,29 @@ export const WelcomePage = memo(function WelcomePage({
     [personaPresets, selectedPersonaPresetId],
   );
 
+  const welcomeTeamCards = useMemo(
+    () => getWelcomeTeamCards(teamCards, selectedTeamId),
+    [teamCards, selectedTeamId],
+  );
+
+  useEffect(() => {
+    if (currentAgent !== "team") return;
+    let cancelled = false;
+    setTeamCardsLoading(true);
+    teamApi
+      .list(0, 50)
+      .then((res) => {
+        if (!cancelled) setTeamCards(res.teams);
+      })
+      .catch((err) => console.error("Failed to load teams:", err))
+      .finally(() => {
+        if (!cancelled) setTeamCardsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAgent]);
+
   const filteredCards = useMemo(() => {
     if (!mentionQuery) return roleCards;
     const q = mentionQuery.toLowerCase();
@@ -130,6 +170,21 @@ export const WelcomePage = memo(function WelcomePage({
         p.tags?.some((tag) => tag.toLowerCase().includes(q)),
     );
   }, [roleCards, mentionQuery]);
+
+  const filteredTeamCards = useMemo(() => {
+    if (!mentionQuery) return welcomeTeamCards;
+    const q = mentionQuery.toLowerCase();
+    return welcomeTeamCards.filter(
+      (team) =>
+        team.name.toLowerCase().includes(q) ||
+        team.description?.toLowerCase().includes(q) ||
+        team.members.some(
+          (member) =>
+            member.role_name.toLowerCase().includes(q) ||
+            member.role_tags.some((tag) => tag.toLowerCase().includes(q)),
+        ),
+    );
+  }, [welcomeTeamCards, mentionQuery]);
 
   const handleMentionQueryChange = useCallback(
     (query: string | null) => setMentionQuery(query),
@@ -154,7 +209,7 @@ export const WelcomePage = memo(function WelcomePage({
     return [];
   }, [settings, i18n.language]);
 
-  const starterPrompts = useMemo(
+  const personaStarterPrompts = useMemo(
     () =>
       getSelectedPersonaStarterPrompts(
         promptSources,
@@ -165,6 +220,17 @@ export const WelcomePage = memo(function WelcomePage({
     [promptSources, selectedPersonaPresetId, i18n.language, defaultSuggestions],
   );
 
+  const teamStarterPrompts = useMemo(
+    () =>
+      getSelectedTeamStarterPrompts(
+        teamCards,
+        selectedTeamId,
+        i18n.language,
+        selectedTeamId ? defaultSuggestions : [],
+      ),
+    [teamCards, selectedTeamId, i18n.language, defaultSuggestions],
+  );
+
   const handleSuggestionClick = (text: string) => {
     if (!canSendMessage) {
       setContactAdminOpen(true);
@@ -173,13 +239,23 @@ export const WelcomePage = memo(function WelcomePage({
     setPendingInput(text);
   };
 
-  const handleRefresh = useCallback(() => {
+  const handleChangePersona = useCallback(() => {
     if (!onClearPersonaPreset) return;
     setIsRefreshing(true);
     onClearPersonaPreset();
+    setMentionQuery(null);
     setAnimKey((k) => k + 1);
     setTimeout(() => setIsRefreshing(false), 400);
   }, [onClearPersonaPreset]);
+
+  const handleChangeTeam = useCallback(() => {
+    if (!onSelectTeam) return;
+    setIsRefreshing(true);
+    onSelectTeam?.(null);
+    setMentionQuery(null);
+    setAnimKey((k) => k + 1);
+    setTimeout(() => setIsRefreshing(false), 400);
+  }, [onSelectTeam]);
 
   const handlePersonaClick = useCallback(
     async (preset: PersonaPreset) => {
@@ -189,15 +265,62 @@ export const WelcomePage = memo(function WelcomePage({
     [onUsePersonaPreset, personaPresetsMutating],
   );
 
+  const handleTeamClick = useCallback(
+    (team: Team) => {
+      onSelectTeam?.(team.id);
+    },
+    [onSelectTeam],
+  );
+
+  const isAgentReady = !!currentAgent;
+  const shouldProjectMentionsToWelcome =
+    isAgentReady &&
+    (currentAgent === "team" ? !selectedTeamId : !selectedPersonaPresetId);
+
+  useEffect(() => {
+    if (!shouldProjectMentionsToWelcome) {
+      setMentionQuery(null);
+    }
+  }, [shouldProjectMentionsToWelcome]);
+
+  const showTeamCards =
+    currentAgent === "team" &&
+    !selectedTeamId &&
+    (mentionQuery !== null || welcomeTeamCards.length > 0 || teamCardsLoading);
   const showPersonaCards =
+    isAgentReady &&
+    currentAgent !== "team" &&
     !selectedPersonaPresetId &&
     (mentionQuery !== null || roleCards.length > 0 || personaPresetsLoading);
   const showStarterPrompts =
-    !!selectedPersonaPresetId && starterPrompts.length > 0;
+    isAgentReady &&
+    currentAgent !== "team" &&
+    !!selectedPersonaPresetId &&
+    personaStarterPrompts.length > 0;
+  const showTeamStarterPrompts =
+    currentAgent === "team" &&
+    !!selectedTeamId &&
+    teamStarterPrompts.length > 0;
+  const canChangePersona =
+    isAgentReady &&
+    currentAgent !== "team" &&
+    !!selectedPersonaPresetId &&
+    !!onClearPersonaPreset;
+  const canChangeTeam =
+    currentAgent === "team" && !!selectedTeamId && !!onSelectTeam;
+  const showSelectionActions = canChangePersona || canChangeTeam;
+  const activeStarterPrompts =
+    currentAgent === "team" ? teamStarterPrompts : personaStarterPrompts;
   const displayCards = mentionQuery ? filteredCards : roleCards;
+  const displayTeamCards = mentionQuery ? filteredTeamCards : welcomeTeamCards;
+  const showChoiceCards = showPersonaCards || showTeamCards;
   const personaSkeletonCount = getWelcomePersonaSkeletonCount(
     personaPresetsLoading,
     displayCards.length,
+  );
+  const teamSkeletonCount = getWelcomePersonaSkeletonCount(
+    teamCardsLoading,
+    displayTeamCards.length,
   );
 
   return (
@@ -236,17 +359,24 @@ export const WelcomePage = memo(function WelcomePage({
       <div className="welcome-input w-full sm:max-w-[44rem] md:max-w-[46rem] lg:max-w-[48rem] xl:max-w-[50rem] 2xl:max-w-[52rem]">
         <ChatInput
           {...chatInputProps}
-          onMentionQueryChange={handleMentionQueryChange}
+          onMentionQueryChange={
+            shouldProjectMentionsToWelcome
+              ? handleMentionQueryChange
+              : undefined
+          }
           pendingInput={pendingInput}
           onPendingInputConsumed={() => setPendingInput(null)}
           className="mx-auto w-full px-2"
         />
       </div>
 
-      {(showPersonaCards || showStarterPrompts) && (
+      {(showChoiceCards ||
+        showStarterPrompts ||
+        showTeamStarterPrompts ||
+        showSelectionActions) && (
         <div
           className={getWelcomeSuggestionsContainerClass(
-            showPersonaCards ? "personas" : "prompts",
+            showChoiceCards ? "personas" : "prompts",
           )}
         >
           <div className="welcome-suggestions-header flex items-center justify-between mb-2 sm:mb-3 md:mb-3 xl:mb-4 2xl:mb-4 px-2 sm:px-0">
@@ -259,13 +389,28 @@ export const WelcomePage = memo(function WelcomePage({
                 className="opacity-60 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4 2xl:w-4 2xl:h-4"
               />
               <span>
-                {selectedPersonaPresetId
-                  ? starterPromptsLabel ||
-                    t("personaPresets.starterPrompts", "开始对话")
-                  : personasLabel || t("personaPresets.title", "角色")}
+                {showTeamCards
+                  ? t("team.plaza", "团队广场")
+                  : showStarterPrompts || showTeamStarterPrompts
+                    ? starterPromptsLabel ||
+                      t("personaPresets.starterPrompts", "开始对话")
+                    : personasLabel || t("personaPresets.title", "角色")}
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {showTeamCards && (
+                <button
+                  onClick={() => navigate("/team")}
+                  className="flex items-center gap-0.5 px-2 py-1 rounded-lg text-[11px] sm:text-[12px] md:text-[12px] font-medium transition-all duration-300 cursor-pointer font-serif"
+                  style={{
+                    color: "var(--theme-text-secondary)",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  <span>{t("common.manage", "管理")}</span>
+                  <ChevronRight size={12} />
+                </button>
+              )}
               {showPersonaCards && (
                 <button
                   onClick={() => navigate("/persona")}
@@ -279,9 +424,11 @@ export const WelcomePage = memo(function WelcomePage({
                   <ChevronRight size={12} />
                 </button>
               )}
-              {selectedPersonaPresetId && onClearPersonaPreset && (
+              {showSelectionActions && (
                 <button
-                  onClick={handleRefresh}
+                  onClick={
+                    canChangeTeam ? handleChangeTeam : handleChangePersona
+                  }
                   className="welcome-refresh-btn flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] sm:text-[12px] md:text-[12px] font-medium transition-all duration-300 cursor-pointer font-serif"
                   style={{
                     color: "var(--theme-text-secondary)",
@@ -297,9 +444,11 @@ export const WelcomePage = memo(function WelcomePage({
                     }
                   />
                   <span>
-                    {changePersonaLabel ||
-                      refreshLabel ||
-                      t("personaPresets.change", "更换角色")}
+                    {canChangeTeam
+                      ? t("team.change", "更换团队")
+                      : changePersonaLabel ||
+                        refreshLabel ||
+                        t("personaPresets.change", "更换角色")}
                   </span>
                 </button>
               )}
@@ -307,14 +456,102 @@ export const WelcomePage = memo(function WelcomePage({
           </div>
           <div
             key={animKey}
-            ref={showPersonaCards ? galleryRef : undefined}
+            ref={showChoiceCards ? galleryRef : undefined}
             onScroll={showPersonaCards ? handleGalleryScroll : undefined}
             className={
-              showPersonaCards
+              showChoiceCards
                 ? "welcome-persona-gallery relative px-2 pb-1 sm:px-0 sm:pb-0"
                 : "welcome-suggestions-grid-wrapper"
             }
           >
+            {showTeamCards &&
+              Array.from({ length: teamSkeletonCount }).map((_, i) => (
+                <div
+                  key={`team-skeleton-${i}`}
+                  className="welcome-persona-card welcome-persona-skeleton relative snap-start rounded-2xl border p-2.5"
+                  style={{
+                    backgroundColor: "var(--theme-bg-card)",
+                    borderColor: "var(--theme-border)",
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className="welcome-skeleton-avatar" />
+                  <span className="welcome-skeleton-info">
+                    <span className="welcome-skeleton-name-row">
+                      <span className="welcome-skeleton-line welcome-skeleton-title" />
+                      <span className="welcome-skeleton-line welcome-skeleton-tag" />
+                    </span>
+                    <span className="welcome-skeleton-line welcome-skeleton-desc" />
+                  </span>
+                </div>
+              ))}
+            {showTeamCards &&
+              displayTeamCards.map((team, i) => {
+                const activeCount = team.members.filter(
+                  (m) => m.enabled,
+                ).length;
+                return (
+                  <button
+                    key={team.id}
+                    onClick={() => handleTeamClick(team)}
+                    disabled={!onSelectTeam}
+                    className={getWelcomePersonaCardClass(i)}
+                    style={{
+                      backgroundColor: "var(--theme-bg-card)",
+                      borderColor: "var(--theme-border)",
+                      animationDelay: `${i * 60}ms`,
+                    }}
+                  >
+                    <span className="welcome-card-shimmer" aria-hidden="true" />
+                    <span className="welcome-persona-header relative flex items-center gap-3">
+                      <TeamAvatar
+                        avatar={team.avatar}
+                        fallbackAvatar={getTeamFallbackAvatar(team)}
+                        fallbackTag={getTeamFallbackTag(team)}
+                        label={team.name}
+                        className="welcome-persona-avatar relative flex items-center justify-center size-11 rounded-xl shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105"
+                        imgClassName="h-full w-full object-cover"
+                        iconSize={22}
+                        style={{
+                          backgroundColor: "var(--theme-primary-light)",
+                          color: "var(--theme-primary)",
+                        }}
+                      />
+                      <span className="welcome-persona-info min-w-0 flex-1">
+                        <span className="welcome-persona-name-row relative flex items-center gap-1.5">
+                          <span
+                            className="welcome-persona-name truncate text-[13px] sm:text-[14px] font-semibold leading-[1.3] transition-colors duration-300 group-hover:text-[var(--theme-text)]"
+                            style={{ color: "var(--theme-text)" }}
+                          >
+                            {team.name}
+                          </span>
+                          <span
+                            className="welcome-persona-tag shrink-0 inline-flex rounded-full px-1.5 py-[1px] text-[10px] leading-none font-medium"
+                            style={{
+                              backgroundColor: "var(--theme-primary-light)",
+                              color: "var(--theme-primary)",
+                            }}
+                          >
+                            {t("team.memberCount", "{{count}} 人", {
+                              count: activeCount,
+                            })}
+                          </span>
+                        </span>
+                        <span
+                          className="welcome-persona-description block mt-1 text-[12px] leading-[1.5]"
+                          style={{
+                            color:
+                              "var(--theme-text-tertiary, var(--theme-text-secondary))",
+                          }}
+                        >
+                          {team.description ||
+                            t("team.defaultDescription", "协同工作的角色团队")}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             {showPersonaCards &&
               Array.from({ length: personaSkeletonCount }).map((_, i) => (
                 <div
@@ -409,13 +646,13 @@ export const WelcomePage = memo(function WelcomePage({
             )}
             <div
               className={
-                showStarterPrompts
+                showStarterPrompts || showTeamStarterPrompts
                   ? "welcome-suggestions-grid grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-2.5 xl:gap-3 2xl:gap-3 px-2 sm:px-0"
                   : undefined
               }
             >
-              {showStarterPrompts &&
-                starterPrompts.map((suggestion, i) => (
+              {(showStarterPrompts || showTeamStarterPrompts) &&
+                activeStarterPrompts.map((suggestion, i) => (
                   <button
                     key={suggestion.text}
                     onClick={() => handleSuggestionClick(suggestion.text)}

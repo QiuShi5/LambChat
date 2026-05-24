@@ -58,11 +58,19 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
         "_chunk_buffer",
         "_summary_chunk_buffer",
         "_agent_context_cache",
+        "_subagent_display_names",
+        "_subagent_avatars",
     )
 
     _CHUNK_FLUSH_SIZE = 200
 
-    def __init__(self, presenter: Presenter, base_url: str = ""):
+    def __init__(
+        self,
+        presenter: Presenter,
+        base_url: str = "",
+        subagent_display_names: dict[str, str] | None = None,
+        subagent_avatars: dict[str, str] | None = None,
+    ):
         self.presenter = presenter
         self.checkpoint_to_agent: dict[str, tuple[str, str]] = {}
         if not base_url:
@@ -82,6 +90,8 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
         self._chunk_buffer = TextChunkBuffer(self._CHUNK_FLUSH_SIZE)
         self._summary_chunk_buffer = TextChunkBuffer(self._CHUNK_FLUSH_SIZE)
         self._agent_context_cache: dict[str, tuple[str | None, int]] = {}
+        self._subagent_display_names = subagent_display_names or {}
+        self._subagent_avatars = subagent_avatars or {}
 
     @property
     def output_text(self) -> str:

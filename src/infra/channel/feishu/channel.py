@@ -83,7 +83,7 @@ class FeishuChannel(FeishuSenderMixin, BaseChannel):
     channel_type = ChannelType.FEISHU
     display_name = "Feishu / Lark"
     description = "Feishu/Lark enterprise communication platform"
-    icon = "message-circle"
+    icon = "MessagesSquare"
 
     # Reconnection configuration
     INITIAL_RECONNECT_DELAY = 1.0  # Initial delay in seconds

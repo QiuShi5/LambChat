@@ -21,7 +21,7 @@ from src.agents.fast_agent.nodes import fast_agent_node
 from src.agents.fast_agent.state import FastAgentState
 from src.infra.backend.context import set_user_context
 from src.infra.logging import get_logger
-from src.infra.task.manager import TaskInterruptedError
+from src.infra.task.exceptions import TaskInterruptedError
 from src.infra.writer.present import Presenter, PresenterConfig
 from src.kernel.config import settings
 

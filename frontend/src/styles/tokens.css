@@ -1,0 +1,103 @@
+/* ═══════════════════════════════════════════
+   Design Tokens — Single Source of Truth
+   ═══════════════════════════════════════════ */
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  /* ── Primary ── */
+  --theme-primary: #78716c;
+  --theme-primary-hover: #57534e;
+  --theme-primary-light: #f5f5f4;
+  --theme-ring: #78716c;
+
+  /* ── Backgrounds ── */
+  --theme-bg: #f5f5f4;
+  --theme-bg-card: #ffffff;
+  --theme-bg-sidebar: #f5f5f4;
+  --theme-bg-elevated: #ffffff;
+  --theme-bg-subtle: #f5f5f4;
+
+  /* ── Borders ── */
+  --theme-border: #e7e5e4;
+  --theme-border-hover: #d6d3d1;
+  --theme-border-subtle: #f5f5f4;
+  --theme-border-faint: rgba(0, 0, 0, 0.06);
+
+  /* ── Text ── */
+  --theme-text: #1c1917;
+  --theme-text-secondary: #78716c;
+  --theme-text-tertiary: #a8a29e;
+
+  /* ── Overlays ── */
+  --theme-overlay: rgba(0, 0, 0, 0.4);
+  --theme-overlay-strong: rgba(0, 0, 0, 0.5);
+
+  /* ── Shadows (raw opacity) ── */
+  --theme-shadow-sm: rgba(0, 0, 0, 0.04);
+  --theme-shadow-md: rgba(0, 0, 0, 0.1);
+  --theme-shadow-lg: rgba(0, 0, 0, 0.2);
+
+  /* ── Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+
+  /* ── Composed Shadows ── */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 12px 32px -8px rgb(0 0 0 / 0.1),
+    0 4px 12px -4px rgb(0 0 0 / 0.05);
+  --shadow-dropdown: 0 10px 40px -8px rgb(0 0 0 / 0.1),
+    0 4px 12px -2px rgb(0 0 0 / 0.06);
+
+  /* ── Layout ── */
+  --sidebar-width: 16rem;
+  --sidebar-rail-width: 3.25rem;
+  --sidebar-transition-duration: 150ms;
+  --app-viewport-offset-top: 0px;
+  --app-keyboard-inset: 0px;
+}
+
+.dark {
+  /* ── Primary ── */
+  --theme-primary: #d6d3d1;
+  --theme-primary-hover: #e7e5e4;
+  --theme-primary-light: #292524;
+  --theme-ring: #d6d3d1;
+
+  /* ── Backgrounds ── */
+  --theme-bg: #121010;
+  --theme-bg-card: #1e1b18;
+  --theme-bg-sidebar: #151210;
+  --theme-bg-elevated: #292524;
+  --theme-bg-subtle: #1e1b18;
+
+  /* ── Borders ── */
+  --theme-border: #3d3835;
+  --theme-border-hover: #57534e;
+  --theme-border-subtle: #292524;
+  --theme-border-faint: rgba(255, 255, 255, 0.04);
+
+  /* ── Text ── */
+  --theme-text: #ffffff;
+  --theme-text-secondary: #d6d3d1;
+  --theme-text-tertiary: #a8a29e;
+
+  /* ── Overlays ── */
+  --theme-overlay: rgba(0, 0, 0, 0.6);
+  --theme-overlay-strong: rgba(0, 0, 0, 0.7);
+
+  /* ── Shadows (raw opacity) ── */
+  --theme-shadow-sm: rgba(0, 0, 0, 0.2);
+  --theme-shadow-md: rgba(0, 0, 0, 0.4);
+  --theme-shadow-lg: rgba(0, 0, 0, 0.5);
+
+  /* ── Composed Shadows ── */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2);
+  --shadow-card-hover: 0 12px 32px -8px rgb(0 0 0 / 0.4),
+    0 4px 12px -4px rgb(0 0 0 / 0.25);
+  --shadow-dropdown: 0 10px 40px -8px rgb(0 0 0 / 0.4),
+    0 4px 12px -2px rgb(0 0 0 / 0.3);
+}

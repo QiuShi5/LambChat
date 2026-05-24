@@ -614,6 +614,7 @@ export function ChatAppContent({
       persona_snapshot?: import("../../../types").PersonaPresetSnapshot;
       disabled_mcp_tools?: string[];
       disabled_tools?: string[];
+      team_id?: string;
     }) => {
       console.log("[AppContent] Restoring session config:", config);
 
@@ -624,6 +625,12 @@ export function ChatAppContent({
       }
 
       restoreSessionConfig(config);
+
+      if (config.team_id) {
+        selectTeam(config.team_id);
+      } else {
+        selectTeam(null);
+      }
 
       if (config.agent_options) {
         restoreAgentOptions(config.agent_options);
@@ -637,7 +644,7 @@ export function ChatAppContent({
         }
       }
     },
-    [restoreSessionConfig, restoreAgentOptions, switchAgent],
+    [restoreSessionConfig, restoreAgentOptions, switchAgent, selectTeam],
   );
 
   const { handleSelectSession, handleNewSession } = useSessionSync({

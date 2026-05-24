@@ -23,7 +23,7 @@ import { PersonaAvatarIcon, PersonaAvatarImage } from "./PersonaAvatarIcon";
 import { PersonaPreviewSidebar } from "./PersonaPreviewSidebar";
 import { Pagination } from "../common/Pagination";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 20;
 
 interface PersonaPresetSelectorProps {
   presets: PersonaPreset[];
@@ -181,40 +181,42 @@ export function PersonaPresetSelector({
         </div>
 
         <div className="space-y-3 border-b px-5 py-3 border-stone-200/70 dark:border-stone-700/70">
-          <div className="inline-grid grid-cols-2 gap-2">
-            {canManagePresets && onManagePresets && (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenChange(false);
-                  onManagePresets();
-                }}
-                className="rounded-lg px-3 py-2 text-xs font-medium"
-                style={{
-                  background: "var(--theme-primary)",
-                  color: "var(--theme-bg)",
-                }}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Settings2 size={14} />
-                  {t("personaPresets.manage", "管理角色")}
-                </span>
-              </button>
-            )}
-            {selectedPresetId && (
-              <button
-                type="button"
-                onClick={onClearPreset}
-                className="rounded-lg border px-3 py-2 text-xs"
-                style={{
-                  borderColor: "var(--theme-border)",
-                  color: "var(--theme-text-secondary)",
-                }}
-              >
-                {t("personaPresets.clear", "清除当前角色")}
-              </button>
-            )}
-          </div>
+          {(canManagePresets && onManagePresets) || selectedPresetId ? (
+            <div className="flex items-center gap-2">
+              {selectedPresetId && (
+                <button
+                  type="button"
+                  onClick={onClearPreset}
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                  style={{
+                    borderColor: "var(--theme-border)",
+                    color: "var(--theme-text-secondary)",
+                  }}
+                >
+                  {t("personaPresets.clear", "清除当前角色")}
+                </button>
+              )}
+              {canManagePresets && onManagePresets && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onManagePresets();
+                  }}
+                  className="ml-auto rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                  style={{
+                    borderColor: "var(--theme-border)",
+                    color: "var(--theme-text-secondary)",
+                  }}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Settings2 size={13} />
+                    {t("personaPresets.manage", "管理")}
+                  </span>
+                </button>
+              )}
+            </div>
+          ) : null}
           <div className="relative">
             <Search
               size={15}
@@ -282,7 +284,7 @@ export function PersonaPresetSelector({
               {t("personaPresets.empty", "暂无角色预设")}
             </div>
           ) : (
-            <div className="grid auto-grid-cols gap-4">
+            <div className="grid auto-grid-cols gap-3">
               {paged.map((preset, index) => {
                 const selected = selectedPresetId === preset.id;
                 const isUsingPreset = pendingUsePresetId === preset.id;
@@ -291,13 +293,13 @@ export function PersonaPresetSelector({
                 return (
                   <div
                     key={preset.id}
-                    className="pps-card group flex h-full flex-col overflow-hidden rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none cursor-pointer"
+                    className="pps-card group flex h-full flex-col overflow-hidden rounded-xl border border-[var(--theme-border)] bg-[var(--theme-bg-card)] shadow-sm dark:shadow-none"
                     style={{ animationDelay: `${index * 50}ms` }}
                     onClick={() => setPreviewPreset(preset)}
                   >
                     {/* Gradient Banner */}
                     <div
-                      className="pps-card__banner relative h-10 shrink-0"
+                      className="pps-card__banner relative h-12 shrink-0"
                       style={{
                         background: `linear-gradient(45deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
                       }}
@@ -348,9 +350,9 @@ export function PersonaPresetSelector({
                     </div>
 
                     {/* Card Body */}
-                    <div className="flex flex-1 flex-col p-3.5 pt-4">
+                    <div className="flex flex-1 flex-col p-4 pt-5">
                       {/* Title row */}
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex items-start gap-3">
                         <div className="pps-card__avatar shrink-0">
                           {isPersonaImageAvatar(preset.avatar) ||
                           isEmojiAvatar(preset.avatar) ? (
@@ -371,22 +373,19 @@ export function PersonaPresetSelector({
                             <PersonaAvatarIcon
                               avatar={preset.avatar}
                               primaryTag={primaryTag}
-                              size={16}
+                              size={20}
                               className="pps-card__avatar-icon"
                             />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3
-                            className="truncate text-sm font-semibold leading-tight"
-                            style={{ color: "var(--theme-text)" }}
+                            className="truncate text-base font-semibold text-[var(--theme-text)] leading-tight"
+                            title={preset.name}
                           >
                             {preset.name}
                           </h3>
-                          <div
-                            className="mt-1 flex items-center gap-1.5 text-[11px]"
-                            style={{ color: "var(--theme-text-secondary)" }}
-                          >
+                          <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[var(--theme-text-secondary)]">
                             <span>
                               {preset.scope === "global"
                                 ? t("personaPresets.official", "官方")
@@ -394,10 +393,7 @@ export function PersonaPresetSelector({
                             </span>
                             {preset.usage_count > 0 && (
                               <>
-                                <span
-                                  className="inline-block h-0.5 w-0.5 rounded-full"
-                                  style={{ background: "var(--theme-border)" }}
-                                />
+                                <span className="inline-block h-1 w-1 rounded-full bg-[var(--theme-border)]" />
                                 <span>
                                   {preset.usage_count}
                                   {t("personaPresets.usageCount", "次使用")}
@@ -409,16 +405,13 @@ export function PersonaPresetSelector({
                       </div>
 
                       {/* Description */}
-                      <p
-                        className="mt-2.5 text-[13px] leading-relaxed line-clamp-2 min-h-[3.25em]"
-                        style={{ color: "var(--theme-text-secondary)" }}
-                      >
+                      <p className="mt-3 text-[13px] leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2 min-h-[3.25em]">
                         {preset.description || preset.system_prompt}
                       </p>
 
                       {/* Tags */}
                       {preset.tags.length > 0 && (
-                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                        <div className="mt-3 flex flex-wrap gap-1.5">
                           {preset.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
@@ -442,10 +435,7 @@ export function PersonaPresetSelector({
                       <div className="flex-1" />
 
                       {/* Actions */}
-                      <div
-                        className="mt-3 flex items-center gap-1.5 border-t pt-3"
-                        style={{ borderColor: "var(--theme-border)" }}
-                      >
+                      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--theme-border)] pt-3">
                         <button
                           type="button"
                           disabled={isMutating || isUsingPreset}

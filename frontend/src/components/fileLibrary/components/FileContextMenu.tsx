@@ -79,7 +79,7 @@ export function FileContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-[999] bg-white dark:bg-stone-800 shadow-xl shadow-stone-900/[0.06] dark:shadow-black/40 rounded-xl border border-stone-200/80 dark:border-stone-700/60 p-1 min-w-[240px]"
+      className="fixed z-[999] bg-theme-bg-card shadow-xl rounded-xl border border-theme-border p-1 min-w-[240px]"
       style={{ position: "fixed", top: menu.y, left: menu.x }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -87,13 +87,10 @@ export function FileContextMenu({
         <button
           key={item.label}
           onClick={item.action}
-          className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700/60 cursor-pointer text-[13px] text-stone-700 dark:text-stone-200 transition-colors"
+          className="flex items-center gap-2 w-full p-2 rounded-lg hover:bg-theme-bg-subtle cursor-pointer text-[13px] text-theme-text transition-colors"
         >
           <div className="size-5 flex items-center justify-center shrink-0">
-            <item.icon
-              size={16}
-              className="text-stone-500 dark:text-stone-400"
-            />
+            <item.icon size={16} className="text-theme-text-secondary" />
           </div>
           <span className="flex-1 text-left">{item.label}</span>
         </button>

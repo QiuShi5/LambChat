@@ -127,6 +127,7 @@ export interface SubagentPart {
   type: "subagent";
   agent_id: string;
   agent_name: string;
+  agent_avatar?: string;
   input: string;
   result?: string;
   success?: boolean;

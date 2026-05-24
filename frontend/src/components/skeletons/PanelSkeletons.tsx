@@ -10,7 +10,7 @@ export function SkillsPanelSkeleton() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 animate-fade-in">
       <PanelHeaderSkeleton />
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4">
+      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 lg:px-8 lg:py-8">
         <div className="skill-grid grid auto-grid-cols gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="scb">
@@ -84,7 +84,7 @@ export function MarketplacePanelSkeleton() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 animate-fade-in">
       <PanelHeaderSkeleton />
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6">
+      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         <div className="grid auto-grid-cols gap-5">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="scb">

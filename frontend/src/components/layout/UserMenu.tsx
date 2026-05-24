@@ -7,8 +7,7 @@ import {
   User,
   Users,
   Shield,
-  Bot,
-  Cpu,
+  Settings2,
   Star,
   Bell,
   Settings,
@@ -143,14 +142,8 @@ export function UserMenu({ onShowProfile }: UserMenuProps) {
     {
       path: "/agents",
       label: t("nav.agents"),
-      icon: Bot,
-      show: canManageAgents,
-    },
-    {
-      path: "/models",
-      label: t("nav.models"),
-      icon: Cpu,
-      show: canManageModels,
+      icon: Settings2,
+      show: canManageAgents || canManageModels,
     },
   ].filter((i) => i.show);
 

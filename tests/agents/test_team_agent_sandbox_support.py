@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+
+
+class _FakeDeepAgent:
+    def __init__(self) -> None:
+        self.captured_create_kwargs = None
+
+    def with_config(self, _config):
+        return self
+
+    async def astream_events(self, _initial_state, _config, version="v2"):
+        if False:
+            yield version
+
+    async def aget_state(self, _config):
+        return SimpleNamespace(values={"messages": []})
+
+
+class _FakeEventProcessor:
+    def __init__(self, *_args, **_kwargs) -> None:
+        self.output_text = ""
+
+    async def process_event(self, _event) -> None:
+        return None
+
+    async def flush(self) -> None:
+        return None
+
+    def clear(self) -> None:
+        return None
+
+
+def _patch_common(monkeypatch: pytest.MonkeyPatch, module, fake_graph: _FakeDeepAgent) -> None:
+    async def fake_get_model(**_kwargs):
+        return object()
+
+    async def fake_resolve_fallback_model(*_args, **_kwargs):
+        return None
+
+    async def fake_checkpointer(**_kwargs):
+        return object()
+
+    async def fake_store():
+        return object()
+
+    async def fake_emit_token_usage(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(module.LLMClient, "get_model", fake_get_model)
+    monkeypatch.setattr(module, "resolve_fallback_model", fake_resolve_fallback_model)
+    monkeypatch.setattr(module, "get_async_checkpointer", fake_checkpointer)
+    monkeypatch.setattr(module, "acreate_store", fake_store)
+    monkeypatch.setattr(module, "emit_token_usage", fake_emit_token_usage)
+    monkeypatch.setattr(module, "AgentEventProcessor", _FakeEventProcessor)
+
+    def fake_create_deep_agent(**kwargs):
+        fake_graph.captured_create_kwargs = kwargs
+        return fake_graph
+
+    monkeypatch.setattr(module, "create_deep_agent", fake_create_deep_agent)
+    monkeypatch.setattr(module, "create_retry_middleware", lambda **_kwargs: [])
+    monkeypatch.setattr(module, "ToolResultBinaryMiddleware", lambda **_kwargs: object())
+    monkeypatch.setattr(module, "SubagentActivityMiddleware", lambda **_kwargs: object())
+    monkeypatch.setattr(module, "PromptCachingMiddleware", lambda: object())
+    monkeypatch.setattr(module.settings, "ENABLE_MCP", False)
+    monkeypatch.setattr(module.settings, "ENABLE_MEMORY", False)
+    monkeypatch.setattr(module.settings, "ENABLE_SKILLS", False)
+
+
+def _install_deepagents_shims(monkeypatch: pytest.MonkeyPatch) -> None:
+    import deepagents
+
+    monkeypatch.setattr(
+        deepagents,
+        "HarnessProfile",
+        lambda **kwargs: SimpleNamespace(**kwargs),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        deepagents,
+        "register_harness_profile",
+        lambda *_args, **_kwargs: None,
+        raising=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_team_agent_node_uses_sandbox_backend_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.agents.team_agent.context import TeamAgentContext
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", True)
+    monkeypatch.setattr(team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+
+    sandbox_backend = object()
+
+    def sandbox_factory(_runtime):
+        return sandbox_backend
+
+    async def fake_get_or_create(**_kwargs):
+        return SimpleNamespace(default=sandbox_backend), "/home/user"
+
+    sandbox_manager = SimpleNamespace(get_or_create=fake_get_or_create)
+
+    monkeypatch.setattr(
+        team_nodes,
+        "create_sandbox_backend_factory",
+        lambda sandbox_backend, assistant_id, user_id=None: sandbox_factory,
+    )
+    monkeypatch.setattr(team_nodes, "get_session_sandbox_manager", lambda: sandbox_manager)
+
+    emitted: list[tuple[str, tuple, dict]] = []
+
+    class _Presenter:
+        async def build_langsmith_metadata(self) -> dict:
+            return {}
+
+        def metadata(self) -> dict:
+            return {"event": "metadata", "data": {}}
+
+        async def emit_sandbox_starting(self):
+            emitted.append(("starting", (), {}))
+
+        async def emit_sandbox_ready(self, **kwargs):
+            emitted.append(("ready", (), kwargs))
+
+        async def emit_sandbox_error(self, error: str):
+            emitted.append(("error", (error,), {}))
+
+        def error(self, message: str, error_type: str) -> dict:
+            return {"event": "error", "data": {"message": message, "type": error_type}}
+
+        def done(self) -> dict:
+            return {"event": "done", "data": {}}
+
+    context = TeamAgentContext(session_id="session-1", user_id="user-1")
+
+    async def fake_setup():
+        return None
+
+    async def fake_close():
+        return None
+
+    monkeypatch.setattr(context, "setup", fake_setup)
+    monkeypatch.setattr(context, "close", fake_close)
+
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": _Presenter(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await team_nodes.team_router_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.captured_create_kwargs is not None
+    assert fake_graph.captured_create_kwargs["backend"] is sandbox_backend
+    assert "Storage Architecture (CRITICAL)" in fake_graph.captured_create_kwargs["system_prompt"]
+    assert emitted[0][0] == "starting"
+    assert emitted[1][0] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_team_agent_node_uses_persistent_backend_when_sandbox_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.agents.team_agent.context import TeamAgentContext
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", False)
+
+    persistent_backend = object()
+
+    def persistent_factory(_runtime):
+        return persistent_backend
+
+    monkeypatch.setattr(
+        team_nodes,
+        "create_persistent_backend_factory",
+        lambda **_kwargs: persistent_factory,
+    )
+    monkeypatch.setattr(
+        team_nodes,
+        "get_session_sandbox_manager",
+        lambda: (_ for _ in ()).throw(AssertionError("sandbox manager should not be used")),
+    )
+
+    context = TeamAgentContext(session_id="session-1", user_id="user-1")
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await team_nodes.team_router_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.captured_create_kwargs is not None
+    assert fake_graph.captured_create_kwargs["backend"] is persistent_backend
+
+
+def test_team_agent_declares_sandbox_support() -> None:
+    from src.agents.team_agent.graph import TeamAgent
+
+    assert TeamAgent._supports_sandbox is True

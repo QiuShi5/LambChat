@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSubagentPanelState } from "../SubagentBlocks.tsx";
+import {
+  buildSubagentPanelState,
+  getSubagentAvatarImageUrl,
+  getSubagentRoleIconMeta,
+} from "../SubagentBlocks.tsx";
 
 test("subagent panel subtitle shows only the start time", () => {
   const startedAt = Date.UTC(2026, 4, 10, 1, 45, 54);
@@ -28,4 +32,20 @@ test("subagent panel subtitle shows only the start time", () => {
   );
   assert.ok(!state.subtitle?.includes(" · "));
   assert.ok(!state.subtitle?.includes("26076m 2s"));
+});
+
+test("subagent role icon meta matches recognizable role names", () => {
+  assert.equal(getSubagentRoleIconMeta("设计理念分析").kind, "design");
+  assert.equal(getSubagentRoleIconMeta("frontend_code_reviewer").kind, "code");
+  assert.equal(getSubagentRoleIconMeta("qa test analyst").kind, "test");
+  assert.equal(getSubagentRoleIconMeta("general-purpose").kind, "general");
+});
+
+test("subagent avatar image url accepts role url and emoji avatars", () => {
+  assert.equal(
+    getSubagentAvatarImageUrl("/api/files/avatar.png"),
+    "/api/files/avatar.png",
+  );
+  assert.match(getSubagentAvatarImageUrl("🎨") || "", /fluent-emoji/);
+  assert.equal(getSubagentAvatarImageUrl("icon:writing"), null);
 });

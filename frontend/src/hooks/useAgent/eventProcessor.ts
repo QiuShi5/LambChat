@@ -105,6 +105,7 @@ export function processMessageEvent(
         data.input || "",
         depth,
         data.timestamp,
+        data.agent_avatar,
       );
       result.parts = addPartToDepth(
         parts,

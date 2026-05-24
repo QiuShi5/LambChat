@@ -90,7 +90,13 @@
 
 @media (min-width: 640px) {
   .panel-header {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .panel-header {
+    padding: 1.5rem 2rem;
   }
 }
 
@@ -740,6 +746,7 @@
 .editor-sidebar-footer {
   flex-shrink: 0;
   border-top: 0.5px solid var(--theme-border);
+  container-type: inline-size;
   background: color-mix(
     in srgb,
     var(--theme-bg-card) 96%,
@@ -1260,6 +1267,72 @@
   color: var(--theme-text-secondary);
   border: 0.5px solid
     color-mix(in srgb, var(--theme-primary) 6%, var(--theme-border));
+}
+
+/* ===== List Item Card — shared by team-member & MCP tool cards ===== */
+.list-item-card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg-card);
+  display: flex;
+  flex-direction: column;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  max-width: 36rem;
+}
+.list-item-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--theme-primary) 18%,
+    var(--theme-border)
+  );
+}
+.list-item-card:active {
+  transform: scale(0.985);
+  transition: transform 0.1s ease;
+}
+.list-item-card--disabled {
+  opacity: 0.55;
+}
+.list-item-card--disabled .list-item-card__name {
+  text-decoration: line-through;
+  text-decoration-color: var(--theme-text-secondary);
+}
+.list-item-card__body {
+  padding: 0.625rem 0.75rem;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.list-item-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.list-item-card__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.list-item-card__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--theme-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.list-item-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+.list-item-card__instructions {
+  margin-top: 0.5rem;
 }
 
 /* Mobile: full-width inputs, larger touch targets */

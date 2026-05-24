@@ -1,28 +1,58 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
-from deepagents.backends.protocol import (
-    BackendProtocol,
-    EditResult,
-    ExecuteResponse,
-    FileData,
-    FileDownloadResponse,
-    FileInfo,
-    FileUploadResponse,
-    GlobResult,
-    GrepMatch,
-    GrepResult,
-    LsResult,
-    WriteResult,
-)
-from deepagents.backends.protocol import (
-    ReadResult as _UpstreamReadResult,
-)
+import deepagents.backends.protocol as _protocol
+
+
+def _protocol_attr(name: str, fallback: Any) -> Any:
+    return getattr(_protocol, name, fallback)
+
+
+class _FallbackReadResultBase:
+    pass
+
+
+@dataclass
+class _FallbackLsResult:
+    entries: list[Any] | None = None
+    error: str | None = None
+
+
+@dataclass
+class _FallbackGlobResult:
+    matches: list[Any] | None = None
+    error: str | None = None
+
+
+@dataclass
+class _FallbackGrepResult:
+    matches: list[Any] | None = None
+    error: str | None = None
+
+
+BackendProtocol = _protocol_attr("BackendProtocol", Any)
+EditResult = _protocol_attr("EditResult", Any)
+ExecuteResponse = _protocol_attr("ExecuteResponse", Any)
+FileData = _protocol_attr("FileData", dict[str, Any])
+FileDownloadResponse = _protocol_attr("FileDownloadResponse", Any)
+FileInfo = _protocol_attr("FileInfo", Any)
+FileUploadResponse = _protocol_attr("FileUploadResponse", Any)
+GlobResult = _protocol_attr("GlobResult", _FallbackGlobResult)
+GrepMatch = _protocol_attr("GrepMatch", Any)
+GrepResult = _protocol_attr("GrepResult", _FallbackGrepResult)
+LsResult = _protocol_attr("LsResult", _FallbackLsResult)
+WriteResult = _protocol_attr("WriteResult", Any)
+_HAS_UPSTREAM_READ_RESULT = hasattr(_protocol, "ReadResult")
+_UpstreamReadResult = _protocol_attr("ReadResult", _FallbackReadResultBase)
 
 # Detect whether the upstream ReadResult is a dataclass (deepagents ≥0.5)
 # or the legacy str-subclass.
 _UPSTREAM_IS_DATACLASS = hasattr(_UpstreamReadResult, "__dataclass_fields__")
+_UPSTREAM_IS_STR_SUBCLASS = isinstance(_UpstreamReadResult, type) and issubclass(
+    _UpstreamReadResult, str
+)
 
 if _UPSTREAM_IS_DATACLASS:
 
@@ -60,9 +90,35 @@ if _UPSTREAM_IS_DATACLASS:
         def __len__(self) -> int:
             return len(str(self))
 
-else:
+elif _UPSTREAM_IS_STR_SUBCLASS:
 
     class ReadResult(str, _UpstreamReadResult):  # type: ignore[no-redef]
+        file_data: FileData | None
+        error: str | None
+
+        def __new__(
+            cls,
+            *,
+            file_data: FileData | None = None,
+            error: str | None = None,
+            rendered_content: str | None = None,
+        ) -> "ReadResult":
+            if rendered_content is None:
+                if error is not None:
+                    rendered_content = error if error.startswith("Error:") else f"Error: {error}"
+                else:
+                    rendered_content = str(
+                        (file_data or {}).get("content", "")  # type: ignore[call-overload]
+                    )
+
+            obj = str.__new__(cls, rendered_content)
+            obj.file_data = file_data
+            obj.error = error
+            return obj
+
+else:
+
+    class ReadResult(str):  # type: ignore[no-redef]
         file_data: FileData | None
         error: str | None
 
@@ -89,7 +145,9 @@ else:
 
 def is_read_result(value: object) -> bool:
     """Return True for both upstream and compatibility-layer read results."""
-    return isinstance(value, _UpstreamReadResult)
+    if _UPSTREAM_IS_DATACLASS or _UPSTREAM_IS_STR_SUBCLASS:
+        return isinstance(value, _UpstreamReadResult)
+    return isinstance(value, ReadResult)
 
 
 def read_result_to_string(value: object) -> str:

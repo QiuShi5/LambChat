@@ -10,7 +10,6 @@ export type TabType =
   | "feedback"
   | "channels"
   | "agents"
-  | "models"
   | "files"
   | "notifications"
   | "memory"

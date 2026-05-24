@@ -85,14 +85,14 @@ function CoverLayout({
 
   if (compact) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-stone-50 dark:bg-stone-800/40">
+      <div className="flex h-full w-full items-center justify-center bg-theme-bg-subtle">
         <Icon size={17} strokeWidth={2} className={tint} />
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-stone-50 dark:bg-stone-800/30">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-theme-bg-subtle">
       {/* Centered icon */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <Icon
@@ -118,7 +118,7 @@ function CoverLayout({
       {/* Footer */}
       <div className="relative z-10 mt-auto px-3 pb-3">
         {subtitle && (
-          <p className="truncate text-[10px] leading-3 text-stone-400 dark:text-stone-500">
+          <p className="truncate text-[10px] leading-3 text-theme-text-tertiary">
             {subtitle}
           </p>
         )}
@@ -173,9 +173,9 @@ function CodeCover({
       compact={compact}
       topRight={
         <div className="flex gap-1">
-          <span className="h-[6px] w-[6px] rounded-full bg-stone-300 dark:bg-stone-600" />
-          <span className="h-[6px] w-[6px] rounded-full bg-stone-200 dark:bg-stone-700" />
-          <span className="h-[6px] w-[6px] rounded-full bg-stone-100 dark:bg-stone-800" />
+          <span className="h-[6px] w-[6px] rounded-full bg-theme-text-tertiary" />
+          <span className="h-[6px] w-[6px] rounded-full bg-theme-border-hover" />
+          <span className="h-[6px] w-[6px] rounded-full bg-theme-bg-subtle" />
         </div>
       }
     />
@@ -263,6 +263,7 @@ export function FileCardPreview({
       <img
         src={imageUrl}
         alt={preview.title}
+        referrerPolicy="no-referrer"
         className="h-full w-full object-cover transition-transform duration-300 group-hover/card:scale-[1.02]"
         loading="lazy"
       />

@@ -8,6 +8,7 @@ import {
   Server,
   Check,
   Pencil,
+  Wrench,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -16,6 +17,7 @@ import { LoadingSpinner } from "../common/LoadingSpinner";
 import { MCPPanelSkeleton } from "../skeletons";
 import { Pagination } from "../common/Pagination";
 import { MCPServerCard } from "../mcp/MCPServerCard";
+import { MCPServerToolsSidebar } from "../mcp/MCPServerToolsSidebar";
 import { MCPServerForm } from "../mcp/MCPServerForm";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { EditorSidebar } from "../common/EditorSidebar";
@@ -70,6 +72,8 @@ export function MCPPanel() {
     success: boolean;
     message: string;
   } | null>(null);
+  const [toolsSidebarServer, setToolsSidebarServer] =
+    useState<MCPServerResponse | null>(null);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -432,7 +436,7 @@ export function MCPPanel() {
         </div>
       )}
 
-      {/* Servers List */}
+      {/* Servers Grid */}
       <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4">
         {filteredServers.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-theme-text-secondary py-12">
@@ -455,7 +459,7 @@ export function MCPPanel() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid auto-grid-cols gap-3">
             {paginatedServers.map((server) => (
               <MCPServerCard
                 key={server.name}
@@ -463,7 +467,7 @@ export function MCPPanel() {
                 onToggle={handleToggle}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                onToolToggled={handleToolToggled}
+                onClick={() => setToolsSidebarServer(server)}
               />
             ))}
           </div>
@@ -676,6 +680,23 @@ export function MCPPanel() {
             </div>
           )}
         </div>
+      </EditorSidebar>
+
+      {/* Tools Sidebar */}
+      <EditorSidebar
+        open={toolsSidebarServer !== null}
+        onClose={() => setToolsSidebarServer(null)}
+        title={toolsSidebarServer?.name ?? ""}
+        icon={<Wrench size={16} />}
+        width="wide"
+      >
+        {toolsSidebarServer && (
+          <MCPServerToolsSidebar
+            key={toolsSidebarServer.name}
+            server={toolsSidebarServer}
+            onToolToggled={handleToolToggled}
+          />
+        )}
       </EditorSidebar>
 
       {/* Delete Confirmation Dialog */}

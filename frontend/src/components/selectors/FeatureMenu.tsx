@@ -19,6 +19,7 @@ import {
   Music,
   FileText,
   UserRound,
+  UsersRound,
   ChevronDown,
   Upload,
   Layers,
@@ -32,6 +33,7 @@ import type { UploadLimits } from "../../hooks/useFileUpload";
 
 export type FeaturePanel =
   | "persona"
+  | "team"
   | "tools"
   | "skills"
   | "agent"
@@ -54,6 +56,8 @@ interface FeatureMenuProps {
   totalSkillsCount: number;
   hasPersonaSelector?: boolean;
   personaName?: string | null;
+  hasTeamSelector?: boolean;
+  totalTeamCount?: number;
   hasAgentSelector: boolean;
   agentName?: string | null;
   hasThinkingOption: boolean;
@@ -158,6 +162,8 @@ export const FeatureMenu = memo(function FeatureMenu({
   totalSkillsCount,
   hasPersonaSelector = false,
   personaName,
+  hasTeamSelector = false,
+  totalTeamCount = 0,
   hasAgentSelector,
   agentName,
   hasThinkingOption,
@@ -194,7 +200,7 @@ export const FeatureMenu = memo(function FeatureMenu({
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return { display: "none" };
     const vw = window.innerWidth;
-    const dropdownW = Math.min(vw < 640 ? 220 : 320, vw - 16);
+    const dropdownW = Math.min(vw < 640 ? 336 : 320, vw - 16);
     const left = Math.max(8, Math.min(rect.left, vw - dropdownW - 8));
     return {
       position: "fixed",
@@ -210,6 +216,7 @@ export const FeatureMenu = memo(function FeatureMenu({
     totalToolsCount > 0 ||
     totalSkillsCount > 0 ||
     hasPersonaSelector ||
+    hasTeamSelector ||
     hasAgentSelector ||
     hasThinkingOption ||
     booleanOptionEntries.length > 0;
@@ -278,6 +285,7 @@ export const FeatureMenu = memo(function FeatureMenu({
               </MenuGroup>
             )}
             {(hasPersonaSelector ||
+              hasTeamSelector ||
               totalToolsCount > 0 ||
               totalSkillsCount > 0) && (
               <MenuGroup
@@ -291,6 +299,15 @@ export const FeatureMenu = memo(function FeatureMenu({
                     badge={personaName || undefined}
                     active={activePanel === "persona"}
                     onClick={() => onOpen("persona")}
+                  />
+                )}
+                {hasTeamSelector && (
+                  <MenuItem
+                    icon={<UsersRound size={18} />}
+                    label={t("featureMenu.team", "团队")}
+                    badge={totalTeamCount > 0 ? `${totalTeamCount}` : undefined}
+                    active={activePanel === "team"}
+                    onClick={() => onOpen("team")}
                   />
                 )}
                 {totalToolsCount > 0 && (

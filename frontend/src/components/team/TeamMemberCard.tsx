@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Star, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Star, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { TeamMember } from "../../types/team";
-import { nameToGradient } from "../common/cardUtils";
 import {
   PersonaAvatarIcon,
   PersonaAvatarImage,
@@ -29,118 +29,115 @@ export function TeamMemberCard({
   onToggleEnabled,
   onInstructionsChange,
 }: TeamMemberCardProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(!!member.role_instructions);
-  const colors = nameToGradient(member.role_name || "role");
 
   return (
     <div
-      className={`team-member-card group ${
-        member.enabled ? "" : "team-member-card--disabled"
+      className={`list-item-card ${
+        member.enabled ? "" : "list-item-card--disabled"
       }`}
-      style={{ "--team-accent": colors[0] } as React.CSSProperties}
     >
-      <div className="team-member-card__body">
-        {/* Top row */}
-        <div className="team-member-card__top">
-          {/* Avatar */}
-          {isPersonaImageAvatar(member.role_avatar) ||
-          isEmojiAvatar(member.role_avatar) ? (
-            <div className="scb__avatar-ring shrink-0">
-              <PersonaAvatarImage
-                avatar={
-                  isEmojiAvatar(member.role_avatar)
-                    ? getEmojiAvatarUrl(member.role_avatar)
-                    : member.role_avatar
-                }
-                alt=""
-                className="scb__avatar-img"
-              />
-            </div>
-          ) : (
-            <div className="scb__icon-ring shrink-0">
-              <PersonaAvatarIcon
-                avatar={member.role_avatar}
-                primaryTag={member.role_tags[0]}
-                size={19}
-                className="text-[var(--theme-primary)]"
-              />
-            </div>
-          )}
+      <div className="list-item-card__body">
+        {/* Main row: avatar + name + tags + actions */}
+        <div className="list-item-card__top">
+          <div className="team-member-card__avatar-btn">
+            {isPersonaImageAvatar(member.role_avatar) ||
+            isEmojiAvatar(member.role_avatar) ? (
+              <div className="team-member-card__avatar">
+                <PersonaAvatarImage
+                  avatar={
+                    isEmojiAvatar(member.role_avatar)
+                      ? getEmojiAvatarUrl(member.role_avatar)
+                      : member.role_avatar
+                  }
+                  alt=""
+                  className="team-member-card__avatar-img"
+                />
+              </div>
+            ) : (
+              <div className="team-member-card__avatar team-member-card__avatar--icon">
+                <PersonaAvatarIcon
+                  avatar={member.role_avatar}
+                  primaryTag={member.role_tags[0]}
+                  size={18}
+                  className="text-[var(--theme-primary)]"
+                />
+              </div>
+            )}
+          </div>
 
-          {/* Name + badges */}
-          <span className="team-member-card__name">
-            {member.role_name || "Unnamed Role"}
-          </span>
-          {isDefault && (
-            <span className="team-member-card__default-badge">Default</span>
-          )}
+          <div className="list-item-card__identity">
+            <span className="list-item-card__name">
+              {member.role_name || t("team.unnamedRole")}
+            </span>
+            {member.role_tags.length > 0 && (
+              <span className="team-member-card__tags">
+                {member.role_tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="team-member-card__tag">
+                    {tag}
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
 
-          {/* Toggle switch */}
+          {/* Inline actions */}
+          <div className="list-item-card__actions">
+            <button
+              onClick={onSetDefault}
+              className={`team-member-card__action-btn ${
+                isDefault ? "team-member-card__action-btn--active" : ""
+              }`}
+              title={isDefault ? t("team.defaultRole") : t("team.setDefault")}
+              type="button"
+            >
+              <Star size={13} fill={isDefault ? "currentColor" : "none"} />
+            </button>
+            <button
+              onClick={onRemove}
+              className="team-member-card__action-btn team-member-card__action-btn--danger"
+              title={t("team.remove")}
+              type="button"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+
+          {/* Toggle */}
           <button
             onClick={onToggleEnabled}
             className={`team-toggle ${member.enabled ? "team-toggle--on" : ""}`}
-            title={member.enabled ? "Disable role" : "Enable role"}
+            title={
+              member.enabled ? t("team.disableRole") : t("team.enableRole")
+            }
             type="button"
             role="switch"
             aria-checked={member.enabled}
           />
+
+          {/* Expand chevron */}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="team-member-card__expand-btn"
+            type="button"
+          >
+            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          </button>
         </div>
 
-        {/* Tags */}
-        {member.role_tags.length > 0 && (
-          <div className="team-member-card__tags">
-            {member.role_tags.slice(0, 4).map((tag) => (
-              <span key={tag} className="scb__mini-tag">
-                {tag}
-              </span>
-            ))}
+        {/* Collapsible instructions */}
+        {expanded && (
+          <div className="list-item-card__instructions">
+            <textarea
+              value={member.role_instructions}
+              onChange={(e) => onInstructionsChange(e.target.value)}
+              placeholder={t("team.roleInstructionsPlaceholder")}
+              className="ppe-textarea"
+              rows={3}
+            />
           </div>
         )}
-
-        {/* Instructions area */}
-        <div className="team-member-card__instructions">
-          <button
-            className="team-member-card__instructions-trigger"
-            onClick={() => setExpanded(!expanded)}
-            type="button"
-          >
-            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            Role instructions
-          </button>
-          {expanded && (
-            <div className="team-member-card__instructions-area">
-              <textarea
-                value={member.role_instructions}
-                onChange={(e) => onInstructionsChange(e.target.value)}
-                placeholder="Role-specific instructions..."
-                className="ppe-textarea min-h-[4rem]"
-                rows={3}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Bottom actions (hover visible) */}
-        <div className="team-member-card__bottom-actions">
-          <button
-            onClick={onSetDefault}
-            className={`scb__action-btn scb__action-btn--ghost ${
-              isDefault ? "text-amber-500" : ""
-            }`}
-            title="Set as default"
-            type="button"
-          >
-            <Star size={12} />
-          </button>
-          <button
-            onClick={onRemove}
-            className="scb__action-btn scb__action-btn--ghost"
-            title="Remove"
-            type="button"
-          >
-            ×
-          </button>
-        </div>
       </div>
     </div>
   );

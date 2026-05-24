@@ -20,7 +20,11 @@ import { LoadingSpinner } from "../common/LoadingSpinner";
 import { EditorSidebar } from "../common/EditorSidebar";
 import toast from "react-hot-toast";
 import { useSkills } from "../../hooks/useSkills";
-import { buildPersonaPresetPayload } from "./personaPresetEditor";
+import {
+  buildPersonaPresetPayload,
+  draftRowsToStarterPrompts,
+  starterPromptsToDraftRows,
+} from "./personaPresetEditor";
 import { uploadApi } from "../../services/api";
 import { compressImageFile } from "../../utils/imageCompression";
 import {
@@ -33,7 +37,6 @@ import { PersonaAvatarIcon, PersonaAvatarImage } from "./PersonaAvatarIcon";
 import type {
   PersonaPreset,
   PersonaPresetCreate,
-  PersonaStarterPrompt,
   PersonaPresetStatus,
   PersonaPresetUpdate,
 } from "../../types";
@@ -56,61 +59,6 @@ const AVATAR_EMOJIS: { emoji: string; labelKey: string }[] = [
   { emoji: "💬", labelKey: "personaPresets.emojiChat" },
   { emoji: "🌟", labelKey: "personaPresets.emojiStar" },
 ];
-
-interface StarterPromptDraftRow {
-  icon: string;
-  text: string;
-}
-
-function stringifyStarterPromptText(
-  text: PersonaStarterPrompt["text"],
-): string {
-  return typeof text === "string" ? text : JSON.stringify(text);
-}
-
-function starterPromptsToDraftRows(
-  prompts: PersonaStarterPrompt[] | undefined,
-): StarterPromptDraftRow[] {
-  return (prompts ?? []).map((prompt) => ({
-    icon: prompt.icon ?? "",
-    text: stringifyStarterPromptText(prompt.text),
-  }));
-}
-
-function parseStarterPromptText(text: string): PersonaStarterPrompt["text"] {
-  const trimmed = text.trim();
-  if (!trimmed.startsWith("{")) return trimmed;
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      Object.values(parsed as Record<string, unknown>).every(
-        (value) => typeof value === "string",
-      )
-    ) {
-      return parsed as Record<string, string>;
-    }
-  } catch {
-    return trimmed;
-  }
-  return trimmed;
-}
-
-function draftRowsToStarterPrompts(
-  rows: StarterPromptDraftRow[],
-): PersonaStarterPrompt[] {
-  return rows
-    .map((row) => ({
-      icon: row.icon.trim() || null,
-      text: parseStarterPromptText(row.text),
-    }))
-    .filter((prompt) =>
-      typeof prompt.text === "string"
-        ? prompt.text.trim().length > 0
-        : Object.keys(prompt.text).length > 0,
-    );
-}
 
 interface PersonaEditorModalProps {
   showModal: boolean;

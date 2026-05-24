@@ -36,7 +36,12 @@
 }
 
 .skill-content-area {
-  background: var(--theme-bg);
+  background: radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      color-mix(in srgb, var(--theme-primary-light) 6%, transparent) 0%,
+      transparent 100%
+    ),
+    var(--theme-bg);
 }
 
 .skill-panel-header {
@@ -45,7 +50,13 @@
 
 @media (min-width: 640px) {
   .skill-panel-header {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .skill-panel-header {
+    padding: 1.5rem 2rem;
   }
 }
 
@@ -585,7 +596,6 @@
   border-color: var(--skill-border-strong);
   color: var(--theme-text);
   box-shadow: none;
-  transform: translateY(-1px);
 }
 
 .skill-tag-chip--active {

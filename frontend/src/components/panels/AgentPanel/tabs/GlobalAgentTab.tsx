@@ -41,32 +41,34 @@ export function GlobalAgentTab({
   };
 
   const hasChanges = JSON.stringify(localAgents) !== JSON.stringify(agents);
+  const enabledCount = localAgents.filter((a) => a.enabled).length;
 
   if (isLoading) {
     return <AgentPanelSkeleton />;
   }
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-stone-500 dark:text-stone-400 px-1 leading-relaxed">
+    <div className="space-y-4">
+      <p className="hidden px-1 text-sm leading-relaxed text-theme-text-secondary sm:block">
         {t("agentConfig.globalDescription")}
       </p>
 
-      <div className="grid gap-3">
-        {localAgents.map((agent) => (
+      <div className="glass-card divide-y divide-[var(--glass-border)] overflow-hidden rounded-xl">
+        {localAgents.map((agent, index) => (
           <div
             key={agent.id}
-            className="group flex items-center justify-between glass-card rounded-xl p-4 transition-all duration-200"
+            className="group flex items-center justify-between gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-[var(--glass-bg-hover)]"
+            style={{ animationDelay: `${index * 40}ms` }}
           >
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--glass-bg-subtle)] ring-1 ring-[var(--glass-border)] shadow-sm">
-                <Bot size={24} className="text-stone-600 dark:text-stone-400" />
+            <div className="flex min-w-0 flex-1 items-center gap-3.5">
+              <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--glass-bg-subtle)] text-theme-text-secondary ring-1 ring-[var(--glass-border)] transition-all duration-200 group-hover:bg-[var(--glass-bg-hover)]">
+                <Bot size={20} />
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate tracking-tight font-serif">
+                <h4 className="truncate text-sm font-medium tracking-tight text-theme-text">
                   {t(agent.name)}
                 </h4>
-                <p className="text-xs text-stone-500 dark:text-stone-400 truncate mt-0.5 hidden sm:block">
+                <p className="mt-0.5 hidden truncate text-xs text-theme-text-secondary sm:block">
                   {t(agent.description)}
                 </p>
               </div>
@@ -86,7 +88,12 @@ export function GlobalAgentTab({
       </div>
 
       {hasChanges && (
-        <div className="flex justify-end pt-3">
+        <div className="glass-divider mt-4 flex items-center justify-between pt-4">
+          <span className="flex items-center gap-1.5 text-xs text-theme-text-tertiary">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            {enabledCount} / {localAgents.length}{" "}
+            {t("agentConfig.agentsEnabled", { count: enabledCount })}
+          </span>
           <button
             onClick={handleSave}
             disabled={isSaving}

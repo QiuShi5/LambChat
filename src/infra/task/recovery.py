@@ -195,6 +195,7 @@ class TaskRecoveryService:
                 else None
             ),
             "disabled_mcp_tools": session_metadata.get("disabled_mcp_tools") or None,
+            "team_id": session_metadata.get("team_id"),
         }
 
         concurrency_result = await limiter.claim_recovery_slot(
@@ -238,6 +239,7 @@ class TaskRecoveryService:
                     ),
                     disabled_mcp_tools=session_metadata.get("disabled_mcp_tools") or None,
                     session_name=getattr(session, "name", None),
+                    team_id=session_metadata.get("team_id"),
                 )
             except Exception:
                 await limiter.release(session.user_id, new_run_id, dequeue=False)
@@ -294,6 +296,7 @@ class TaskRecoveryService:
                     "disabled_mcp_tools": session_metadata.get("disabled_mcp_tools") or [],
                     "language": language,
                     "project_id": session_metadata.get("project_id"),
+                    "team_id": session_metadata.get("team_id"),
                     "recovery_of_run_id": source_run_id,
                     "recovery_reason": reason,
                     "recovery_requested_at": utc_now_iso(),

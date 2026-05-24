@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   FolderOpen,
   UserRound,
+  Users,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { APP_NAME } from "../../../constants";
@@ -22,6 +23,7 @@ interface SidebarRailProps {
   onOpenRecentChats: () => void;
   onOpenFileLibrary: () => void;
   onOpenPersonaPlaza: () => void;
+  onOpenTeamBuilder: () => void;
   onOpenSkills: () => void;
   hasMoreMenuItems: boolean;
   onToggleMoreMenu: () => void;
@@ -40,6 +42,7 @@ export function SidebarRail({
   onOpenRecentChats,
   onOpenFileLibrary,
   onOpenPersonaPlaza,
+  onOpenTeamBuilder,
   hasMoreMenuItems,
   onToggleMoreMenu,
   moreMenuBtnRef,
@@ -116,6 +119,15 @@ export function SidebarRail({
           aria-label={t("personaPresets.title", "角色广场")}
         >
           <UserRound size={20} />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenTeamBuilder}
+          className={railBtn}
+          title={t("nav.team", "团队构建")}
+          aria-label={t("nav.team", "团队构建")}
+        >
+          <Users size={20} />
         </button>
         <button
           type="button"

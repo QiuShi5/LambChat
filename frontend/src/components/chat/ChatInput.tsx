@@ -8,11 +8,13 @@ import { ContactAdminDialog } from "../common/ContactAdminDialog";
 import { useFileUpload } from "../../hooks/useFileUpload";
 import { useMentionState } from "../../hooks/useMentionState";
 import { useMentionSearch } from "../../hooks/useMentionSearch";
+import { useTeamMentionSearch } from "../../hooks/useTeamMentionSearch";
 import { useInputHistory } from "../../hooks/useInputHistory";
 import { useTextareaResize } from "../../hooks/useTextareaResize";
 import { usePasteHandler } from "../../hooks/usePasteHandler";
 import { useAuth } from "../../hooks/useAuth";
 import { MentionPopup } from "./MentionPopup";
+import { TeamMentionPopup } from "./TeamMentionPopup";
 import { ChatInputToolbar } from "./ChatInputToolbar";
 import { ChatInputSelectors } from "./ChatInputSelectors";
 import { ChatInputHelpMenu } from "./ChatInputHelpMenu";
@@ -27,6 +29,7 @@ import {
 import type { ChatInputProps } from "./chatInputTypes";
 import type { FeaturePanel } from "../selectors/FeatureMenu";
 import type { MessageAttachment, PersonaPreset } from "../../types";
+import type { Team } from "../../types/team";
 
 export type { ChatInputProps } from "./chatInputTypes";
 
@@ -146,6 +149,10 @@ export const ChatInput = memo(function ChatInput({
     scheduleTextareaResize,
   });
 
+  const mentionMode = currentAgent === "team" ? "team" : "persona";
+  const mentionEnabled =
+    mentionMode === "team" ? !!onSelectTeam : !!onUsePersonaPreset;
+
   const {
     mention,
     moveHighlight: moveMentionHighlight,
@@ -153,15 +160,32 @@ export const ChatInput = memo(function ChatInput({
     setResultCount: setMentionResultCount,
     resetMention,
     dismissMention,
-  } = useMentionState(input, cursorPosition, !!onUsePersonaPreset);
+  } = useMentionState(input, cursorPosition, mentionEnabled);
 
-  const mentionSearch = useMentionSearch(mention.query, mention.isActive);
+  const mentionSearch = useMentionSearch(
+    mention.query,
+    mention.isActive && mentionMode === "persona",
+  );
+  const teamMentionSearch = useTeamMentionSearch(
+    mention.query,
+    mention.isActive && mentionMode === "team",
+  );
 
   useEffect(() => {
     if (mention.isActive) {
-      setMentionResultCount(mentionSearch.presets.length);
+      setMentionResultCount(
+        mentionMode === "team"
+          ? teamMentionSearch.teams.length
+          : mentionSearch.presets.length,
+      );
     }
-  }, [mention.isActive, mentionSearch.presets.length, setMentionResultCount]);
+  }, [
+    mention.isActive,
+    mentionMode,
+    mentionSearch.presets.length,
+    teamMentionSearch.teams.length,
+    setMentionResultCount,
+  ]);
 
   useEffect(() => {
     if (!onMentionQueryChange) return;
@@ -186,6 +210,24 @@ export const ChatInput = memo(function ChatInput({
     resetMention();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on preset selection
   }, [selectedPersonaPresetId]);
+
+  useEffect(() => {
+    if (!onMentionQueryChange || !selectedTeamId || !mention.isActive) return;
+    const before = input.substring(0, mention.atIndex);
+    const after = input.substring(mention.atIndex + mention.query.length + 1);
+    setInput(before + after);
+    setCursorPosition(before.length || 0);
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = before.length;
+        textarea.focus();
+        scheduleTextareaResize();
+      }
+    });
+    resetMention();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires only on team selection
+  }, [selectedTeamId]);
 
   useEffect(() => {
     const applySelectionActionPrompt = (prompt: string) => {
@@ -221,6 +263,24 @@ export const ChatInput = memo(function ChatInput({
       window.removeEventListener(SELECTION_ACTION_EVENT, handleSelectionAction);
     };
   }, [scheduleTextareaResize]);
+
+  // Ctrl+T / Cmd+T -> open team picker
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac =
+        typeof navigator !== "undefined" &&
+        navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+      if (modifier && e.key === "t") {
+        e.preventDefault();
+        if (currentAgent === "team" && onSelectTeam) {
+          setActivePanel((prev) => (prev === "team" ? null : "team"));
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [currentAgent, onSelectTeam]);
 
   useEffect(() => {
     if (!mention.isActive) {
@@ -295,10 +355,32 @@ export const ChatInput = memo(function ChatInput({
     [input, mention, onUsePersonaPreset, resetMention, scheduleTextareaResize],
   );
 
+  const applyTeamMentionSelection = useCallback(
+    (team: Team) => {
+      if (!mention.isActive) return;
+      const before = input.substring(0, mention.atIndex);
+      const after = input.substring(mention.atIndex + mention.query.length + 1);
+      const newInput = before + after;
+      setInput(newInput);
+      setCursorPosition(before.length || 0);
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.selectionStart = textarea.selectionEnd = before.length;
+          textarea.focus();
+          scheduleTextareaResize();
+        }
+      });
+      onSelectTeam?.(team.id);
+      resetMention();
+    },
+    [input, mention, onSelectTeam, resetMention, scheduleTextareaResize],
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
-    if (input.trim() && !isLoading && !disabled) {
+    if (input.trim() && canSubmit) {
       const trimmed = input.trim();
       onSend(trimmed, agentOptionValues, attachments);
       pushHistory(trimmed);
@@ -326,8 +408,13 @@ export const ChatInput = memo(function ChatInput({
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        const highlighted = mentionSearch.presets[mention.highlightedIndex];
-        if (highlighted) applyMentionSelection(highlighted);
+        if (mentionMode === "team") {
+          const highlighted = teamMentionSearch.teams[mention.highlightedIndex];
+          if (highlighted) applyTeamMentionSelection(highlighted);
+        } else {
+          const highlighted = mentionSearch.presets[mention.highlightedIndex];
+          if (highlighted) applyMentionSelection(highlighted);
+        }
         return;
       }
       if (e.key === "Escape") {
@@ -388,8 +475,13 @@ export const ChatInput = memo(function ChatInput({
 
   const hasContent = !!input.trim() && !disabled;
   const hasUploadingAttachment = attachments.some((a) => a.isUploading);
+  const requiresTeamSelection = currentAgent === "team" && !selectedTeamId;
   const canSubmit =
-    hasContent && canSend && !isLoading && !hasUploadingAttachment;
+    hasContent &&
+    canSend &&
+    !isLoading &&
+    !hasUploadingAttachment &&
+    !requiresTeamSelection;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -467,21 +559,37 @@ export const ChatInput = memo(function ChatInput({
               : "0 2px 12px rgba(0,0,0,0.06)",
           }}
         >
-          {mention.isActive && !onMentionQueryChange && (
-            <MentionPopup
-              presets={mentionSearch.presets}
-              highlightedIndex={mention.highlightedIndex}
-              selectedPresetId={selectedPersonaPresetId}
-              isLoading={mentionSearch.isLoading}
-              isLoadingMore={mentionSearch.isLoadingMore}
-              hasMore={mentionSearch.hasMore}
-              onSelect={applyMentionSelection}
-              onHover={setMentionHighlight}
-              onClose={dismissMention}
-              onLoadMore={mentionSearch.loadMore}
-              placement={mentionPopupPlacement ?? undefined}
-            />
-          )}
+          {mention.isActive &&
+            !onMentionQueryChange &&
+            mentionMode === "persona" && (
+              <MentionPopup
+                presets={mentionSearch.presets}
+                highlightedIndex={mention.highlightedIndex}
+                selectedPresetId={selectedPersonaPresetId}
+                isLoading={mentionSearch.isLoading}
+                isLoadingMore={mentionSearch.isLoadingMore}
+                hasMore={mentionSearch.hasMore}
+                onSelect={applyMentionSelection}
+                onHover={setMentionHighlight}
+                onClose={dismissMention}
+                onLoadMore={mentionSearch.loadMore}
+                placement={mentionPopupPlacement ?? undefined}
+              />
+            )}
+          {mention.isActive &&
+            !onMentionQueryChange &&
+            mentionMode === "team" && (
+              <TeamMentionPopup
+                teams={teamMentionSearch.teams}
+                highlightedIndex={mention.highlightedIndex}
+                selectedTeamId={selectedTeamId}
+                isLoading={teamMentionSearch.isLoading}
+                onSelect={applyTeamMentionSelection}
+                onHover={setMentionHighlight}
+                onClose={dismissMention}
+                placement={mentionPopupPlacement ?? undefined}
+              />
+            )}
 
           <ChatInputAttachments
             attachments={attachments}
@@ -503,7 +611,11 @@ export const ChatInput = memo(function ChatInput({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder={
-                  canSend ? t("chat.placeholder") : t("chat.noPermission")
+                  canSend
+                    ? mentionMode === "team"
+                      ? t("chat.teamPlaceholder")
+                      : t("chat.placeholder")
+                    : t("chat.noPermission")
                 }
                 disabled={disabled || !canSend}
                 className="bg-transparent outline-none w-full pt-[10px] resize-none text-[15px] disabled:opacity-50 leading-relaxed overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] min-h-[40px] sm:min-h-[44px]"
@@ -546,6 +658,9 @@ export const ChatInput = memo(function ChatInput({
             selectedPersonaName={selectedPersonaName}
             personaAvatar={personaAvatar}
             onClearPersonaPreset={onClearPersonaPreset}
+            currentAgent={currentAgent}
+            selectedTeamId={selectedTeamId}
+            onSelectTeam={onSelectTeam}
             agentOptions={agentOptions}
             agentOptionValues={agentOptionValues}
             onToggleAgentOption={onToggleAgentOption}

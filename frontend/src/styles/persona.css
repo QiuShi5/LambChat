@@ -1234,13 +1234,14 @@
 
 .pps-card {
   animation: pps-card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  min-width: 320px;
   transition:
     transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 0.25s ease;
 }
 
 .pps-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow:
     0 8px 24px -6px rgb(0 0 0 / 0.1),
     0 2px 8px -2px rgb(0 0 0 / 0.05);
@@ -1358,10 +1359,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.625rem;
-  border: 1.5px solid var(--theme-border);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--theme-border);
   background: color-mix(
     in srgb,
     var(--theme-primary-light) 50%,

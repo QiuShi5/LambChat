@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from bson import ObjectId
 
 from src.infra.team.storage import TeamStorage
 
@@ -68,7 +69,12 @@ def _make_fake_collection():
 
     def find(query: dict):
         owner = query.get("owner_user_id")
-        matches = [dict(d) for d in store if d.get("owner_user_id") == owner]
+        allowed_ids = set(query.get("_id", {}).get("$in", []))
+        matches = [
+            dict(d)
+            for d in store
+            if d.get("owner_user_id") == owner and (not allowed_ids or d.get("_id") in allowed_ids)
+        ]
         return _Cursor(matches)
 
     async def delete_one(query: dict):
@@ -83,6 +89,17 @@ def _make_fake_collection():
         result = MagicMock()
         result.deleted_count = 0
         return result
+
+    async def find_one_and_update(query: dict, update_doc: dict, return_document=True):
+        filter_id = query.get("_id")
+        owner = query.get("owner_user_id")
+        for i, doc in enumerate(store):
+            if doc.get("_id") == filter_id and doc.get("owner_user_id") == owner:
+                updated = dict(doc)
+                updated.update(update_doc.get("$set", {}))
+                store[i] = updated
+                return dict(updated)
+        return None
 
     async def insert_many(docs: list[dict]):
         inserted = []
@@ -104,8 +121,34 @@ def _make_fake_collection():
     coll.find = find
     coll.count_documents = count_documents
     coll.delete_one = delete_one
+    coll.find_one_and_update = find_one_and_update
     coll.insert_many = insert_many
     return coll, store
+
+
+def _make_fake_user_collection():
+    users: dict[ObjectId, dict] = {}
+
+    async def find_one(query: dict, projection: dict | None = None):
+        user_id = query.get("_id")
+        return users.get(user_id)
+
+    async def update_one(query: dict, update_doc: dict):
+        user_id = query.get("_id")
+        user = users.setdefault(user_id, {"_id": user_id, "metadata": {}})
+        for key, value in update_doc.get("$set", {}).items():
+            if key.startswith("metadata."):
+                user["metadata"][key.removeprefix("metadata.")] = value
+            else:
+                user[key] = value
+        result = MagicMock()
+        result.modified_count = 1
+        return result
+
+    coll = MagicMock()
+    coll.find_one = find_one
+    coll.update_one = update_one
+    return coll, users
 
 
 @pytest.fixture
@@ -113,21 +156,25 @@ def storage():
     s = TeamStorage()
     coll, store = _make_fake_collection()
     s._collection = coll
-    return s, store
+    user_coll, users = _make_fake_user_collection()
+    s._user_collection = user_coll
+    return s, store, users
 
 
 @pytest.mark.asyncio
 async def test_create_team(storage):
-    s, store = storage
+    s, store, users = storage
     team = await s.create_team(
         owner_user_id="user-1",
         name="Test Team",
         description="A test team",
+        avatar="🤖",
         members=[
             {"persona_preset_id": "preset-1", "role_instructions": "Be helpful"},
         ],
     )
     assert team.name == "Test Team"
+    assert team.avatar == "🤖"
     assert team.owner_user_id == "user-1"
     assert len(team.members) == 1
     assert team.members[0].persona_preset_id == "preset-1"
@@ -136,15 +183,67 @@ async def test_create_team(storage):
 
 
 @pytest.mark.asyncio
+async def test_create_team_preserves_starter_prompts(storage):
+    s, store, users = storage
+
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Prompted Team",
+        starter_prompts=[
+            {"icon": "🧭", "text": "帮我制定协作计划"},
+            {"icon": "", "text": {"zh": "总结团队分工", "en": "Summarize roles"}},
+        ],
+    )
+
+    assert team.starter_prompts[0].icon == "🧭"
+    assert team.starter_prompts[0].text == "帮我制定协作计划"
+    assert team.starter_prompts[1].icon is None
+    assert team.starter_prompts[1].text == {
+        "zh": "总结团队分工",
+        "en": "Summarize roles",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_team_preserves_tags(storage):
+    s, store, users = storage
+
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Tagged Team",
+        tags=["research", "writing"],
+    )
+
+    assert team.tags == ["research", "writing"]
+
+
+@pytest.mark.asyncio
+async def test_create_team_uses_created_first_member_as_default(storage):
+    s, store, users = storage
+
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Team With Default",
+        members=[
+            {"persona_preset_id": "preset-1", "position": 0},
+            {"persona_preset_id": "preset-2", "position": 1},
+        ],
+        default_member_id="temporary-frontend-member-id",
+    )
+
+    assert team.default_member_id == team.members[0].member_id
+
+
+@pytest.mark.asyncio
 async def test_get_team_not_found(storage):
-    s, store = storage
+    s, store, users = storage
     result = await s.get_team("nonexistent-id", owner_user_id="user-1")
     assert result is None
 
 
 @pytest.mark.asyncio
 async def test_list_teams_paginated(storage):
-    s, store = storage
+    s, store, users = storage
     await s.create_team(owner_user_id="user-1", name="Team A")
     await s.create_team(owner_user_id="user-1", name="Team B")
     await s.create_team(owner_user_id="user-2", name="Team C")
@@ -157,8 +256,36 @@ async def test_list_teams_paginated(storage):
 
 
 @pytest.mark.asyncio
+async def test_list_teams_filters_by_query_and_tag(storage):
+    s, store, users = storage
+    await s.create_team(
+        owner_user_id="user-1",
+        name="Research Team",
+        description="Deep analysis",
+        tags=["research"],
+    )
+    await s.create_team(
+        owner_user_id="user-1",
+        name="Writing Team",
+        description="Drafting",
+        tags=["writing"],
+    )
+
+    teams, total = await s.list_teams(
+        owner_user_id="user-1",
+        q="analysis",
+        tag="research",
+        skip=0,
+        limit=10,
+    )
+
+    assert total == 1
+    assert [team.name for team in teams] == ["Research Team"]
+
+
+@pytest.mark.asyncio
 async def test_delete_team(storage):
-    s, store = storage
+    s, store, users = storage
     team = await s.create_team(owner_user_id="user-1", name="To Delete")
     deleted = await s.delete_team(team.id, owner_user_id="user-1")
     assert deleted is True
@@ -168,7 +295,7 @@ async def test_delete_team(storage):
 
 @pytest.mark.asyncio
 async def test_delete_team_wrong_owner(storage):
-    s, store = storage
+    s, store, users = storage
     team = await s.create_team(owner_user_id="user-1", name="Owned")
     deleted = await s.delete_team(team.id, owner_user_id="user-2")
     assert deleted is False
@@ -176,7 +303,7 @@ async def test_delete_team_wrong_owner(storage):
 
 @pytest.mark.asyncio
 async def test_clone_team(storage):
-    s, store = storage
+    s, store, users = storage
     original = await s.create_team(
         owner_user_id="user-1",
         name="Original",
@@ -190,3 +317,159 @@ async def test_clone_team(storage):
     assert cloned.id != original.id
     assert len(cloned.members) == 1
     assert cloned.members[0].member_id != original.members[0].member_id
+
+
+@pytest.mark.asyncio
+async def test_update_team_preserves_client_member_ids_and_default(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        members=[
+            {"member_id": "m-alpha", "persona_preset_id": "preset-1"},
+            {"member_id": "m-beta", "persona_preset_id": "preset-2"},
+        ],
+        default_member_id="m-alpha",
+    )
+
+    updated = await s.update_team(
+        original.id,
+        owner_user_id="user-1",
+        update={
+            "avatar": "icon:sparkles",
+            "members": [
+                {"member_id": "m-alpha", "persona_preset_id": "preset-1"},
+                {"member_id": "m-beta", "persona_preset_id": "preset-2"},
+            ],
+            "default_member_id": "m-beta",
+        },
+    )
+
+    assert updated is not None
+    assert updated.avatar == "icon:sparkles"
+    assert [m.member_id for m in updated.members] == ["m-alpha", "m-beta"]
+    assert updated.default_member_id == "m-beta"
+
+
+@pytest.mark.asyncio
+async def test_update_team_preserves_starter_prompts(storage):
+    s, store, users = storage
+    original = await s.create_team(owner_user_id="user-1", name="Original")
+
+    updated = await s.update_team(
+        original.id,
+        owner_user_id="user-1",
+        update={
+            "starter_prompts": [
+                {"icon": "💬", "text": "让团队给我三个方案"},
+            ],
+        },
+    )
+
+    assert updated is not None
+    assert [prompt.model_dump(mode="json") for prompt in updated.starter_prompts] == [
+        {"icon": "💬", "text": "让团队给我三个方案"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_clone_team_preserves_avatar(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        avatar="/api/upload/file/team.png",
+        members=[
+            {"persona_preset_id": "preset-1"},
+        ],
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert cloned.avatar == "/api/upload/file/team.png"
+
+
+@pytest.mark.asyncio
+async def test_clone_team_preserves_starter_prompts(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        starter_prompts=[
+            {"icon": "✨", "text": "启动团队复盘"},
+        ],
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert [prompt.model_dump(mode="json") for prompt in cloned.starter_prompts] == [
+        {"icon": "✨", "text": "启动团队复盘"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_clone_team_preserves_tags(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        tags=["research", "review"],
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert cloned.tags == ["research", "review"]
+
+
+@pytest.mark.asyncio
+async def test_team_preferences_sort_list_and_update_response(storage):
+    s, store, users = storage
+    owner_user_id = str(ObjectId())
+    normal = await s.create_team(owner_user_id=owner_user_id, name="Normal")
+    favorite = await s.create_team(owner_user_id=owner_user_id, name="Favorite")
+    pinned = await s.create_team(owner_user_id=owner_user_id, name="Pinned")
+
+    favorite_pref = await s.update_user_preference(
+        user_id=owner_user_id,
+        team_id=favorite.id,
+        update={"is_favorite": True},
+    )
+    pinned_pref = await s.update_user_preference(
+        user_id=owner_user_id,
+        team_id=pinned.id,
+        update={"is_pinned": True},
+    )
+    teams, total = await s.list_teams(owner_user_id=owner_user_id, skip=0, limit=10)
+
+    assert favorite_pref["is_favorite"] is True
+    assert pinned_pref["is_pinned"] is True
+    assert total == 3
+    assert [team.id for team in teams] == [pinned.id, favorite.id, normal.id]
+    assert teams[0].is_pinned is True
+    assert teams[1].is_favorite is True
+
+
+@pytest.mark.asyncio
+async def test_list_teams_filters_favorites(storage):
+    s, store, users = storage
+    owner_user_id = str(ObjectId())
+    normal = await s.create_team(owner_user_id=owner_user_id, name="Normal")
+    favorite = await s.create_team(owner_user_id=owner_user_id, name="Favorite")
+    await s.update_user_preference(
+        user_id=owner_user_id,
+        team_id=favorite.id,
+        update={"is_favorite": True},
+    )
+
+    teams, total = await s.list_teams(
+        owner_user_id=owner_user_id,
+        favorite=True,
+        skip=0,
+        limit=10,
+    )
+
+    assert total == 1
+    assert [team.id for team in teams] == [favorite.id]

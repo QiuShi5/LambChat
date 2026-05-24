@@ -21,7 +21,7 @@ from src.agents.team_agent.nodes import team_router_node
 from src.agents.team_agent.state import TeamAgentState
 from src.infra.backend.context import set_user_context
 from src.infra.logging import get_logger
-from src.infra.task.manager import TaskInterruptedError
+from src.infra.task.exceptions import TaskInterruptedError
 from src.infra.writer.present import Presenter, PresenterConfig
 from src.kernel.config import settings
 
@@ -51,7 +51,7 @@ class TeamAgent(BaseGraphAgent):
     _description_key = "agents.team.description"
     _version = "1.0.0"
     _sort_order = 3  # 排序权重，数值越小越靠前
-    _supports_sandbox = False
+    _supports_sandbox = True
 
     _options = {
         "enable_thinking": {

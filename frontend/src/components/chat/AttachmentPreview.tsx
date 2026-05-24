@@ -57,6 +57,7 @@ export const AttachmentPreview = memo(function AttachmentPreview({
                 <img
                   src={attachment.url}
                   alt={attachment.name}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               </div>

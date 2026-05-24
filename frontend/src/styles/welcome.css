@@ -5,10 +5,13 @@
 /* Welcome root */
 .welcome-root {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  justify-content: safe center;
   padding-top: max(1rem, env(safe-area-inset-top));
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  gap: clamp(0.5rem, 1.4vh, 1rem);
 }
 
 .welcome-root::-webkit-scrollbar {
@@ -309,6 +312,21 @@
 }
 
 @media (max-width: 639px) {
+  .welcome-root {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .welcome-suggestions-grid-wrapper {
+    max-height: min(
+      38dvh,
+      calc(
+        var(--welcome-suggestion-row-height) * 3 +
+          var(--welcome-suggestion-row-gap) * 2
+      )
+    );
+  }
+
   .welcome-persona-card:not(.welcome-persona-skeleton):active {
     transform: scale(0.97);
     box-shadow:
@@ -318,7 +336,7 @@
   }
 
   .welcome-persona-gallery {
-    --welcome-persona-card-height: 4rem;
+    --welcome-persona-card-height: 4.75rem;
     --welcome-persona-row-gap: 0.5rem;
     display: grid;
     grid-template-columns: 1fr;
@@ -343,10 +361,11 @@
     height: var(--welcome-persona-card-height);
     min-width: 0 !important;
     min-height: auto;
-    padding: 0.75rem;
+    padding: 0.8125rem;
     gap: 0;
     scroll-snap-align: start;
     border-radius: 1rem;
+    justify-content: center;
     box-shadow:
       0 1px 3px color-mix(in srgb, var(--theme-text) 4%, transparent),
       0 0 0 0.5px color-mix(in srgb, var(--theme-border) 60%, transparent);
@@ -383,8 +402,8 @@
     font-size: 0.6875rem;
     line-height: 1.45;
     min-height: auto;
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     margin-top: 0.25rem;
     opacity: 0.55;
   }
@@ -401,7 +420,7 @@
 
   /* Mobile keyboard open — keep centered layout, just compact spacing */
   html[data-mobile-keyboard="true"] .welcome-root {
-    justify-content: center;
+    justify-content: safe center;
     gap: 0.25rem;
     overflow-y: auto;
     overflow-x: hidden;

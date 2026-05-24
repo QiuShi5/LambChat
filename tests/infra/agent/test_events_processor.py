@@ -72,12 +72,14 @@ class FakePresenter:
         agent_name: str,
         input_message: str,
         depth: int = 1,
+        agent_avatar: str | None = None,
     ) -> dict[str, Any]:
         return {
             "event": "agent:call",
             "data": {
                 "agent_id": agent_id,
                 "agent_name": agent_name,
+                "agent_avatar": agent_avatar,
                 "input": input_message,
                 "depth": depth,
             },
@@ -230,6 +232,65 @@ async def test_subagent_context_cache_is_invalidated_by_task_lifecycle() -> None
     )
 
     assert processor._agent_context_cache == {}
+
+
+@pytest.mark.asyncio
+async def test_task_start_uses_registered_subagent_display_name() -> None:
+    presenter = FakePresenter()
+    processor = AgentEventProcessor(
+        presenter,
+        subagent_display_names={
+            "team-m-1-researcher": "Researcher",
+        },
+    )
+
+    await processor.process_event(
+        {
+            "event": "on_tool_start",
+            "name": "task",
+            "run_id": "task-run",
+            "data": {
+                "input": {
+                    "subagent_type": "team-m-1-researcher",
+                    "description": "Find the facts",
+                }
+            },
+            "metadata": {"checkpoint_ns": "task:abc"},
+        }
+    )
+
+    assert presenter.emitted[0]["data"]["agent_name"] == "Researcher"
+
+
+@pytest.mark.asyncio
+async def test_task_start_uses_registered_subagent_avatar() -> None:
+    presenter = FakePresenter()
+    processor = AgentEventProcessor(
+        presenter,
+        subagent_display_names={
+            "team-m-1-designer": "Designer",
+        },
+        subagent_avatars={
+            "team-m-1-designer": "https://cdn.example.com/designer.png",
+        },
+    )
+
+    await processor.process_event(
+        {
+            "event": "on_tool_start",
+            "name": "task",
+            "run_id": "task-run",
+            "data": {
+                "input": {
+                    "subagent_type": "team-m-1-designer",
+                    "description": "Design the flow",
+                }
+            },
+            "metadata": {"checkpoint_ns": "task:abc"},
+        }
+    )
+
+    assert presenter.emitted[0]["data"]["agent_avatar"] == ("https://cdn.example.com/designer.png")
 
 
 def test_text_chunk_buffer_consume_ready_flushes_previous_key_without_losing_current() -> None:

@@ -223,7 +223,7 @@ export function PersonaPlazaPanel() {
         }
       />
 
-      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6">
+      <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         {filtered.length === 0 ? (
           <div className="skill-empty-state">
             <div className="skill-empty-state__icon">

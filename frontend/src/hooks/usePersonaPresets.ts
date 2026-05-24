@@ -33,7 +33,7 @@ export function usePersonaPresets(options?: {
       try {
         const response = await personaPresetApi.list({
           skip: 0,
-          limit: 12,
+          limit: 20,
           ...params,
         });
         setPresets(response.presets);
@@ -62,7 +62,7 @@ export function usePersonaPresets(options?: {
         const response = await personaPresetApi.list({
           ...params,
           skip: presets.length,
-          limit: 12,
+          limit: 20,
         });
         setPresets((prev) => {
           const existingIds = new Set(prev.map((p) => p.id));
