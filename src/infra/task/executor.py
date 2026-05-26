@@ -258,8 +258,13 @@ class TaskExecutor:
         presenter: Any,
     ) -> None:
         """处理任务中断错误"""
-        # 任务被中断
-        await self._update_session_status(session_id, TaskStatus.FAILED, error_msg, run_id=run_id)
+        # TaskInterruptedError is raised by the user-cancel interrupt path.
+        await self._update_session_status(
+            session_id,
+            TaskStatus.CANCELLED,
+            error_msg,
+            run_id=run_id,
+        )
         # 先刷新所有缓冲，确保已产生的事件不丢失
         # 注意：dual_writer 可能还是 None（如果任务在 get_dual_writer() 之前就被取消）
         if dual_writer is None:
@@ -296,7 +301,7 @@ class TaskExecutor:
         logger.info(f"Task interrupted: session={session_id}, run_id={run_id}")
         # 发送任务中断通知
         await self._send_task_notification(
-            session_id, run_id, TaskStatus.FAILED, user_id, "Task interrupted"
+            session_id, run_id, TaskStatus.CANCELLED, user_id, "Task interrupted"
         )
 
     async def _handle_generic_error(
@@ -439,6 +444,15 @@ class TaskExecutor:
     ) -> None:
         """更新 session 状态"""
         try:
+            if await self._is_stale_run_status_update(session_id, status, run_id):
+                logger.info(
+                    "Skipping stale task status update: session=%s, run_id=%s, status=%s",
+                    session_id,
+                    run_id,
+                    status.value,
+                )
+                return
+
             metadata: Dict[str, Any] = self._state_machine.build_metadata(
                 status,
                 run_id=run_id,
@@ -453,6 +467,32 @@ class TaskExecutor:
             )
         except Exception as e:
             logger.warning(f"Failed to update session status: {e}")
+
+    async def _is_stale_run_status_update(
+        self,
+        session_id: str,
+        status: TaskStatus,
+        run_id: Optional[str],
+    ) -> bool:
+        """Return true when an old run is trying to overwrite a newer current run."""
+        if not run_id or status in {
+            TaskStatus.QUEUED,
+            TaskStatus.PENDING,
+            TaskStatus.STARTING,
+        }:
+            return False
+
+        try:
+            session = await self._storage.get_by_session_id(session_id)
+        except Exception as e:
+            logger.warning("Failed to check current run before status update: %s", e)
+            return False
+
+        current_run_id = None
+        if session and getattr(session, "metadata", None):
+            current_run_id = session.metadata.get("current_run_id")
+
+        return bool(current_run_id and current_run_id != run_id)
 
     async def ensure_session(
         self,

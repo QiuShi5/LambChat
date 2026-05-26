@@ -58,11 +58,21 @@ class _FakeDualWriter:
 
 
 class _FakeStorage:
-    def __init__(self) -> None:
+    def __init__(self, current_run_id: str | None = None) -> None:
         self.updates: list[tuple[str, object]] = []
+        self.current_run_id = current_run_id
 
     async def update(self, session_id: str, update) -> None:
         self.updates.append((session_id, update))
+
+    async def get_by_session_id(self, session_id: str):
+        if self.current_run_id is None:
+            return None
+        return type(
+            "Session",
+            (),
+            {"metadata": {"current_run_id": self.current_run_id}},
+        )()
 
 
 @pytest.mark.asyncio
@@ -108,6 +118,50 @@ async def test_update_session_status_uses_cancelled_task_metadata() -> None:
     assert metadata["task_error_code"] == "cancelled"
     assert metadata["task_recoverable"] is False
     assert metadata["current_run_id"] == "run-1"
+
+
+@pytest.mark.asyncio
+async def test_stale_cancelled_run_does_not_overwrite_new_current_run() -> None:
+    storage = _FakeStorage(current_run_id="run-new")
+    executor = TaskExecutor(storage=storage, run_info={}, heartbeat_manager=None)  # type: ignore[arg-type]
+
+    await executor._update_session_status(
+        "session-1",
+        TaskStatus.CANCELLED,
+        "Task cancelled",
+        run_id="run-old",
+    )
+
+    assert storage.updates == []
+
+
+@pytest.mark.asyncio
+async def test_interrupted_task_uses_cancelled_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    storage = _FakeStorage()
+    writer = _FakeDualWriter()
+    executor = TaskExecutor(storage=storage, run_info={}, heartbeat_manager=None)  # type: ignore[arg-type]
+
+    async def _no_op(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(executor, "_send_task_notification", _no_op)
+
+    await executor._handle_interrupted_error(
+        "session-1",
+        "run-1",
+        "user-1",
+        "Task interrupted: run_id=run-1",
+        writer,
+        None,
+    )
+
+    assert storage.updates
+    metadata = storage.updates[0][1].metadata
+    assert metadata["task_status"] == "cancelled"
+    assert metadata["task_error_code"] == "cancelled"
+    assert metadata["task_recoverable"] is False
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -40,12 +41,31 @@ class _FakeExecutor:
     def __init__(self) -> None:
         self.ensure_calls: list[tuple] = []
         self.status_calls: list[tuple] = []
+        self.run_calls: list[dict] = []
 
     async def ensure_session(self, *args, **kwargs) -> None:
         self.ensure_calls.append((args, kwargs))
 
     async def _update_session_status(self, *args, **kwargs) -> None:
         self.status_calls.append((args, kwargs))
+
+    async def run_task(self, *args, **kwargs) -> None:
+        self.run_calls.append({"args": args, **kwargs})
+
+
+class _FakePresenter:
+    calls: list[object] = []
+
+    def __init__(self, config) -> None:
+        self.trace_id = config.trace_id or "generated-trace"
+        self.config = config
+        self.calls.append(config)
+
+    async def _ensure_trace(self) -> None:
+        self.calls.append(("ensure_trace", self.trace_id))
+
+    async def emit_user_message(self, message: str, attachments=None) -> None:
+        self.calls.append(("emit_user_message", message, attachments))
 
 
 @pytest.mark.asyncio
@@ -100,3 +120,81 @@ async def test_submit_arq_enqueues_after_releasing_manager_lock() -> None:
     )
 
     assert arq_pool.enqueued == [("run_agent_task", ("run-1",), {"_job_id": "run-1"})]
+
+
+@pytest.mark.asyncio
+async def test_submit_persists_user_message_before_background_task_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = BackgroundTaskManager()
+    fake_executor = _FakeExecutor()
+    manager._executor = fake_executor  # type: ignore[assignment]
+    _FakePresenter.calls = []
+
+    async def _release_no_op(*args, **kwargs):
+        return None
+
+    async def _executor_fn(*args, **kwargs):
+        if False:
+            yield None
+
+    monkeypatch.setattr("src.infra.writer.present.Presenter", _FakePresenter)
+    monkeypatch.setattr(manager, "_release_concurrency", _release_no_op)
+
+    run_id, trace_id = await manager.submit(
+        session_id="session-1",
+        agent_id="search",
+        message="[timestamp] hello",
+        user_id="user-1",
+        executor=_executor_fn,
+        run_id="run-1",
+        trace_id="trace-1",
+        display_message="hello",
+        attachments=[{"name": "a.txt"}],
+        write_user_message_immediately=True,
+    )
+
+    await asyncio.sleep(0)
+
+    assert (run_id, trace_id) == ("run-1", "trace-1")
+    assert _FakePresenter.calls[1:] == [
+        ("ensure_trace", "trace-1"),
+        ("emit_user_message", "hello", [{"name": "a.txt"}]),
+    ]
+    assert fake_executor.run_calls[0]["existing_trace_id"] == "trace-1"
+    assert fake_executor.run_calls[0]["user_message_written"] is True
+    assert manager._run_info["run-1"]["user_message_written"] is True
+
+
+@pytest.mark.asyncio
+async def test_submit_arq_can_persist_user_message_before_enqueue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager = BackgroundTaskManager()
+    fake_executor = _FakeExecutor()
+    payload_store = _FakePayloadStore()
+    arq_pool = _FakeArqPool()
+    manager._executor = fake_executor  # type: ignore[assignment]
+    _FakePresenter.calls = []
+
+    monkeypatch.setattr("src.infra.writer.present.Presenter", _FakePresenter)
+
+    await manager.submit_arq(
+        session_id="session-1",
+        agent_id="search",
+        message="[timestamp] hello",
+        user_id="user-1",
+        executor_key="agent_stream",
+        payload_store=cast(Any, payload_store),
+        arq_pool=arq_pool,
+        run_id="run-1",
+        trace_id="trace-1",
+        display_message="hello",
+        write_user_message_immediately=True,
+    )
+
+    assert _FakePresenter.calls[1:] == [
+        ("ensure_trace", "trace-1"),
+        ("emit_user_message", "hello", None),
+    ]
+    assert payload_store.saved[0][1]["user_message_written"] is True

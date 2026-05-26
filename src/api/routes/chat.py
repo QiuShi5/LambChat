@@ -454,6 +454,7 @@ async def chat_stream(
             display_message=request.message,
             trace_id=trace_id,
             team_id=request.team_id,
+            write_user_message_immediately=True,
         )
     else:
         # STARTED — 正常提交后台任务
@@ -474,6 +475,8 @@ async def chat_stream(
             disabled_mcp_tools=request.disabled_mcp_tools,
             display_message=request.message,
             team_id=request.team_id,
+            trace_id=trace_id,
+            write_user_message_immediately=True,
         )
 
     # 更新 session metadata，存储完整的对话配置

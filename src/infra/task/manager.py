@@ -83,6 +83,37 @@ class BackgroundTaskManager:
             self._executor = TaskExecutor(self.storage, self._run_info, self._heartbeat)
         return self._executor
 
+    async def _persist_initial_user_message(
+        self,
+        *,
+        session_id: str,
+        agent_id: str,
+        user_id: str,
+        run_id: str,
+        trace_id: str | None,
+        message: str,
+        display_message: str | None,
+        attachments: Optional[List[Dict[str, Any]]],
+    ) -> str:
+        """Persist the user message before the background worker starts."""
+        from src.agents.core import resolve_agent_name
+        from src.infra.writer.present import Presenter, PresenterConfig
+
+        presenter = Presenter(
+            PresenterConfig(
+                session_id=session_id,
+                agent_id=agent_id,
+                agent_name=resolve_agent_name(agent_id),
+                user_id=user_id,
+                run_id=run_id,
+                trace_id=trace_id,
+                enable_storage=True,
+            )
+        )
+        await presenter._ensure_trace()
+        await presenter.emit_user_message(display_message or message, attachments=attachments)
+        return presenter.trace_id
+
     def _status_queries(self) -> TaskStatusQueries:
         return TaskStatusQueries(storage=self.storage, run_info=self._run_info)
 
@@ -185,6 +216,9 @@ class BackgroundTaskManager:
         session_name: Optional[str] = None,
         display_message: Optional[str] = None,
         team_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        user_message_written: bool = False,
+        write_user_message_immediately: bool = False,
     ) -> Tuple[str, str]:
         """
         提交后台任务
@@ -208,6 +242,7 @@ class BackgroundTaskManager:
 
         # 生成 run_id
         run_id = run_id or generate_run_id()
+        trace_id = trace_id or ""
 
         async with self._lock:
             # 确保 session 记录存在
@@ -223,6 +258,27 @@ class BackgroundTaskManager:
             await task_executor._update_session_status(
                 session_id, TaskStatus.PENDING, run_id=run_id
             )
+
+            if write_user_message_immediately and not user_message_written:
+                trace_id = await self._persist_initial_user_message(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    user_id=user_id,
+                    run_id=run_id,
+                    trace_id=trace_id,
+                    message=message,
+                    display_message=display_message,
+                    attachments=attachments,
+                )
+                user_message_written = True
+
+            self._run_info[run_id] = {
+                "session_id": session_id,
+                "trace_id": trace_id,
+                "agent_id": agent_id,
+                "user_id": user_id,
+                "user_message_written": user_message_written,
+            }
 
             # 创建后台任务
             task = asyncio.create_task(
@@ -242,6 +298,8 @@ class BackgroundTaskManager:
                     disabled_mcp_tools=disabled_mcp_tools,
                     display_message=display_message,
                     team_id=team_id,
+                    existing_trace_id=trace_id or None,
+                    user_message_written=user_message_written,
                 )
             )
             self._tasks[run_id] = task
@@ -250,8 +308,7 @@ class BackgroundTaskManager:
             task.add_done_callback(lambda t: self._on_task_done(run_id, t))
 
         logger.info(f"Task submitted: session={session_id}, run_id={run_id}, agent={agent_id}")
-        # 返回 run_id，trace_id 将在 _run_task 中创建
-        return run_id, ""  # trace_id 由 Presenter 生成，这里先返回空
+        return run_id, trace_id
 
     async def submit_arq(
         self,
@@ -276,6 +333,7 @@ class BackgroundTaskManager:
         payload_store: Optional[TaskArqPayloadStore] = None,
         arq_pool: Any | None = None,
         team_id: Optional[str] = None,
+        write_user_message_immediately: bool = False,
     ) -> Tuple[str, str]:
         """Submit a task to arq after persisting serializable task context."""
         task_executor = self._ensure_executor()
@@ -296,6 +354,26 @@ class BackgroundTaskManager:
                 TaskStatus.QUEUED,
                 run_id=run_id,
             )
+            if write_user_message_immediately and not user_message_written:
+                trace_id = await self._persist_initial_user_message(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    user_id=user_id,
+                    run_id=run_id,
+                    trace_id=trace_id,
+                    message=message,
+                    display_message=display_message,
+                    attachments=attachments,
+                )
+                user_message_written = True
+
+            self._run_info[run_id] = {
+                "session_id": session_id,
+                "trace_id": trace_id,
+                "agent_id": agent_id,
+                "user_id": user_id,
+                "user_message_written": user_message_written,
+            }
             await payload_store.save(
                 run_id,
                 {

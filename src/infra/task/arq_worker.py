@@ -7,9 +7,33 @@ from src.infra.logging import get_logger
 
 from .arq_payloads import TaskArqPayloadStore
 from .concurrency import get_registered_executor
+from .exceptions import TaskInterruptedError
 from .manager import get_task_manager
+from .status import TaskStatus
 
 logger = get_logger(__name__)
+
+
+async def _is_user_cancelled_run(task_manager: Any, session_id: str, run_id: str) -> bool:
+    storage = getattr(task_manager, "storage", None)
+    if storage is None:
+        return False
+
+    try:
+        session = await storage.get_by_session_id(session_id)
+    except Exception as e:
+        logger.warning("Failed to inspect cancelled run state: %s", e)
+        return False
+
+    metadata = getattr(session, "metadata", None) or {}
+    current_run_id = metadata.get("current_run_id")
+    if current_run_id and str(current_run_id) != str(run_id):
+        return False
+
+    return (
+        metadata.get("task_error_code") == "cancelled"
+        or metadata.get("task_status") == TaskStatus.CANCELLED.value
+    )
 
 
 async def run_agent_task(ctx: dict[str, Any], run_id: str) -> None:
@@ -55,7 +79,14 @@ async def run_agent_task(ctx: dict[str, Any], run_id: str) -> None:
             display_message=payload.get("display_message"),
             team_id=payload.get("team_id"),
         )
+    except TaskInterruptedError:
+        await payload_store.delete(run_id)
+        logger.info("Deleted arq payload after user interruption: run_id=%s", run_id)
     except asyncio.CancelledError:
+        if await _is_user_cancelled_run(task_manager, payload["session_id"], run_id):
+            await payload_store.delete(run_id)
+            logger.info("Deleted arq payload after user cancellation: run_id=%s", run_id)
+            return
         await task_manager._mark_run_recoverable_failure(
             payload["session_id"],
             run_id,
