@@ -27,6 +27,28 @@ def _is_user_cancelled_task(metadata: dict[str, Any]) -> bool:
     )
 
 
+def _is_latest_run(
+    metadata: dict[str, Any],
+    run_id: str,
+) -> bool:
+    """Only reconcile the run that is still recorded as current for the session."""
+    current_run_id = metadata.get("current_run_id")
+    return current_run_id is not None and str(current_run_id) == str(run_id)
+
+
+def _is_latest_explicit_system_restart_failure(
+    metadata: dict[str, Any],
+    run_id: str,
+) -> bool:
+    """Only auto-recover failed runs when shutdown was explicitly recorded."""
+    return (
+        _is_latest_run(metadata, run_id)
+        and metadata.get("task_status") == TaskStatus.FAILED.value
+        and metadata.get("task_recoverable") is True
+        and metadata.get("task_error_code") == "server_restart"
+    )
+
+
 class TaskStartupCleanupService:
     """Handles startup reconciliation for stale and queued tasks."""
 
@@ -51,7 +73,7 @@ class TaskStartupCleanupService:
 
     async def cleanup_stale_tasks(self) -> None:
         """
-        Clean up stale running/pending tasks and replay queued work after restart.
+        Recover stale active tasks and explicitly recoverable failed tasks after restart.
         """
         from .concurrency import get_concurrency_limiter
 
@@ -70,12 +92,23 @@ class TaskStartupCleanupService:
                 if session_model is None:
                     continue
                 session_id = session_model.id
-                run_id = session.get("metadata", {}).get("current_run_id")
+                metadata = _task_metadata(session, session_model)
+                run_id = session.get("metadata", {}).get("current_run_id") or metadata.get(
+                    "current_run_id"
+                )
                 if not run_id:
                     continue
-                if _is_user_cancelled_task(_task_metadata(session, session_model)):
+                if _is_user_cancelled_task(metadata):
                     logger.info(
                         "Skipping user-cancelled RUNNING task during startup recovery: session=%s, run_id=%s",
+                        session_id,
+                        run_id,
+                    )
+                    continue
+
+                if not _is_latest_run(metadata, run_id):
+                    logger.debug(
+                        "Skipping non-current RUNNING task during startup recovery: session=%s, run_id=%s",
                         session_id,
                         run_id,
                     )
@@ -129,13 +162,24 @@ class TaskStartupCleanupService:
                 if session_model is None:
                     continue
                 session_id = session_model.id
-                run_id = session.get("metadata", {}).get("current_run_id")
+                metadata = _task_metadata(session, session_model)
+                run_id = session.get("metadata", {}).get("current_run_id") or metadata.get(
+                    "current_run_id"
+                )
                 user_id = session.get("user_id")
                 if not run_id or not user_id:
                     continue
-                if _is_user_cancelled_task(_task_metadata(session, session_model)):
+                if _is_user_cancelled_task(metadata):
                     logger.info(
                         "Skipping user-cancelled PENDING task during startup recovery: session=%s, run_id=%s",
+                        session_id,
+                        run_id,
+                    )
+                    continue
+
+                if not _is_latest_run(metadata, run_id):
+                    logger.debug(
+                        "Skipping non-current PENDING task during startup recovery: session=%s, run_id=%s",
                         session_id,
                         run_id,
                     )
@@ -196,6 +240,14 @@ class TaskStartupCleanupService:
                 session_id = session_model.id
                 run_id = session.get("metadata", {}).get("current_run_id")
                 if not run_id:
+                    continue
+                metadata = _task_metadata(session, session_model)
+                if not _is_latest_explicit_system_restart_failure(metadata, run_id):
+                    logger.debug(
+                        "Skipping unmarked FAILED task during startup recovery: session=%s, run_id=%s",
+                        session_id,
+                        run_id,
+                    )
                     continue
 
                 heartbeat_exists = await self._heartbeat.check_exists(run_id)
@@ -276,7 +328,7 @@ class TaskStartupCleanupService:
             logger.warning("Failed to cleanup stale queues: %s", e)
 
     async def replay_pending_queued_tasks(self) -> None:
-        """Replay persisted queued tasks after process restart."""
+        """Replay latest queued tasks that still have Redis queue entries."""
         if self._replay_pending_queued_tasks_cb is not None:
             await self._replay_pending_queued_tasks_cb()
             return
@@ -304,13 +356,24 @@ class TaskStartupCleanupService:
                 if session_model is None:
                     continue
                 session_id = session_model.id
-                run_id = session.get("metadata", {}).get("current_run_id")
+                metadata = _task_metadata(session, session_model)
+                run_id = session.get("metadata", {}).get("current_run_id") or metadata.get(
+                    "current_run_id"
+                )
                 user_id = session.get("user_id")
                 if not run_id or not user_id:
                     continue
-                if _is_user_cancelled_task(_task_metadata(session, session_model)):
+                if _is_user_cancelled_task(metadata):
                     logger.info(
                         "Skipping user-cancelled queued task replay during startup recovery: session=%s, run_id=%s",
+                        session_id,
+                        run_id,
+                    )
+                    continue
+
+                if not _is_latest_run(metadata, run_id):
+                    logger.debug(
+                        "Skipping non-current queued task replay during startup recovery: session=%s, run_id=%s",
                         session_id,
                         run_id,
                     )

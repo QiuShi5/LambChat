@@ -237,7 +237,7 @@ async def test_resume_session_rejects_user_cancelled_tasks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cleanup_stale_tasks_attempts_auto_recovery_for_running_sessions(
+async def test_cleanup_stale_tasks_recovers_latest_running_session_without_heartbeat(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = SimpleNamespace(

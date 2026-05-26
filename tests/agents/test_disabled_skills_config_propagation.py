@@ -9,6 +9,7 @@ class _FakeDeepAgent:
     def __init__(self) -> None:
         self.captured_create_kwargs = None
         self.captured_inner_config = None
+        self.aget_state_calls = 0
 
     def with_config(self, _config):
         return self
@@ -19,6 +20,7 @@ class _FakeDeepAgent:
             yield version
 
     async def aget_state(self, _config):
+        self.aget_state_calls += 1
         return SimpleNamespace(values={"messages": []})
 
 
@@ -279,6 +281,36 @@ async def test_fast_agent_node_returns_output_text_before_final_processor_cleanu
 
 
 @pytest.mark.asyncio
+async def test_fast_agent_node_does_not_reload_final_checkpoint_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _reset_fake_event_processor()
+    from src.agents.fast_agent import nodes as fast_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, fast_nodes, fake_graph)
+    monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    result = await fast_nodes.fast_agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.aget_state_calls == 0
+    assert result["messages"] == []
+
+
+@pytest.mark.asyncio
 async def test_search_agent_node_propagates_disabled_skills_to_inner_config(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -460,6 +492,40 @@ async def test_search_agent_node_returns_output_text_before_final_processor_clea
     )
 
     assert result["output"] == "vision answer"
+
+
+@pytest.mark.asyncio
+async def test_search_agent_node_does_not_reload_final_checkpoint_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _reset_fake_event_processor()
+    from src.agents.search_agent import nodes as search_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, search_nodes, fake_graph)
+
+    async def fake_create_backend_and_prompt(**_kwargs):
+        return object(), "system prompt", object(), None, None
+
+    monkeypatch.setattr(search_nodes, "_create_backend_and_prompt", fake_create_backend_and_prompt)
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    result = await search_nodes.agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.aget_state_calls == 0
+    assert result["messages"] == []
 
 
 @pytest.mark.asyncio

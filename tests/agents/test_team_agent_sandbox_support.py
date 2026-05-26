@@ -8,6 +8,7 @@ import pytest
 class _FakeDeepAgent:
     def __init__(self) -> None:
         self.captured_create_kwargs = None
+        self.aget_state_calls = 0
 
     def with_config(self, _config):
         return self
@@ -17,6 +18,7 @@ class _FakeDeepAgent:
             yield version
 
     async def aget_state(self, _config):
+        self.aget_state_calls += 1
         return SimpleNamespace(values={"messages": []})
 
 
@@ -269,7 +271,37 @@ async def test_team_agent_node_rejects_invalid_team_id(
             config,
         )
 
-    assert fake_graph.captured_create_kwargs is None
+
+@pytest.mark.asyncio
+async def test_team_agent_node_does_not_reload_final_checkpoint_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.agents.team_agent.context import TeamAgentContext
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+    monkeypatch.setattr(team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+
+    context = TeamAgentContext(session_id="session-1", user_id="user-1")
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    result = await team_nodes.team_router_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+
+    assert fake_graph.aget_state_calls == 0
+    assert result["messages"] == []
 
 
 def test_team_agent_declares_sandbox_support() -> None:

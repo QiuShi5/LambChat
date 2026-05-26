@@ -13,6 +13,7 @@ from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from src.infra.logging import get_logger
+from src.kernel.config import settings
 
 logger = get_logger(__name__)
 
@@ -31,11 +32,13 @@ _cleanup_counter = 0
 # 清理检查间隔
 CLEANUP_CHECK_INTERVAL = 20
 
-# 连接过期时间（秒），默认 30 分钟
-CONNECTION_TTL = 1800
+# 连接过期时间（秒），默认 15 分钟
+CONNECTION_TTL = 900
+_DEFAULT_CONNECTION_TTL = CONNECTION_TTL
 
 # 最大连接数，防止大量动态 MCP server name 让进程内连接池无限增长
-MAX_CONNECTIONS = 500
+MAX_CONNECTIONS = 100
+_DEFAULT_MAX_CONNECTIONS = MAX_CONNECTIONS
 
 
 def _track_background_task(task: asyncio.Task) -> None:
@@ -58,6 +61,20 @@ async def _close_client(client: MultiServerMCPClient) -> None:
         logger.debug(f"[MCP Pool] Error closing client: {e}")
 
 
+def _get_connection_ttl() -> int:
+    configured = getattr(settings, "MCP_POOL_TTL_SECONDS", None)
+    if CONNECTION_TTL != _DEFAULT_CONNECTION_TTL and configured == _DEFAULT_CONNECTION_TTL:
+        return max(int(CONNECTION_TTL), 1)
+    return max(int(configured if configured is not None else CONNECTION_TTL), 1)
+
+
+def _get_max_connections() -> int:
+    configured = getattr(settings, "MCP_POOL_MAX_CONNECTIONS", None)
+    if MAX_CONNECTIONS != _DEFAULT_MAX_CONNECTIONS and configured == _DEFAULT_MAX_CONNECTIONS:
+        return max(int(MAX_CONNECTIONS), 1)
+    return max(int(configured if configured is not None else MAX_CONNECTIONS), 1)
+
+
 class PooledConnection:
     """池化的 MCP 连接"""
 
@@ -75,8 +92,10 @@ class PooledConnection:
         self.created_at = time.time()
         self.last_access = time.time()
 
-    def is_expired(self, ttl: float = CONNECTION_TTL) -> bool:
+    def is_expired(self, ttl: float | None = None) -> bool:
         """检查连接是否过期"""
+        if ttl is None:
+            ttl = _get_connection_ttl()
         return time.time() - self.created_at > ttl
 
     def touch(self):
@@ -167,10 +186,11 @@ async def add_pooled_connection(
             f"{len(tools)} tools, pool size: {len(_connection_pool)}"
         )
 
-        if len(_connection_pool) > MAX_CONNECTIONS:
+        max_connections = _get_max_connections()
+        if len(_connection_pool) > max_connections:
             sorted_entries = sorted(_connection_pool.items(), key=lambda x: x[1].last_access)
-            for oldest_name, oldest in sorted_entries[: len(_connection_pool) - MAX_CONNECTIONS]:
-                if oldest_name == server_name and len(_connection_pool) <= MAX_CONNECTIONS:
+            for oldest_name, oldest in sorted_entries[: len(_connection_pool) - max_connections]:
+                if oldest_name == server_name and len(_connection_pool) <= max_connections:
                     continue
                 removed = _connection_pool.pop(oldest_name, None)
                 if removed:

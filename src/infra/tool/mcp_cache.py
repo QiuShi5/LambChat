@@ -21,14 +21,15 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from src.infra.logging import get_logger
 from src.infra.storage.redis import get_redis_client
+from src.kernel.config import settings
 
 logger = get_logger(__name__)
 
-# 缓存过期时间（秒），默认 30 分钟
-CACHE_TTL = 1800
+# 缓存过期时间（秒），默认 15 分钟
+CACHE_TTL = 900
 
 # 最大缓存条目数（防止内存泄漏）
-MAX_CACHE_ENTRIES = 1000
+MAX_CACHE_ENTRIES = 100
 
 # Redis 缓存键前缀
 CONFIG_HASH_KEY_PREFIX = "mcp_config_hash:"
@@ -53,6 +54,14 @@ async def _close_client(client: MultiServerMCPClient) -> None:
             await client.__aexit__(None, None, None)  # type: ignore[misc, func-returns-value]
     except Exception as e:
         logger.debug(f"Error closing MCP client: {e}")
+
+
+def _get_cache_ttl() -> int:
+    return max(int(getattr(settings, "MCP_USER_CACHE_TTL_SECONDS", CACHE_TTL) or 0), 1)
+
+
+def _get_max_cache_entries() -> int:
+    return max(int(getattr(settings, "MCP_USER_CACHE_MAX_ENTRIES", MAX_CACHE_ENTRIES) or 0), 1)
 
 
 def _remove_lock_if_idle(user_id: str) -> bool:
@@ -85,14 +94,15 @@ def _cleanup_expired_cache() -> int:
 
 def _cleanup_excess_cache() -> int:
     """清理超出的缓存条目（LRU），返回清理的数量"""
-    if len(_tools_cache) <= MAX_CACHE_ENTRIES:
+    max_entries = _get_max_cache_entries()
+    if len(_tools_cache) <= max_entries:
         return 0
 
     # 按最后访问时间排序，删除最旧的
     sorted_entries = sorted(_tools_cache.items(), key=lambda x: x[1].last_access)
 
     # 删除超出部分
-    to_remove = len(_tools_cache) - MAX_CACHE_ENTRIES
+    to_remove = len(_tools_cache) - max_entries
     for user_id, entry in sorted_entries[:to_remove]:
         _tools_cache.pop(user_id, None)
         if entry and entry.client:
@@ -120,8 +130,10 @@ class CachedMCPEntry:
     created_at: float = field(default_factory=time.time)
     last_access: float = field(default_factory=time.time)
 
-    def is_expired(self, ttl: float = CACHE_TTL) -> bool:
+    def is_expired(self, ttl: float | None = None) -> bool:
         """检查缓存是否过期"""
+        if ttl is None:
+            ttl = _get_cache_ttl()
         return time.time() - self.created_at > ttl
 
     def touch(self):
@@ -142,7 +154,7 @@ def _get_cache_lock(user_id: str) -> asyncio.Lock:
             logger.debug(f"[MCP Cache] Auto-cleaned {expired} expired entries")
 
     # 检查是否超出最大条目数
-    if len(_tools_cache) > MAX_CACHE_ENTRIES:
+    if len(_tools_cache) > _get_max_cache_entries():
         removed = _cleanup_excess_cache()
         if removed > 0:
             logger.info(f"[MCP Cache] Removed {removed} excess cache entries (LRU)")
@@ -185,7 +197,7 @@ async def _store_config_hash(user_id: str, config_hash: str) -> None:
     try:
         redis_client = get_redis_client()
         key = f"{CONFIG_HASH_KEY_PREFIX}{user_id}"
-        await redis_client.set(key, config_hash, ex=CACHE_TTL)
+        await redis_client.set(key, config_hash, ex=_get_cache_ttl())
     except Exception as e:
         logger.warning(f"[MCP Cache] Redis set hash failed for user {user_id}: {e}")
 
@@ -325,7 +337,14 @@ async def invalidate_all_cache() -> int:
 
     # 清除所有进程内缓存
     count = len(_tools_cache)
+    cached_entries = list(_tools_cache.values())
     _tools_cache.clear()
+    for cached in cached_entries:
+        if cached.client:
+            try:
+                await _close_client(cached.client)
+            except Exception as e:
+                logger.debug(f"[MCP Cache] Error closing client during full invalidation: {e}")
     for user_id in list(_cache_locks):
         _remove_lock_if_idle(user_id)
     logger.info(f"[MCP Cache] Invalidated all memory cache, {count} entries")

@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     # Session Configuration (not in SETTING_DEFINITIONS)
     SESSION_MAX_MESSAGES: int = 20
     SESSION_MAX_EVENTS_PER_TRACE: int = 10000  # 单个 trace 最多保留的事件数，防止内存爆炸
+    SESSION_EVENT_MONGO_BUFFER_MAX: int = 10000
+    SESSION_EVENT_TTL_CACHE_MAX: int = 5000
 
     # ============================================
     # All settings below get defaults from SETTING_DEFINITIONS
@@ -81,6 +83,12 @@ class Settings(BaseSettings):
     DEFERRED_TOOL_THRESHOLD: int = 20
     DEFERRED_TOOL_SEARCH_LIMIT: int = 25
     DEFERRED_TOOL_PROMPT_LIMIT: int = 25
+    MCP_GLOBAL_CACHE_TTL_SECONDS: int = 900
+    MCP_GLOBAL_MAX_ENTRIES: int = 100
+    MCP_USER_CACHE_TTL_SECONDS: int = 900
+    MCP_USER_CACHE_MAX_ENTRIES: int = 100
+    MCP_POOL_TTL_SECONDS: int = 900
+    MCP_POOL_MAX_CONNECTIONS: int = 100
     MCP_ENCRYPTION_SALT: Optional[str] = None  # 默认随机生成，确保加密一致性
     DEEPAGENT_DEFAULT_MAX_INPUT_TOKENS: int = 64000
 
@@ -117,6 +125,9 @@ class Settings(BaseSettings):
     # Event Merger Settings
     ENABLE_EVENT_MERGER: bool = True  # 是否启用事件合并
     EVENT_MERGE_INTERVAL: float = 300.0  # 合并间隔（秒，默认 1 分钟）
+    EVENT_MERGE_BATCH_SIZE: int = 100
+    EVENT_MERGE_CONCURRENCY: int = 3
+    EVENT_MERGE_TIMEOUT_SECONDS: float = 120.0
 
     # Memory Monitoring Settings
     MEMORY_MONITOR_ENABLED: bool = True

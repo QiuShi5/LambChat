@@ -38,14 +38,14 @@ MERGEABLE_EVENT_TYPES = frozenset(["message:chunk", "thinking"])
 # Redis 分布式锁配置
 MERGE_LOCK_KEY = "event_merger:lock"
 
-# 单次合并超时时间（秒）- 设置为 4 分钟，留 1 分钟缓冲
-MERGE_TIMEOUT = 240.0
+# 单次合并超时时间（秒）
+MERGE_TIMEOUT = 120.0
 
 # 每批处理的 trace 数量
-BATCH_SIZE = 500
+BATCH_SIZE = 100
 
 # 单批内并发合并的最大 trace 数量
-_MERGE_CONCURRENCY = 10
+_MERGE_CONCURRENCY = 3
 
 
 def _get_merge_interval() -> float:
@@ -56,6 +56,18 @@ def _get_merge_interval() -> float:
 def _get_lock_timeout() -> int:
     """获取锁超时时间（合并间隔的 2 倍）"""
     return int(_get_merge_interval() * 2)
+
+
+def _get_merge_timeout() -> float:
+    return max(float(getattr(settings, "EVENT_MERGE_TIMEOUT_SECONDS", MERGE_TIMEOUT) or 0), 1.0)
+
+
+def _get_merge_batch_size() -> int:
+    return max(int(getattr(settings, "EVENT_MERGE_BATCH_SIZE", BATCH_SIZE) or 0), 1)
+
+
+def _get_merge_concurrency() -> int:
+    return max(int(getattr(settings, "EVENT_MERGE_CONCURRENCY", _MERGE_CONCURRENCY) or 0), 1)
 
 
 class EventMerger:
@@ -114,11 +126,12 @@ class EventMerger:
                 if await self._acquire_lock():
                     try:
                         # 使用 asyncio.timeout 防止合并操作超时
-                        async with asyncio.timeout(MERGE_TIMEOUT):
+                        merge_timeout = _get_merge_timeout()
+                        async with asyncio.timeout(merge_timeout):
                             await self._merge_completed_traces()
                     except TimeoutError:
                         logger.warning(
-                            f"Merge operation timed out after {MERGE_TIMEOUT}s, will retry next round"
+                            f"Merge operation timed out after {merge_timeout}s, will retry next round"
                         )
                     except Exception as e:
                         logger.error(f"Merge operation failed: {e}", exc_info=True)
@@ -224,15 +237,16 @@ class EventMerger:
 
             # 查询最近完成的 traces（未合并的）
             # 使用投影减少数据传输
+            batch_size = _get_merge_batch_size()
             cursor = collection.find(
                 {
                     "status": {"$ne": "running"},
                     "metadata.merged": {"$ne": True},
                 },
                 {"trace_id": 1, "events": 1},
-            ).limit(BATCH_SIZE)
+            ).limit(batch_size)
 
-            traces = await cursor.to_list(length=BATCH_SIZE)
+            traces = await cursor.to_list(length=batch_size)
 
             if not traces:
                 logger.debug("No traces to merge")
@@ -241,7 +255,7 @@ class EventMerger:
             logger.info(f"Found {len(traces)} traces to merge")
 
             # 并发合并事件（纯 CPU，不涉及 IO）
-            sem = asyncio.Semaphore(_MERGE_CONCURRENCY)
+            sem = asyncio.Semaphore(_get_merge_concurrency())
 
             async def _process(trace):
                 async with sem:

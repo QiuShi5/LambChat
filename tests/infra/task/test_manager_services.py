@@ -203,7 +203,7 @@ async def test_recovery_service_preserves_empty_enabled_skills_whitelist(
 
 
 @pytest.mark.asyncio
-async def test_startup_cleanup_service_attempts_auto_recovery_for_running_sessions(
+async def test_startup_cleanup_service_recovers_latest_running_session_without_heartbeat(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = SimpleNamespace(
@@ -258,6 +258,91 @@ async def test_startup_cleanup_service_attempts_auto_recovery_for_running_sessio
             self.release_calls.append((user_id, run_id))
 
     fake_limiter = _FakeLimiter()
+    monkeypatch.setattr(
+        "src.infra.task.concurrency.get_concurrency_limiter",
+        lambda: fake_limiter,
+    )
+
+    service = startup_cleanup_module.TaskStartupCleanupService(
+        storage=storage,
+        heartbeat=heartbeat,
+        ensure_executor=lambda: None,
+        load_session_record=_fake_load_session,
+        resume_interrupted_run=_fake_resume,
+        replay_pending_queued_tasks=_no_op,
+        cleanup_stale_queues=_no_op,
+    )
+
+    await service.cleanup_stale_tasks()
+
+    assert recovery_calls == [("session-1", "run-old", "server_restart")]
+    assert fake_limiter.release_calls == []
+
+
+@pytest.mark.asyncio
+async def test_startup_cleanup_service_recovers_latest_explicit_system_restart_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        id="session-1",
+        user_id="user-1",
+        agent_id="search",
+        name="Recoverable Failed Session",
+        metadata={
+            "current_run_id": "run-old",
+            "task_status": "failed",
+            "task_recoverable": True,
+            "task_error_code": "server_restart",
+        },
+    )
+    storage = _FakeStorage(session)
+    storage.collection = _FakeCollection(
+        [
+            [],
+            [],
+            [
+                {
+                    "_id": "mongo-1",
+                    "session_id": "session-1",
+                    "user_id": "user-1",
+                    "metadata": {
+                        "current_run_id": "run-old",
+                        "task_status": "failed",
+                        "task_recoverable": True,
+                        "task_error_code": "server_restart",
+                    },
+                }
+            ],
+        ]
+    )
+    heartbeat = _FakeHeartbeat(exists=False)
+    recovery_calls = []
+
+    async def _fake_load_session(raw_session):
+        assert raw_session["session_id"] == "session-1"
+        return session
+
+    async def _fake_resume(session, source_run_id: str, reason: str):
+        recovery_calls.append((session.id, source_run_id, reason))
+        return {"success": True, "run_id": "run-new", "message": "ok"}
+
+    async def _no_op() -> None:
+        return None
+
+    class _FakeLimiterRedis:
+        async def zscore(self, key: str, member: str):
+            return None
+
+    class _FakeLimiter:
+        def __init__(self) -> None:
+            self.redis = _FakeLimiterRedis()
+            self.release_calls = []
+
+        async def release(self, user_id: str, run_id: str) -> None:
+            self.release_calls.append((user_id, run_id))
+
+    fake_limiter = _FakeLimiter()
+
     monkeypatch.setattr(
         "src.infra.task.concurrency.get_concurrency_limiter",
         lambda: fake_limiter,
@@ -445,3 +530,70 @@ async def test_startup_cleanup_service_skips_user_cancelled_abandoned_queued_ses
     await service.cleanup_stale_tasks()
 
     assert recovery_calls == []
+
+
+@pytest.mark.asyncio
+async def test_replay_pending_queued_tasks_replays_latest_queued_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = SimpleNamespace(
+        id="session-1",
+        user_id="user-1",
+        agent_id="search",
+        name="Queued Session",
+        metadata={
+            "current_run_id": "run-old",
+            "task_status": "queued",
+        },
+    )
+    storage = _FakeStorage(session)
+    storage.collection = _FakeCollection(
+        [
+            [
+                {
+                    "_id": "mongo-1",
+                    "session_id": "session-1",
+                    "user_id": "user-1",
+                    "metadata": {"current_run_id": "run-old"},
+                }
+            ]
+        ]
+    )
+    heartbeat = _FakeHeartbeat(exists=False)
+
+    class _FakeLimiterRedis:
+        async def lrange(self, key: str, start: int, end: int):
+            return ['{"run_id":"run-old","queued_at":0}']
+
+        async def zscore(self, key: str, member: str):
+            return None
+
+    class _FakeLimiter:
+        def __init__(self) -> None:
+            self.redis = _FakeLimiterRedis()
+            self.release_calls = []
+
+        async def release(self, user_id: str, run_id: str, dequeue: bool = True) -> None:
+            self.release_calls.append((user_id, run_id, dequeue))
+
+    fake_limiter = _FakeLimiter()
+
+    async def _fake_load_session(raw_session):
+        return session
+
+    monkeypatch.setattr(
+        "src.infra.task.concurrency.get_concurrency_limiter",
+        lambda: fake_limiter,
+    )
+
+    service = startup_cleanup_module.TaskStartupCleanupService(
+        storage=storage,
+        heartbeat=heartbeat,
+        ensure_executor=lambda: None,
+        load_session_record=_fake_load_session,
+        resume_interrupted_run=lambda *args, **kwargs: None,
+    )
+
+    await service.replay_pending_queued_tasks()
+
+    assert fake_limiter.release_calls == [("user-1", "run-old", True)]

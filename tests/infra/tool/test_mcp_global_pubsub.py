@@ -126,6 +126,30 @@ async def test_invalidate_global_cache_publishes_cross_instance_notification(
     ]
 
 
+def test_global_mcp_cache_uses_configured_max_entries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(mcp_global.settings, "MCP_GLOBAL_MAX_ENTRIES", 1, raising=False)
+
+    first_manager = _FakeManager()
+    second_manager = _FakeManager()
+    mcp_global._global_entries["user-old"] = mcp_global.GlobalMCPEntry(
+        manager=first_manager,
+        tools=[],
+    )
+    mcp_global._global_entries["user-new"] = mcp_global.GlobalMCPEntry(
+        manager=second_manager,
+        tools=[],
+    )
+    mcp_global._global_entries["user-new"].touch()
+
+    removed = mcp_global._cleanup_excess_entries()
+
+    assert removed == 1
+    assert "user-old" not in mcp_global._global_entries
+    assert "user-new" in mcp_global._global_entries
+
+
 @pytest.fixture(autouse=True)
 def _reset_mcp_global_state() -> None:
     mcp_global._global_entries.clear()

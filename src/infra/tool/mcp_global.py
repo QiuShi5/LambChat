@@ -17,6 +17,7 @@ from langchain_core.tools import BaseTool
 from src.infra.logging import get_logger
 from src.infra.pubsub_hub import get_pubsub_hub
 from src.infra.storage.redis import get_redis_client
+from src.kernel.config import settings
 
 if TYPE_CHECKING:
     from src.infra.tool.mcp_client import MCPClientManager
@@ -41,11 +42,11 @@ CLEANUP_CHECK_INTERVAL = 50
 # 分布式锁超时时间（秒）
 DISTRIBUTED_LOCK_TTL = 30
 
-# 全局缓存过期时间（秒），默认 30 分钟
-GLOBAL_CACHE_TTL = 1800
+# 全局缓存过期时间（秒），默认 15 分钟
+GLOBAL_CACHE_TTL = 900
 
 # 最大缓存条目数（防止内存泄漏）
-MAX_GLOBAL_ENTRIES = 500
+MAX_GLOBAL_ENTRIES = 100
 
 # Redis 键前缀
 LOCK_KEY_PREFIX = "mcp_init_lock:"
@@ -142,8 +143,10 @@ class GlobalMCPEntry:
     created_at: float = field(default_factory=time.time)
     last_access: float = field(default_factory=time.time)
 
-    def is_expired(self, ttl: float = GLOBAL_CACHE_TTL) -> bool:
+    def is_expired(self, ttl: float | None = None) -> bool:
         """检查缓存是否过期"""
+        if ttl is None:
+            ttl = _get_global_cache_ttl()
         return time.time() - self.created_at > ttl
 
     def touch(self):
@@ -154,9 +157,17 @@ class GlobalMCPEntry:
 def _get_local_lock(user_id: str) -> asyncio.Lock:
     """获取本地异步锁（带容量保护）"""
     # 如果锁数超过最大缓存条目的 2 倍，先清理孤儿锁
-    if len(_local_locks) > MAX_GLOBAL_ENTRIES * 2:
+    if len(_local_locks) > _get_max_global_entries() * 2:
         _cleanup_orphan_locks()
     return _local_locks.setdefault(user_id, asyncio.Lock())
+
+
+def _get_global_cache_ttl() -> int:
+    return max(int(getattr(settings, "MCP_GLOBAL_CACHE_TTL_SECONDS", GLOBAL_CACHE_TTL) or 0), 1)
+
+
+def _get_max_global_entries() -> int:
+    return max(int(getattr(settings, "MCP_GLOBAL_MAX_ENTRIES", MAX_GLOBAL_ENTRIES) or 0), 1)
 
 
 def _cleanup_orphan_locks() -> int:
@@ -277,18 +288,26 @@ def _track_background_task(task: asyncio.Task) -> None:
     task.add_done_callback(_background_tasks.discard)
 
 
+def _schedule_manager_close(manager: "MCPClientManager") -> None:
+    """Schedule manager cleanup only when an event loop is available."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    try:
+        task = loop.create_task(manager.close())
+        _track_background_task(task)
+    except Exception:
+        pass
+
+
 def _cleanup_expired_entries() -> int:
     """清理过期的缓存条目，返回清理的数量"""
     expired_users = [user_id for user_id, entry in _global_entries.items() if entry.is_expired()]
     for user_id in expired_users:
         entry = _global_entries.pop(user_id, None)
         if entry:
-            try:
-                # 创建关闭任务并追踪
-                task = asyncio.create_task(entry.manager.close())
-                _track_background_task(task)
-            except Exception:
-                pass
+            _schedule_manager_close(entry.manager)
         # 同步清理本地锁
         _local_locks.pop(user_id, None)
 
@@ -300,23 +319,20 @@ def _cleanup_expired_entries() -> int:
 
 def _cleanup_excess_entries() -> int:
     """清理超出的缓存条目（LRU），返回清理的数量"""
-    if len(_global_entries) <= MAX_GLOBAL_ENTRIES:
+    max_entries = _get_max_global_entries()
+    if len(_global_entries) <= max_entries:
         return 0
 
     # 按最后访问时间排序，删除最旧的
     sorted_entries = sorted(_global_entries.items(), key=lambda x: x[1].last_access)
 
     # 删除超出部分
-    to_remove = len(_global_entries) - MAX_GLOBAL_ENTRIES
+    to_remove = len(_global_entries) - max_entries
     for user_id, entry in sorted_entries[:to_remove]:
         _global_entries.pop(user_id, None)
         # 同步清理本地锁
         _local_locks.pop(user_id, None)
-        try:
-            task = asyncio.create_task(entry.manager.close())
-            _track_background_task(task)
-        except Exception:
-            pass
+        _schedule_manager_close(entry.manager)
 
     logger.info(f"[Global MCP] Removed {to_remove} excess entries (LRU)")
     return to_remove
@@ -447,7 +463,7 @@ async def get_global_mcp_tools(
             await mark_init_done(user_id)
 
             # 9. 检查是否超出最大条目数
-            if len(_global_entries) > MAX_GLOBAL_ENTRIES:
+            if len(_global_entries) > _get_max_global_entries():
                 _cleanup_excess_entries()
 
             logger.info(f"[Global MCP] Created manager for user {user_id}, {len(tools)} tools")
@@ -625,8 +641,8 @@ def get_cache_stats() -> dict:
     now = time.time()
     return {
         "total_users": len(_global_entries),
-        "max_users": MAX_GLOBAL_ENTRIES,
-        "ttl_seconds": GLOBAL_CACHE_TTL,
+        "max_users": _get_max_global_entries(),
+        "ttl_seconds": _get_global_cache_ttl(),
         "users": [
             {
                 "user_id": user_id,

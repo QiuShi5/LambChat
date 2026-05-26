@@ -295,10 +295,6 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
 
         schedule_auto_memory_capture(context.user_id, user_input)
 
-    # 获取内层 graph 的最终状态
-    inner_state = await inner_graph.aget_state(inner_config)
-    final_messages = inner_state.values.get("messages", [])
-
     session_id = state.get("session_id")
     if (
         context.deferred_manager is not None
@@ -320,5 +316,6 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
 
     return {
         "output": output_text,
-        "messages": final_messages,
+        # 历史消息由内层 checkpointer 持久化；外层 graph 不再复制完整消息历史。
+        "messages": [],
     }

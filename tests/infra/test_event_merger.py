@@ -46,3 +46,15 @@ async def test_event_merger_uses_dedicated_redis_for_locking(
 
     await merger.stop()
     assert dedicated.closed is True
+
+
+def test_event_merger_limits_follow_runtime_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    import src.infra.session.event_merger as event_merger
+
+    monkeypatch.setattr(event_merger.settings, "EVENT_MERGE_BATCH_SIZE", 17, raising=False)
+    monkeypatch.setattr(event_merger.settings, "EVENT_MERGE_CONCURRENCY", 3, raising=False)
+    monkeypatch.setattr(event_merger.settings, "EVENT_MERGE_TIMEOUT_SECONDS", 11, raising=False)
+
+    assert event_merger._get_merge_batch_size() == 17
+    assert event_merger._get_merge_concurrency() == 3
+    assert event_merger._get_merge_timeout() == 11
