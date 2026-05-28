@@ -9,6 +9,7 @@ import {
   lineNumbers as cmLineNumbers,
 } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
+import type { EditorState } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { CopyButton } from "./CopyButton";
@@ -151,6 +152,15 @@ function buildDecorations(
   return builder.finish();
 }
 
+function getSelectedText(state: EditorState): string {
+  const selectedRanges = state.selection.ranges.filter(
+    (range) => range.from !== range.to,
+  );
+  return selectedRanges
+    .map((range) => state.sliceDoc(range.from, range.to))
+    .join("\n");
+}
+
 /**
  * A read-only CodeMirror viewer for rendering code with syntax highlighting.
  * Supports dark mode auto-switching, line numbers, and max-height scrolling.
@@ -206,6 +216,18 @@ export const CodeMirrorViewer = memo(function CodeMirrorViewer({
   const extensions = useMemo(() => {
     const exts: Extension[] = [
       EditorView.editable.of(false),
+      EditorView.domEventHandlers({
+        copy: (event, view) => {
+          const selectedText = getSelectedText(view.state);
+          if (!selectedText || !event.clipboardData) {
+            return false;
+          }
+
+          event.clipboardData.setData("text/plain", selectedText);
+          event.preventDefault();
+          return true;
+        },
+      }),
       EditorView.theme({
         "&": {
           height: "100%",
@@ -224,7 +246,12 @@ export const CodeMirrorViewer = memo(function CodeMirrorViewer({
         },
         ".cm-content": {
           minHeight: "100% !important",
-          backgroundColor: `${isDark ? "#282c34" : "#ffffff"} !important`,
+          backgroundColor: "transparent !important",
+          userSelect: "text",
+          cursor: "text",
+        },
+        ".cm-line": {
+          userSelect: "text",
         },
         ".cm-gutters, .cm-gutter": {
           minHeight: "100% !important",

@@ -53,6 +53,14 @@ export function SkillEditor({
         },
         ".cm-content": {
           minHeight: "100%",
+          backgroundColor: "transparent !important",
+          userSelect: "text",
+        },
+        ".cm-line": {
+          userSelect: "text",
+        },
+        ".cm-lineNumbers .cm-gutterElement": {
+          userSelect: "none",
         },
       }),
     ];

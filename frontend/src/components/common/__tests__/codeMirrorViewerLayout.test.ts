@@ -23,6 +23,34 @@ test("CodeMirrorViewer fills the available parent height by default", () => {
   assert.match(source, /copyable \? "group relative h-full"/);
 });
 
+test("CodeMirrorViewer exposes selected preview text to native copy", () => {
+  const source = readSource("../CodeMirrorViewer.tsx");
+
+  assert.match(source, /function getSelectedText/);
+  assert.match(source, /state\.selection\.ranges/);
+  assert.match(source, /EditorView\.domEventHandlers\(\{\s*copy:/);
+  assert.match(
+    source,
+    /event\.clipboardData\.setData\("text\/plain", selectedText\)/,
+  );
+  assert.match(source, /event\.preventDefault\(\)/);
+  assert.match(source, /"\.cm-content":\s*\{[\s\S]*userSelect:\s*"text"/);
+  assert.match(source, /"\.cm-line":\s*\{[\s\S]*userSelect:\s*"text"/);
+  assert.match(
+    source,
+    /"\.cm-lineNumbers \.cm-gutterElement":\s*\{[\s\S]*userSelect:\s*"none"/,
+  );
+});
+
+test("CodeMirrorViewer keeps the selection layer visible", () => {
+  const source = readSource("../CodeMirrorViewer.tsx");
+
+  assert.match(
+    source,
+    /"\.cm-content":\s*\{[\s\S]*backgroundColor:\s*"transparent !important"/,
+  );
+});
+
 test("document code preview relies on the shared viewer fill behavior", () => {
   const source = readSource("../../documents/previews/CodeRenderer.tsx");
 
