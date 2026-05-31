@@ -3,12 +3,15 @@ import { ThemeToggle } from "../common/ThemeToggle";
 import { LanguageToggle } from "../common/LanguageToggle";
 import { BrandWordmark } from "../common/BrandWordmark";
 import { APP_NAME } from "../../constants";
+import { useMobileKeyboardAware } from "../../hooks/useMobileKeyboardAware";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
 }
 
 export function AuthLayout({ children }: AuthLayoutProps) {
+  const isKeyboardOpen = useMobileKeyboardAware();
+
   return (
     <div className="auth-shell min-h-[100svh] min-h-[100dvh] overflow-y-auto overflow-x-hidden">
       <div className="auth-crosshatch" aria-hidden="true" />
@@ -38,7 +41,13 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </div>
       </nav>
 
-      <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] items-center justify-center px-4 py-20 sm:px-6 sm:py-24">
+      <div
+        className={`relative z-10 flex min-h-[100svh] min-h-[100dvh] justify-center px-4 sm:px-6 ${
+          isKeyboardOpen
+            ? "items-start pt-16 sm:pt-20"
+            : "items-center py-20 sm:py-24"
+        }`}
+      >
         <div className="w-full max-w-[22.5rem] sm:max-w-[450px]">
           {children}
         </div>

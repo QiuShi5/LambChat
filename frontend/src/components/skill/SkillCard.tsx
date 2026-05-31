@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SkillBaseCard } from "../common/SkillBaseCard";
+import { Tooltip } from "../common/Tooltip";
 import { getCategoryIcon, nameToGradient } from "../common/cardUtils";
 import type { SkillResponse } from "../../types";
 import { formatDate } from "../../utils/datetime";
@@ -76,36 +77,38 @@ export function SkillCard({
       bannerLeadingOverlay={
         onTogglePreference ? (
           <>
-            <button
-              type="button"
-              className={`pps-card__icon-action ${
-                skill.is_pinned ? "pps-card__icon-action--active-pin" : ""
-              }`}
-              title={t("personaPresets.pin", "置顶")}
-              onClick={(event) => {
-                event.stopPropagation();
-                onTogglePreference(skill, {
-                  is_pinned: !skill.is_pinned,
-                });
-              }}
-            >
-              <Pin size={12} />
-            </button>
-            <button
-              type="button"
-              className={`pps-card__icon-action ${
-                skill.is_favorite ? "pps-card__icon-action--active-fav" : ""
-              }`}
-              title={t("personaPresets.favorite", "收藏")}
-              onClick={(event) => {
-                event.stopPropagation();
-                onTogglePreference(skill, {
-                  is_favorite: !skill.is_favorite,
-                });
-              }}
-            >
-              <Star size={12} />
-            </button>
+            <Tooltip content={t("personaPresets.pin", "置顶")}>
+              <button
+                type="button"
+                className={`pps-card__icon-action ${
+                  skill.is_pinned ? "pps-card__icon-action--active-pin" : ""
+                }`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onTogglePreference(skill, {
+                    is_pinned: !skill.is_pinned,
+                  });
+                }}
+              >
+                <Pin size={12} />
+              </button>
+            </Tooltip>
+            <Tooltip content={t("personaPresets.favorite", "收藏")}>
+              <button
+                type="button"
+                className={`pps-card__icon-action ${
+                  skill.is_favorite ? "pps-card__icon-action--active-fav" : ""
+                }`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onTogglePreference(skill, {
+                    is_favorite: !skill.is_favorite,
+                  });
+                }}
+              >
+                <Star size={12} />
+              </button>
+            </Tooltip>
           </>
         ) : undefined
       }
@@ -169,88 +172,97 @@ export function SkillCard({
       }
       footer={
         <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(skill.name);
-            }}
-            className="scb__action-btn scb__action-btn--ghost"
-            title={
+          <Tooltip
+            content={
               skill.enabled ? t("skills.card.disable") : t("skills.card.enable")
             }
           >
-            {skill.enabled ? (
-              <ToggleRight
-                size={15}
-                className="text-green-600 dark:text-green-500"
-              />
-            ) : (
-              <ToggleLeft size={15} />
-            )}
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(skill.name);
+              }}
+              className="scb__action-btn scb__action-btn--ghost"
+            >
+              {skill.enabled ? (
+                <ToggleRight
+                  size={15}
+                  className="text-green-600 dark:text-green-500"
+                />
+              ) : (
+                <ToggleLeft size={15} />
+              )}
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(skill);
-            }}
-            className="scb__action-btn scb__action-btn--ghost"
-            title={t("skills.card.edit")}
-          >
-            <Edit3 size={13} />
-          </button>
+          <Tooltip content={t("skills.card.edit")}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(skill);
+              }}
+              className="scb__action-btn scb__action-btn--ghost"
+            >
+              <Edit3 size={13} />
+            </button>
+          </Tooltip>
 
           {skill.source === "manual" &&
             isPublished !== undefined &&
             onPublish && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPublish(skill);
-                }}
-                className="scb__action-btn scb__action-btn--ghost"
-                title={
+              <Tooltip
+                content={
                   isPublished
                     ? t("skills.card.republish")
                     : t("skills.card.publishToMarketplace")
                 }
               >
-                <Upload
-                  size={13}
-                  className={
-                    isPublished
-                      ? "text-green-600 dark:text-green-500"
-                      : undefined
-                  }
-                />
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPublish(skill);
+                  }}
+                  className="scb__action-btn scb__action-btn--ghost"
+                >
+                  <Upload
+                    size={13}
+                    className={
+                      isPublished
+                        ? "text-green-600 dark:text-green-500"
+                        : undefined
+                    }
+                  />
+                </button>
+              </Tooltip>
             )}
 
           {onExportZip && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onExportZip(skill.name);
-              }}
-              className="scb__action-btn scb__action-btn--ghost"
-              title={t("skills.exportZip")}
-            >
-              <Archive size={13} />
-            </button>
+            <Tooltip content={t("skills.exportZip")}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExportZip(skill.name);
+                }}
+                className="scb__action-btn scb__action-btn--ghost"
+              >
+                <Archive size={13} />
+              </button>
+            </Tooltip>
           )}
 
           <div className="ml-auto" />
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(skill.name);
-            }}
-            className="scb__action-btn text-[var(--theme-text-secondary)] transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-            title={t("skills.card.delete")}
-          >
-            <Trash2 size={14} />
-          </button>
+          <Tooltip content={t("skills.card.delete")}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(skill.name);
+              }}
+              className="scb__action-btn text-[var(--theme-text-secondary)] transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+            >
+              <Trash2 size={14} />
+            </button>
+          </Tooltip>
         </div>
       }
     />

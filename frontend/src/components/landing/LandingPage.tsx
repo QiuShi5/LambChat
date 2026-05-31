@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ImageViewer } from "../common/ImageViewer";
 import { useAuth } from "../../hooks/useAuth";
+import { getAccessToken } from "../../services/api/token";
 import { useSEO } from "../../hooks/usePageTitle";
 import { useScrollReveal } from "./hooks/useScrollReveal";
 import { useScrollProgress } from "./hooks/useScrollProgress";
@@ -112,8 +113,14 @@ export function LandingPage() {
 
   const goLogin = useCallback(() => {
     setMobileMenuOpen(false);
-    navigate("/auth/login");
-  }, [navigate]);
+    // If already authenticated, or auth is still loading (token may still be valid),
+    // navigate directly to chat instead of the login page
+    if (isAuthenticated || (isLoading && getAccessToken())) {
+      navigate("/chat");
+    } else {
+      navigate("/auth/login");
+    }
+  }, [navigate, isAuthenticated, isLoading]);
 
   const scrollToSection = useCallback((id: string) => {
     setMobileMenuOpen(false);

@@ -14,6 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import { Checkbox } from "../common/Checkbox";
+
 import type { SkillResponse, SkillSource } from "../../types";
 import { collectSkillTags, skillMatchesQuery } from "../../utils/skillFilters";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";

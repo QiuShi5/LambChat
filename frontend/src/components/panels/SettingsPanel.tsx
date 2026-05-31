@@ -92,32 +92,35 @@ export function SettingsPanel() {
   } = useSettingsContext();
   const { hasPermission } = useAuth();
 
-  const CATEGORY_LABELS: Record<SettingCategory, string> = {
-    frontend: t("categories.frontend"),
-    agent: t("categories.agent"),
-    llm: t("categories.llm"),
-    session: t("categories.session"),
-    skills: t("categories.skills"),
-    mongodb: t("categories.mongodb"),
-    redis: t("categories.redis"),
-    checkpoint: t("categories.checkpoint"),
-    long_term_storage: t("categories.long_term_storage"),
-    memory: t("categories.memory"),
-    memory_embedding: t("categories.memory_embedding"),
-    memory_search: t("categories.memory_search"),
-    memory_storage: t("categories.memory_storage"),
-    security: t("categories.security"),
-    email: t("categories.email"),
-    captcha: t("categories.captcha"),
-    sandbox: t("categories.sandbox"),
-    s3: t("categories.s3"),
-    file_upload: t("categories.file_upload"),
-    tools: t("categories.tools"),
-    audio_transcription: t("categories.audio_transcription"),
-    tracing: t("categories.tracing"),
-    user: t("categories.user"),
-    oauth: t("categories.oauth"),
-  };
+  const CATEGORY_LABELS = useMemo<Record<SettingCategory, string>>(
+    () => ({
+      frontend: t("categories.frontend"),
+      agent: t("categories.agent"),
+      llm: t("categories.llm"),
+      session: t("categories.session"),
+      skills: t("categories.skills"),
+      mongodb: t("categories.mongodb"),
+      redis: t("categories.redis"),
+      checkpoint: t("categories.checkpoint"),
+      long_term_storage: t("categories.long_term_storage"),
+      memory: t("categories.memory"),
+      memory_embedding: t("categories.memory_embedding"),
+      memory_search: t("categories.memory_search"),
+      memory_storage: t("categories.memory_storage"),
+      security: t("categories.security"),
+      email: t("categories.email"),
+      captcha: t("categories.captcha"),
+      sandbox: t("categories.sandbox"),
+      s3: t("categories.s3"),
+      file_upload: t("categories.file_upload"),
+      tools: t("categories.tools"),
+      audio_transcription: t("categories.audio_transcription"),
+      tracing: t("categories.tracing"),
+      user: t("categories.user"),
+      oauth: t("categories.oauth"),
+    }),
+    [t],
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] =
@@ -196,9 +199,6 @@ export function SettingsPanel() {
     fetchModels();
   }, [hasPermission]);
 
-  // Get settings for active category
-  const categorySettings = settings?.settings[activeCategory] ?? [];
-
   const SUBCATEGORY_LABELS = useMemo<Record<string, string>>(
     () => ({
       display: t("subcategories.display"),
@@ -276,15 +276,25 @@ export function SettingsPanel() {
   );
 
   // Filter settings by search query and visibility
-  const filteredSettings = categorySettings.filter((setting) => {
-    const matchesSearch =
-      setting.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      setting.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const isVisible = isSettingVisible(setting);
-    return matchesSearch && isVisible;
-  });
+  // When search is active, search across ALL categories; otherwise only the active category
+  const filteredSettings = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    const sourceSettings = query
+      ? Object.values(settings?.settings ?? {})
+          .flat()
+          .filter((s) => s.frontend_visible !== false)
+      : settings?.settings[activeCategory] ?? [];
+    return sourceSettings.filter((setting) => {
+      const matchesSearch =
+        !query ||
+        setting.key.toLowerCase().includes(query) ||
+        setting.description.toLowerCase().includes(query) ||
+        t(setting.description).toLowerCase().includes(query);
+      return matchesSearch && isSettingVisible(setting);
+    });
+  }, [searchQuery, settings, activeCategory, isSettingVisible, t]);
 
-  // Group filtered settings by subcategory
+  // Group filtered settings by category (when searching globally) or subcategory (when browsing a single category)
   const groupedSettings = useMemo(() => {
     const groups: {
       subcategory: string;
@@ -292,20 +302,34 @@ export function SettingsPanel() {
       settings: typeof filteredSettings;
     }[] = [];
     const map = new Map<string, typeof filteredSettings>();
+    const isGlobalSearch = searchQuery.trim().length > 0;
+
     for (const s of filteredSettings) {
-      const key = s.subcategory || "";
+      // When searching globally, group by category; otherwise group by subcategory
+      const key = isGlobalSearch
+        ? `__cat__:${s.category}`
+        : s.subcategory || "";
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(s);
     }
     for (const [key, items] of map) {
-      groups.push({
-        subcategory: key,
-        label: key ? SUBCATEGORY_LABELS[key] || key : "",
-        settings: items,
-      });
+      if (isGlobalSearch && key.startsWith("__cat__:")) {
+        const catKey = key.slice("__cat__:".length) as SettingCategory;
+        groups.push({
+          subcategory: key,
+          label: CATEGORY_LABELS[catKey] || catKey,
+          settings: items,
+        });
+      } else {
+        groups.push({
+          subcategory: key,
+          label: key ? SUBCATEGORY_LABELS[key] || key : "",
+          settings: items,
+        });
+      }
     }
     return groups;
-  }, [filteredSettings, SUBCATEGORY_LABELS]);
+  }, [filteredSettings, SUBCATEGORY_LABELS, CATEGORY_LABELS, searchQuery]);
 
   // Handle value change
   const handleValueChange = useCallback(
@@ -709,6 +733,17 @@ export function SettingsPanel() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
+                                {searchQuery && (
+                                  <button
+                                    onClick={() => {
+                                      setActiveCategory(setting.category);
+                                      setSearchQuery("");
+                                    }}
+                                    className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:hover:bg-amber-900/60"
+                                  >
+                                    {CATEGORY_LABELS[setting.category]}
+                                  </button>
+                                )}
                                 <code className="rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-xs font-medium text-stone-900 break-all dark:text-stone-100">
                                   {setting.key}
                                 </code>

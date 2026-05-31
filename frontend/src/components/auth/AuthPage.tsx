@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { Turnstile } from "react-turnstile";
 import { useAuth } from "../../hooks/useAuth";
+import { useMobileKeyboardAware } from "../../hooks/useMobileKeyboardAware";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Loading, LoadingSpinner } from "../common/LoadingSpinner";
 import { ContactAdminDialog } from "../common/ContactAdminDialog";
@@ -65,6 +66,7 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
   const submitLabel = mode === "login" ? t("auth.login") : t("auth.register");
 
   const { theme } = useTheme();
+  const isKeyboardOpen = useMobileKeyboardAware();
 
   // 当主题变化时，强制重新渲染 Turnstile 以更新主题
   useEffect(() => {
@@ -349,7 +351,13 @@ export function AuthPage({ onSuccess, initialMode }: AuthPageProps) {
       </nav>
 
       {/* Main content */}
-      <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] items-center justify-center px-4 py-20 sm:px-6 sm:py-24">
+      <div
+        className={`relative z-10 flex min-h-[100svh] min-h-[100dvh] justify-center px-4 sm:px-6 ${
+          isKeyboardOpen
+            ? "items-start pt-16 sm:pt-20"
+            : "items-center py-20 sm:py-24"
+        }`}
+      >
         <div className="w-full max-w-[22.5rem] sm:max-w-[420px] lg:max-w-[450px] 2xl:max-w-[480px]">
           {/* Title area */}
           <div className="mb-5 text-center sm:mb-6">

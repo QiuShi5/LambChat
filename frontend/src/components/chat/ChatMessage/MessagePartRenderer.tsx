@@ -347,7 +347,6 @@ export function MessagePartRenderer({
               "[&>svg]:transition-transform [&>svg]:duration-300",
               "hover:[&>svg]:-rotate-180",
             )}
-            title={t("chat.message.retryAnswer")}
           >
             <RotateCcw size={11} className="shrink-0" />
             {t("chat.message.retryAnswer")}

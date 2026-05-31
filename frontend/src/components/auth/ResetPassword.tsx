@@ -10,6 +10,7 @@ import { LanguageToggle } from "../common/LanguageToggle";
 import { BrandWordmark } from "../common/BrandWordmark";
 import { PasswordInput } from "./PasswordInput";
 import { APP_NAME } from "../../constants";
+import { useMobileKeyboardAware } from "../../hooks/useMobileKeyboardAware";
 
 export function ResetPassword() {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ export function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isError, setIsError] = useState(false);
+  const isKeyboardOpen = useMobileKeyboardAware();
 
   const token = searchParams.get("token");
 
@@ -89,7 +91,13 @@ export function ResetPassword() {
           </div>
         </div>
       </nav>
-      <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] items-center justify-center px-4 py-20 sm:px-6 sm:py-24">
+      <div
+        className={`relative z-10 flex min-h-[100svh] min-h-[100dvh] justify-center px-4 sm:px-6 ${
+          isKeyboardOpen
+            ? "items-start pt-16 sm:pt-20"
+            : "items-center py-20 sm:py-24"
+        }`}
+      >
         <div className="w-full max-w-[22.5rem] sm:max-w-[380px]">
           <div className="mb-5 text-center">
             <div
@@ -157,7 +165,13 @@ export function ResetPassword() {
           </div>
         </div>
       </nav>
-      <div className="relative z-10 flex min-h-[100svh] min-h-[100dvh] items-center justify-center px-4 py-20 sm:px-6 sm:py-24">
+      <div
+        className={`relative z-10 flex min-h-[100svh] min-h-[100dvh] justify-center px-4 sm:px-6 ${
+          isKeyboardOpen
+            ? "items-start pt-16 sm:pt-20"
+            : "items-center py-20 sm:py-24"
+        }`}
+      >
         <div className="w-full max-w-[22.5rem] sm:max-w-[450px]">
           <div className="mb-5 text-center">
             <h1 className="text-2xl font-bold tracking-[-0.02em] text-stone-900 dark:text-stone-100 mb-1 font-serif">

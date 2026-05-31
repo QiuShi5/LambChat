@@ -13,10 +13,7 @@ export function ChatPageSkeleton() {
       {/* Main area */}
       <div className="relative flex flex-1 min-w-0 flex-col overflow-hidden">
         {/* Header skeleton — matches real Header layout */}
-        <header
-          className="relative z-50 flex items-center px-3 sm:px-5 pb-1 shrink-0"
-          style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
-        >
+        <header className="relative z-50 flex items-center px-3 sm:px-5 py-3 shrink-0 rounded-bl-xl">
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Mobile hamburger */}
             <div className="skeleton-line size-8 rounded-lg sm:hidden" />

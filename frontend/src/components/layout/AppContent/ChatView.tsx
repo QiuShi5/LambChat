@@ -429,7 +429,7 @@ export function ChatView({
     <SessionImageGalleryProvider messages={messages}>
       <main
         ref={messagesContainerRef}
-        className="relative flex-1 min-h-0 mt-4 overflow-hidden"
+        className="relative flex-1 min-h-0 overflow-hidden"
       >
         {messages.length === 0 ? (
           isLoading ? (

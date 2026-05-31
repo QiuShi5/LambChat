@@ -146,10 +146,7 @@ export function SkillBaseCard({
         <div className="flex items-start gap-3">
           {icon && <div className="scb__icon-ring shrink-0">{icon}</div>}
           <div className="min-w-0 flex-1">
-            <h3
-              className="truncate text-base font-semibold text-[var(--theme-text)] leading-tight"
-              title={title}
-            >
+            <h3 className="truncate text-base font-semibold text-[var(--theme-text)] leading-tight">
               {title}
             </h3>
             {statusPills}
