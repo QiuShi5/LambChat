@@ -72,15 +72,11 @@ interface ToolResultPanelProps {
   onBack?: () => void;
 }
 
-const panelBtnClass = (compact: boolean) =>
-  compact
-    ? "flex items-center justify-center size-8 rounded-lg text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer"
-    : "flex items-center justify-center size-8 rounded-xl size-auto gap-1.5 px-2.5 py-2 text-xs text-sm font-medium text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
+const panelBtnClass =
+  "flex items-center justify-center size-8 rounded-lg text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
 
-const panelCloseBtnClass = (compact: boolean) =>
-  compact
-    ? "flex items-center justify-center size-8 rounded-lg text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer"
-    : "flex items-center justify-center size-8 rounded-xl size-auto gap-1.5 px-2.5 py-2 text-xs text-sm font-medium text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
+const panelCloseBtnClass =
+  "flex items-center justify-center size-8 rounded-lg text-stone-400 dark:text-stone-500 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
 
 const statusConfig: Record<
   CollapsibleStatus,
@@ -143,19 +139,7 @@ export function ToolResultPanel({
     "sidebar" | "center"
   >("sidebar");
   const [internalIsFullscreen, setInternalIsFullscreen] = useState(false);
-  const [toolbarCompact, setToolbarCompact] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
-
-  // Toolbar compact detection based on header width
-  useEffect(() => {
-    const el = toolbarRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      setToolbarCompact(entries[0].contentRect.width < 640);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const [historyAvailable, setHistoryAvailable] = useState(
     () => getSidebarHistoryLength() > 0,
@@ -369,10 +353,14 @@ export function ToolResultPanel({
       {(isSidebar || isMobile || (isCenter && hasCustomHeader)) && (
         <div
           ref={toolbarRef}
-          className="flex flex-col shrink-0 bg-gradient-to-r from-stone-50 to-white dark:from-stone-800 dark:to-[#292524]"
+          className={`flex flex-col shrink-0 ${
+            isFullscreen
+              ? ""
+              : "bg-gradient-to-r from-stone-50 to-white dark:from-stone-800 dark:to-[#292524]"
+          }`}
         >
           {/* Mobile drag handle */}
-          {isMobile && (
+          {isMobile && !isFullscreen && (
             <div ref={dragHandleRef} className="flex justify-center pt-4 pb-2">
               <div className="mobile-drag-handle w-9 h-1 rounded-full bg-stone-300 dark:bg-stone-600" />
             </div>
@@ -389,11 +377,10 @@ export function ToolResultPanel({
                     e.stopPropagation();
                     effectiveOnBack();
                   }}
-                  className={panelCloseBtnClass(toolbarCompact) + " shrink-0"}
+                  className={panelCloseBtnClass + " shrink-0"}
                   title={t("common.back", "Back")}
                 >
                   <BackIcon size={16} />
-                  {!toolbarCompact && <span>{t("common.back", "Back")}</span>}
                 </button>
               )}
 
@@ -448,7 +435,7 @@ export function ToolResultPanel({
                       e.stopPropagation();
                       handleToggleViewMode();
                     }}
-                    className={panelBtnClass(toolbarCompact)}
+                    className={panelBtnClass}
                     title={
                       isSidebar
                         ? t("documents.centerView", "Center view")
@@ -456,19 +443,9 @@ export function ToolResultPanel({
                     }
                   >
                     {isSidebar ? (
-                      <>
-                        <Columns2 size={16} />
-                        {!toolbarCompact && (
-                          <span>{t("documents.centerView", "居中")}</span>
-                        )}
-                      </>
+                      <Columns2 size={16} />
                     ) : (
-                      <>
-                        <PanelRight size={16} />
-                        {!toolbarCompact && (
-                          <span>{t("documents.sidebarView")}</span>
-                        )}
-                      </>
+                      <PanelRight size={16} />
                     )}
                   </button>
                   <button
@@ -477,28 +454,14 @@ export function ToolResultPanel({
                       e.stopPropagation();
                       handleToggleFullscreen();
                     }}
-                    className={panelBtnClass(toolbarCompact)}
+                    className={panelBtnClass}
                     title={
                       isFullscreen
                         ? t("documents.exitFullscreen")
                         : t("documents.fullscreen")
                     }
                   >
-                    {isFullscreen ? (
-                      <>
-                        <Shrink size={16} />
-                        {!toolbarCompact && (
-                          <span>{t("documents.exitFullscreen")}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <Expand size={16} />
-                        {!toolbarCompact && (
-                          <span>{t("documents.fullscreen")}</span>
-                        )}
-                      </>
-                    )}
+                    {isFullscreen ? <Shrink size={16} /> : <Expand size={16} />}
                   </button>
                   <button
                     type="button"
@@ -506,12 +469,11 @@ export function ToolResultPanel({
                       e.stopPropagation();
                       handleUserClose();
                     }}
-                    className={panelCloseBtnClass(toolbarCompact)}
+                    className={panelCloseBtnClass}
                     title={t("common.close")}
                     aria-label={t("common.close")}
                   >
                     <X size={16} />
-                    {!toolbarCompact && <span>{t("common.close")}</span>}
                   </button>
                 </div>
               )}
@@ -522,12 +484,11 @@ export function ToolResultPanel({
                     e.stopPropagation();
                     handleUserClose();
                   }}
-                  className={panelCloseBtnClass(toolbarCompact) + " shrink-0"}
+                  className={panelCloseBtnClass + " shrink-0"}
                   aria-label={t("common.close")}
                   title={t("common.close")}
                 >
                   <X size={16} />
-                  {!toolbarCompact && <span>{t("common.close")}</span>}
                 </button>
               )}
             </div>

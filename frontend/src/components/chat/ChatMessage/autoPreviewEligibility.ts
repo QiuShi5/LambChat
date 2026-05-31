@@ -1,7 +1,10 @@
 import type { MessagePart } from "../../../types";
+import { collectRevealArtifacts } from "./revealArtifacts";
+import type { RevealPreviewRequest } from "./items/revealPreviewData";
 
 interface AutoPreviewMessageLike {
   id: string;
+  runId?: string;
   isStreaming?: boolean;
   parts?: MessagePart[];
 }
@@ -18,6 +21,28 @@ function isAutoPreviewToolPart(part: MessagePart): boolean {
     !part.isPending &&
     !part.cancelled &&
     (part.name === "reveal_file" || part.name === "reveal_project")
+  );
+}
+
+function isEligibleObservedCompletionMessage(input: {
+  message: AutoPreviewMessageLike;
+  observedStreamingMessageIds: ReadonlySet<string>;
+  currentRunId?: string | null;
+  allowHistoricalLatest?: boolean;
+}): boolean {
+  const {
+    message,
+    observedStreamingMessageIds,
+    currentRunId,
+    allowHistoricalLatest,
+  } = input;
+  const isCurrentRunMessage = !!currentRunId && message.runId === currentRunId;
+  return (
+    !message.isStreaming &&
+    !!message.parts?.length &&
+    (allowHistoricalLatest ||
+      observedStreamingMessageIds.has(message.id) ||
+      isCurrentRunMessage)
   );
 }
 
@@ -60,6 +85,92 @@ export function getLatestChatAutoPreviewTarget(input: {
   }
 
   return getLatestAutoPreviewTarget(input.messages);
+}
+
+export function getLatestObservedCompletionAutoPreviewTarget(input: {
+  messages: AutoPreviewMessageLike[];
+  observedStreamingMessageIds: ReadonlySet<string>;
+  suppressAutoPreview?: boolean;
+  currentRunId?: string | null;
+}): AutoPreviewTarget | null {
+  if (input.suppressAutoPreview) {
+    return null;
+  }
+
+  for (
+    let messageIndex = input.messages.length - 1;
+    messageIndex >= 0;
+    messageIndex -= 1
+  ) {
+    const message = input.messages[messageIndex];
+    if (
+      !isEligibleObservedCompletionMessage({
+        message,
+        observedStreamingMessageIds: input.observedStreamingMessageIds,
+        currentRunId: input.currentRunId,
+      })
+    ) {
+      continue;
+    }
+
+    const parts = message.parts;
+    if (!parts?.length) {
+      continue;
+    }
+
+    for (let partIndex = parts.length - 1; partIndex >= 0; partIndex -= 1) {
+      if (isAutoPreviewToolPart(parts[partIndex])) {
+        return {
+          messageId: message.id,
+          partIndex,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function getLatestObservedCompletionRevealPreviewRequest(input: {
+  messages: AutoPreviewMessageLike[];
+  observedStreamingMessageIds: ReadonlySet<string>;
+  suppressAutoPreview?: boolean;
+  currentRunId?: string | null;
+  allowHistoricalLatest?: boolean;
+}): RevealPreviewRequest | null {
+  if (input.suppressAutoPreview) {
+    return null;
+  }
+
+  for (
+    let messageIndex = input.messages.length - 1;
+    messageIndex >= 0;
+    messageIndex -= 1
+  ) {
+    const message = input.messages[messageIndex];
+    if (
+      !isEligibleObservedCompletionMessage({
+        message,
+        observedStreamingMessageIds: input.observedStreamingMessageIds,
+        currentRunId: input.currentRunId,
+        allowHistoricalLatest: input.allowHistoricalLatest,
+      })
+    ) {
+      continue;
+    }
+
+    const artifacts = collectRevealArtifacts(message.parts);
+    for (
+      let artifactIndex = artifacts.length - 1;
+      artifactIndex >= 0;
+      artifactIndex -= 1
+    ) {
+      const artifact = artifacts[artifactIndex];
+      return artifact.preview;
+    }
+  }
+
+  return null;
 }
 
 export function shouldAllowAutoPreviewForPart(input: {

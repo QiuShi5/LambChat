@@ -106,7 +106,7 @@ export function FileRevealItem({
         ? `${seconds}s`
         : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-[var(--theme-text-secondary)] tabular-nums">
+      <span className="inline-flex items-center gap-1 text-xs text-[var(--theme-text-secondary)] tabular-nums px-2">
         <Clock size={11} className="shrink-0" />
         {text}
       </span>

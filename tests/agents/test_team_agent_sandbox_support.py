@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,7 @@ class _FakeDeepAgent:
     def __init__(self) -> None:
         self.captured_create_kwargs = None
         self.aget_state_calls = 0
+        self.state_messages = []
 
     def with_config(self, _config):
         return self
@@ -19,7 +21,7 @@ class _FakeDeepAgent:
 
     async def aget_state(self, _config):
         self.aget_state_calls += 1
-        return SimpleNamespace(values={"messages": []})
+        return SimpleNamespace(values={"messages": self.state_messages})
 
 
 class _FakeEventProcessor:
@@ -71,6 +73,7 @@ def _patch_common(monkeypatch: pytest.MonkeyPatch, module, fake_graph: _FakeDeep
     monkeypatch.setattr(module.settings, "ENABLE_MCP", False)
     monkeypatch.setattr(module.settings, "ENABLE_MEMORY", False)
     monkeypatch.setattr(module.settings, "ENABLE_SKILLS", False)
+    monkeypatch.setattr(module.settings, "ENABLE_RECOMMEND_QUESTIONS", False)
 
 
 def _install_deepagents_shims(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -273,7 +276,7 @@ async def test_team_agent_node_rejects_invalid_team_id(
 
 
 @pytest.mark.asyncio
-async def test_team_agent_node_does_not_reload_final_checkpoint_messages(
+async def test_team_agent_node_reads_existing_state_messages_for_recommendations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_deepagents_shims(monkeypatch)
@@ -282,7 +285,16 @@ async def test_team_agent_node_does_not_reload_final_checkpoint_messages(
     from src.agents.team_agent.context import TeamAgentContext
 
     fake_graph = _FakeDeepAgent()
+    fake_graph.state_messages = ["history message"]
     _patch_common(monkeypatch, team_nodes, fake_graph)
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
+    import src.agents.core.recommendations as recommendations
+
+    monkeypatch.setattr(
+        recommendations,
+        "schedule_recommend_questions",
+        lambda *_args, **_kwargs: None,
+    )
     monkeypatch.setattr(team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
 
     context = TeamAgentContext(session_id="session-1", user_id="user-1")
@@ -299,8 +311,9 @@ async def test_team_agent_node_does_not_reload_final_checkpoint_messages(
         {"input": "hello", "session_id": "session-1", "attachments": []},
         config,
     )
+    await asyncio.sleep(0)
 
-    assert fake_graph.aget_state_calls == 0
+    assert fake_graph.aget_state_calls == 1
     assert result["messages"] == []
 
 

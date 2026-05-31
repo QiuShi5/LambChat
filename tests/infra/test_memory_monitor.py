@@ -527,6 +527,113 @@ async def test_sample_once_publishes_last_alert_snapshot_when_alert_fires(
 
 
 @pytest.mark.asyncio
+async def test_sample_once_records_alert_when_heavy_diagnostics_times_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.monitoring.memory import MemoryMonitor
+
+    first_timestamp = datetime(2026, 4, 30, 3, 25, tzinfo=timezone.utc)
+    second_timestamp = first_timestamp + timedelta(minutes=1)
+    samples = iter(
+        [
+            {
+                "timestamp": first_timestamp,
+                "rss_bytes": 100 * 1024 * 1024,
+                "vms_bytes": 400 * 1024 * 1024,
+                "thread_count": 12,
+                "open_file_count": 3,
+            },
+            {
+                "timestamp": second_timestamp,
+                "rss_bytes": 220 * 1024 * 1024,
+                "vms_bytes": 440 * 1024 * 1024,
+                "thread_count": 12,
+                "open_file_count": 4,
+            },
+        ]
+    )
+    built_snapshots: list[dict[str, object]] = []
+    published_calls: list[tuple[dict[str, object], float]] = []
+
+    monitor = MemoryMonitor(
+        interval_seconds=60.0,
+        history_limit=10,
+        leak_threshold_bytes=64 * 1024 * 1024,
+        min_samples_for_alert=2,
+        alert_cooldown_seconds=300.0,
+        heavy_diagnostics_enabled=True,
+    )
+    monitor._collect_process_sample = lambda: next(samples)  # type: ignore[method-assign]
+
+    def _capture() -> dict[str, object]:
+        raise AssertionError("timeout is injected before diagnostics run")
+
+    async def _run_monitor_blocking(func, *, timeout: float = 10.0):  # type: ignore[no-untyped-def]
+        del timeout
+        if func is _capture:
+            raise asyncio.TimeoutError
+        return func()
+
+    monitor._capture_diagnostics_snapshot = _capture  # type: ignore[method-assign]
+    monitor._run_monitor_blocking = _run_monitor_blocking  # type: ignore[method-assign]
+
+    def _fake_build_instance_snapshot(
+        *,
+        instance_id: str | None = None,
+        captured_at: object | None = None,
+        summary: dict[str, object] | None = None,
+        details: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        snapshot = {
+            "instance_id": instance_id,
+            "captured_at": captured_at,
+            "summary": summary,
+            "details": details,
+        }
+        built_snapshots.append(snapshot)
+        return snapshot
+
+    async def _fake_publish_instance_snapshot(
+        snapshot: dict[str, object],
+        *,
+        interval_seconds: float,
+        redis_client: object | None = None,
+    ) -> dict[str, object]:
+        del redis_client
+        published_calls.append((snapshot, interval_seconds))
+        return snapshot
+
+    monkeypatch.setattr(
+        distributed_memory_health,
+        "build_instance_snapshot",
+        _fake_build_instance_snapshot,
+    )
+    monkeypatch.setattr(
+        distributed_memory_health,
+        "publish_instance_snapshot",
+        _fake_publish_instance_snapshot,
+    )
+
+    await monitor._sample_once()
+    await monitor._sample_once()
+
+    diagnostics = await monitor.get_diagnostics()
+
+    assert diagnostics["last_error"] == "heavy diagnostics timed out"
+    assert diagnostics["last_alert"] == {
+        "captured_at": "2026-04-30T03:26:00+00:00",
+        "heavy_diagnostics_enabled": True,
+        "reason": "heavy_diagnostics_timeout",
+        "top_growth": [],
+        "top_allocations": [],
+        "top_object_types": [],
+    }
+    assert built_snapshots[-1]["details"] == diagnostics["last_alert"]
+    assert built_snapshots[-1]["summary"]["last_error"] == "heavy diagnostics timed out"
+    assert published_calls[-1] == (built_snapshots[-1], 60.0)
+
+
+@pytest.mark.asyncio
 async def test_sample_once_swallow_publish_failures_without_breaking_sampling(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

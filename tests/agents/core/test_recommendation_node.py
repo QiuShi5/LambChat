@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from src.agents.core.recommendations import (
+    MAX_RECOMMEND_PROMPT_CHARS,
+    MAX_RECOMMEND_PROMPT_TOKENS,
+    build_recommend_prompt,
+    count_recommend_prompt_tokens,
+    format_history_context,
+    format_history_from_messages,
     generate_recommend_questions,
     schedule_recommend_questions,
 )
@@ -88,6 +94,98 @@ async def test_generate_recommend_questions_uses_session_title_model(monkeypatch
     assert questions == ["问题一？", "问题二？", "问题三？"]
 
 
+async def test_generate_recommend_questions_includes_history_context(monkeypatch) -> None:
+    model = _FakeModel()
+
+    async def fake_get_model(**kwargs):
+        return model
+
+    monkeypatch.setattr("src.infra.llm.client.LLMClient.get_model", fake_get_model)
+
+    questions = await generate_recommend_questions(
+        "那部署怎么做？",
+        "可以用 Docker Compose。",
+        history_context="第 1 轮\n问题: 这个项目怎么启动？\n结果: 先安装依赖再运行服务。",
+    )
+
+    prompt = model.prompts[0]
+    assert "Recent conversation history" in prompt
+    assert "这个项目怎么启动？" in prompt
+    assert "先安装依赖再运行服务。" in prompt
+    assert "那部署怎么做？" in prompt
+    assert questions == ["问题一？", "问题二？", "问题三？"]
+
+
+def test_build_recommend_prompt_stays_under_token_budget() -> None:
+    prompt = build_recommend_prompt(
+        user_input="当前问题" * 1000,
+        output_text="当前结果" * 2000,
+        history_context="历史问题和结果" * 12000,
+    )
+
+    assert len(prompt) <= MAX_RECOMMEND_PROMPT_CHARS
+    assert count_recommend_prompt_tokens(prompt) <= MAX_RECOMMEND_PROMPT_TOKENS
+    assert "Current user message" in prompt
+    assert "Current assistant answer" in prompt
+
+
+def test_format_history_context_uses_recent_questions_and_results() -> None:
+    context = format_history_context(
+        [
+            {
+                "run_id": "run-1",
+                "event_type": "user:message",
+                "data": {"content": "旧问题"},
+            },
+            {
+                "run_id": "run-1",
+                "event_type": "message:chunk",
+                "data": {"content": "旧结果"},
+            },
+            {
+                "run_id": "run-2",
+                "event_type": "user:message",
+                "data": {"content": "新问题"},
+            },
+            {
+                "run_id": "run-2",
+                "event_type": "message:chunk",
+                "data": {"content": "新"},
+            },
+            {
+                "run_id": "run-2",
+                "event_type": "message:chunk",
+                "data": {"content": "结果"},
+            },
+        ],
+        max_chars=50,
+    )
+
+    assert "Question: 新问题" in context
+    assert "Result: 新结果" in context
+    assert "旧问题" not in context
+
+
+def test_format_history_from_messages_uses_graph_state_messages() -> None:
+    class _HumanMessage:
+        type = "human"
+        content = "历史问题"
+
+    class _AIMessage:
+        type = "ai"
+        content = "历史结果"
+
+    context = format_history_from_messages(
+        [_HumanMessage(), _AIMessage(), {"role": "user", "content": "当前问题"}],
+        current_user_input="当前问题",
+        current_output="当前结果",
+    )
+
+    assert "历史问题" in context
+    assert "历史结果" in context
+    assert "当前问题" not in context
+
+
 async def test_generate_recommend_questions_falls_back_quietly_without_title_api(
     monkeypatch,
 ) -> None:
@@ -123,7 +221,11 @@ async def test_generate_recommend_questions_falls_back_quietly_without_title_api
 async def test_recommendation_node_emits_llm_followup_questions(monkeypatch) -> None:
     presenter = _FakePresenter()
 
-    async def fake_generate_recommend_questions(user_input: str, output_text: str = ""):
+    async def fake_generate_recommend_questions(
+        user_input: str,
+        output_text: str = "",
+        history_context: str = "",
+    ):
         return ["问题一？", "问题二？", "问题三？"]
 
     monkeypatch.setattr(
@@ -131,7 +233,12 @@ async def test_recommendation_node_emits_llm_followup_questions(monkeypatch) -> 
         fake_generate_recommend_questions,
     )
 
-    task = schedule_recommend_questions(presenter, "如何准备半程马拉松？")
+    task = schedule_recommend_questions(
+        presenter,
+        "如何准备半程马拉松？",
+        output_text="先建立基础跑量。",
+        messages=[],
+    )
 
     assert presenter.questions is None
     await task

@@ -555,6 +555,16 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         subagent_avatars=subagent_avatars,
     )
 
+    if user_input and settings.ENABLE_RECOMMEND_QUESTIONS:
+        from src.agents.core.recommendations import schedule_recommend_questions_from_state
+
+        schedule_recommend_questions_from_state(
+            presenter,
+            user_input,
+            inner_graph,
+            inner_config,
+        )
+
     logger.info("[TeamAgent] Starting astream_events")
     try:
         async for event in inner_graph.astream_events(  # type: ignore[call-overload]
@@ -600,6 +610,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     return {
         "output": output_text,
-        # 历史消息由内层 checkpointer 持久化；外层 graph 不再复制完整消息历史。
+        # 历史消息由内层 checkpointer 持久化；推荐问题启动时直接读取已有 state。
         "messages": [],
     }

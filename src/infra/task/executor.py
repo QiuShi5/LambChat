@@ -84,7 +84,6 @@ class TaskExecutor:
 
         presenter = None
         dual_writer = None
-        recommendation_task: asyncio.Task | None = None
 
         try:
             await self._update_session_status(session_id, TaskStatus.STARTING, run_id=run_id)
@@ -139,14 +138,6 @@ class TaskExecutor:
                     display_message or message, attachments=attachments
                 )
 
-            if message and should_schedule_recommend_questions():
-                from src.agents.core.recommendations import schedule_recommend_questions
-
-                recommendation_task = schedule_recommend_questions(
-                    presenter,
-                    display_message or message,
-                )
-
             # 保存 trace_id 和 agent_id 到 run_info，保留已有的 flag
             run_info_entry: dict[str, Any] = {
                 "session_id": session_id,
@@ -195,8 +186,6 @@ class TaskExecutor:
             await self._expire_terminal_stream(session_id, run_id, dual_writer)
 
         except asyncio.CancelledError:
-            if recommendation_task and not recommendation_task.done():
-                recommendation_task.cancel()
             await self._handle_cancelled_error(session_id, run_id, user_id, dual_writer, presenter)
             raise
 

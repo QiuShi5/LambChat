@@ -1,4 +1,11 @@
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { uploadApi } from "../../services/api";
 import {
@@ -32,6 +39,10 @@ import {
   detectLanguage,
 } from "./utils";
 import { copyToClipboard } from "../../utils/clipboard";
+import {
+  isProjectPreviewFullscreen,
+  requestProjectPreviewFullscreen,
+} from "../chat/ChatMessage/items/projectPreviewFullscreen";
 
 export interface DocumentPreviewProps {
   path: string;
@@ -96,6 +107,51 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [arrayBuffer, setArrayBuffer] = useState<ArrayBuffer | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const isFullscreenRef = useRef(false);
+  // Keep ref in sync for use in callbacks without stale closures
+  useEffect(() => {
+    isFullscreenRef.current = isFullscreen;
+  }, [isFullscreen]);
+
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync with browser Fullscreen API (targets the panel element)
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(
+        isProjectPreviewFullscreen({ element: panelRef.current }),
+      );
+    };
+    syncFullscreenState();
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    return () =>
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
+  const handleFullscreenToggle = useCallback(() => {
+    if (document.fullscreenElement) {
+      // Browser is fullscreen — exit
+      document.exitFullscreen?.().catch(() => {});
+    } else if (isFullscreenRef.current) {
+      // CSS-only fullscreen — exit
+      setIsFullscreen(false);
+    } else {
+      // Enter fullscreen — try browser API first, fall back to CSS-only
+      void requestProjectPreviewFullscreen({ element: panelRef.current }).then(
+        (entered) => {
+          if (!entered) setIsFullscreen(true);
+        },
+      );
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else {
+      setIsFullscreen(false);
+    }
+  }, []);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [excalidrawData, setExcalidrawData] = useState<string>("");
   const [viewSource, setViewSource] = useState(false);
@@ -103,7 +159,6 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [toolbarCompact, setToolbarCompact] = useState(false);
 
   // Mobile detection
   useEffect(() => {
@@ -112,17 +167,6 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  // Toolbar resize observer
-  useEffect(() => {
-    const el = toolbarRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      setToolbarCompact(entries[0].contentRect.width < 640);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
   }, []);
 
   // File type detection
@@ -438,11 +482,6 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
   const fileInfo = getFileTypeInfo(fileName, mimeType);
   const Icon = fileInfo.icon;
   const isSidebar = viewMode === "sidebar";
-  const centerPanelClass = `overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transition-all duration-300 ease-out w-full flex flex-col bg-[var(--theme-bg-card)] pointer-events-auto relative ${
-    isFullscreen
-      ? "h-full sm:h-full sm:max-w-none sm:rounded-none"
-      : "sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl h-full sm:h-[80dvh] sm:rounded-2xl"
-  }`;
 
   return {
     // Props
@@ -484,7 +523,6 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
     viewMode,
     isFullscreen,
     isMobile,
-    toolbarCompact,
 
     // File type flags
     fileName,
@@ -512,7 +550,6 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
     fileInfo,
     Icon,
     isSidebar,
-    centerPanelClass,
 
     // Handlers
     effectiveOnBack,
@@ -523,10 +560,12 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
     setShowImageViewer,
     setViewSource,
     setViewMode,
-    setIsFullscreen,
+    handleFullscreenToggle,
+    exitFullscreen,
 
     // Refs
     toolbarRef,
+    panelRef,
 
     // Props for conditional checks
     fileSize,

@@ -120,7 +120,9 @@ function ArrayEditor({
   onChange: (val: unknown[]) => void;
 }) {
   const { t } = useTranslation();
-  const itemLabel = schema.item_label ? t(schema.item_label) : "Item";
+  const itemLabel = schema.item_label
+    ? t(schema.item_label)
+    : t("settings.item", "Item");
 
   const addItem = () => {
     const newItem: Record<string, unknown> = {};
@@ -222,8 +224,12 @@ function ObjectArrayEditor({
   onChange: (val: Record<string, unknown[]>) => void;
 }) {
   const { t } = useTranslation();
-  const keyLabel = schema.key_label ? t(schema.key_label) : "Key";
-  const itemLabel = schema.item_label ? t(schema.item_label) : "Item";
+  const keyLabel = schema.key_label
+    ? t(schema.key_label)
+    : t("settings.key", "Key");
+  const itemLabel = schema.item_label
+    ? t(schema.item_label)
+    : t("settings.item", "Item");
   const keys = schema.key_options || Object.keys(value);
 
   return (

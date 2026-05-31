@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import re
 from typing import Any
 
@@ -15,6 +16,15 @@ from src.kernel.config import settings
 
 _CJK_RE = re.compile(r"[\u3400-\u9fff]")
 logger = get_logger(__name__)
+MAX_RECOMMEND_PROMPT_TOKENS = 10000
+_CHARS_PER_TOKEN_ESTIMATE = 4
+MAX_RECOMMEND_PROMPT_CHARS = MAX_RECOMMEND_PROMPT_TOKENS * _CHARS_PER_TOKEN_ESTIMATE
+_TOKEN_ENCODING_NAME = "cl100k_base"
+_CURRENT_USER_MAX_CHARS = 2000
+_CURRENT_OUTPUT_MAX_CHARS = 4000
+_HISTORY_MAX_CHARS = 32000
+_token_encoding: Any | None = None
+_token_encoding_loaded = False
 
 
 def _compact_topic(user_input: str, max_len: int = 24) -> str:
@@ -49,6 +59,258 @@ def build_recommend_questions(user_input: str) -> list[str]:
         "What are common mistakes?",
         "What should I do next?",
     ]
+
+
+def _normalize_text(value: Any) -> str:
+    return " ".join(str(value or "").split())
+
+
+def _clip_text(value: str, max_chars: int) -> str:
+    if max_chars <= 0 or len(value) <= max_chars:
+        return value
+    return value[: max_chars - 3].rstrip() + "..."
+
+
+def _get_token_encoding() -> Any | None:
+    global _token_encoding, _token_encoding_loaded
+    if _token_encoding_loaded:
+        return _token_encoding
+    _token_encoding_loaded = True
+    try:
+        import tiktoken
+
+        _token_encoding = tiktoken.get_encoding(_TOKEN_ENCODING_NAME)
+    except Exception:
+        _token_encoding = None
+    return _token_encoding
+
+
+def count_recommend_prompt_tokens(prompt: str) -> int:
+    """Count prompt tokens, falling back to a conservative character estimate."""
+    encoding = _get_token_encoding()
+    if encoding is None:
+        return math.ceil(len(prompt) / _CHARS_PER_TOKEN_ESTIMATE)
+    return len(encoding.encode(prompt))
+
+
+def _clip_prompt_to_token_budget(prompt: str, max_tokens: int) -> str:
+    if count_recommend_prompt_tokens(prompt) <= max_tokens:
+        return prompt
+
+    low = 0
+    high = len(prompt)
+    best = ""
+    while low <= high:
+        mid = (low + high) // 2
+        candidate = _clip_text(prompt, mid)
+        if count_recommend_prompt_tokens(candidate) <= max_tokens:
+            best = candidate
+            low = mid + 1
+        else:
+            high = mid - 1
+
+    return best
+
+
+def _event_content(event: dict[str, Any]) -> str:
+    data = event.get("data")
+    if isinstance(data, dict):
+        return _normalize_text(data.get("content") or data.get("message") or "")
+    return _normalize_text(data)
+
+
+def _message_role(message: Any) -> str:
+    if isinstance(message, dict):
+        role = str(message.get("role") or message.get("type") or "").lower()
+    else:
+        role = str(
+            getattr(message, "role", "")
+            or getattr(message, "type", "")
+            or getattr(message, "__class__", type("", (), {})).__name__
+        ).lower()
+    if "human" in role or role == "user":
+        return "user"
+    if "ai" in role or "assistant" in role:
+        return "assistant"
+    return role
+
+
+def _message_content(message: Any) -> str:
+    if isinstance(message, dict):
+        content = message.get("content", "")
+    else:
+        content = getattr(message, "content", "")
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text") or item.get("content")
+                if text:
+                    parts.append(str(text))
+            elif item:
+                parts.append(str(item))
+        return _normalize_text(" ".join(parts))
+    return _normalize_text(content)
+
+
+def format_history_from_messages(
+    messages: list[Any],
+    current_user_input: str = "",
+    current_output: str = "",
+    max_chars: int = _HISTORY_MAX_CHARS,
+) -> str:
+    """Format conversation history from graph state messages."""
+    events: list[dict[str, Any]] = []
+    current_input = _normalize_text(current_user_input)
+    current_answer = _normalize_text(current_output)
+    for index, message in enumerate(messages):
+        role = _message_role(message)
+        content = _message_content(message)
+        if not content:
+            continue
+        if role == "user":
+            if current_input and content == current_input:
+                continue
+            events.append(
+                {
+                    "run_id": f"message-{index}",
+                    "event_type": "user:message",
+                    "data": {"content": content},
+                }
+            )
+        elif role == "assistant":
+            if current_answer and content == current_answer:
+                continue
+            events.append(
+                {
+                    "run_id": f"message-{index}",
+                    "event_type": "message:chunk",
+                    "data": {"content": content},
+                }
+            )
+    return format_history_context(events, max_chars=max_chars)
+
+
+def format_history_context(
+    events: list[dict[str, Any]],
+    max_chars: int = _HISTORY_MAX_CHARS,
+) -> str:
+    """Format recent completed conversation turns for recommendation prompts."""
+    if max_chars <= 0:
+        return ""
+
+    turns: list[dict[str, str]] = []
+    turn_by_run: dict[str, dict[str, str]] = {}
+
+    def current_turn(run_id: str) -> dict[str, str]:
+        turn = turn_by_run.get(run_id)
+        if turn is None:
+            turn = {"question": "", "answer": ""}
+            turn_by_run[run_id] = turn
+            turns.append(turn)
+        return turn
+
+    for event in events:
+        event_type = event.get("event_type")
+        if event_type not in {"user:message", "message:chunk", "summary"}:
+            continue
+        content = _event_content(event)
+        if not content:
+            continue
+
+        run_id = str(event.get("run_id") or len(turns) or "unknown")
+        turn = current_turn(run_id)
+        if event_type == "user:message":
+            turn["question"] = content
+        elif event_type == "message:chunk":
+            turn["answer"] = (turn["answer"] + content).strip()
+        elif event_type == "summary" and not turn["answer"]:
+            turn["answer"] = content
+
+    snippets: list[str] = []
+    remaining = max_chars
+    recent_turns = [turn for turn in turns if turn["question"] or turn["answer"]]
+    for turn_number, turn in reversed(list(enumerate(recent_turns, start=1))):
+        question = _clip_text(turn["question"], 1200)
+        answer = _clip_text(turn["answer"], 1800)
+        snippet = f"Turn {turn_number}\nQuestion: {question}\nResult: {answer}".strip()
+        if len(snippet) > remaining:
+            if snippets:
+                break
+            snippet = _clip_text(snippet, remaining)
+        snippets.append(snippet)
+        remaining -= len(snippet) + 2
+        if remaining <= 0:
+            break
+
+    snippets.reverse()
+    return "\n\n".join(snippets)
+
+
+def build_recommend_prompt(
+    user_input: str,
+    output_text: str = "",
+    history_context: str = "",
+) -> str:
+    """Build a bounded prompt for follow-up question generation."""
+    instructions = (
+        "Generate exactly 3 concise follow-up questions for a chat UI.\n"
+        "Use the same language as the current user message.\n"
+        "Base the questions on the current user message, current assistant answer, "
+        "and the recent conversation history when provided.\n"
+        "Return ONLY a JSON array of strings, no markdown, no explanation.\n\n"
+    )
+    current_user = _clip_text(_normalize_text(user_input), _CURRENT_USER_MAX_CHARS)
+    current_output = _clip_text(_normalize_text(output_text), _CURRENT_OUTPUT_MAX_CHARS)
+
+    def assemble(history: str) -> str:
+        if history:
+            return (
+                f"{instructions}"
+                f"Recent conversation history:\n{history}\n\n"
+                f"Current user message:\n{current_user}\n\n"
+                f"Current assistant answer:\n{current_output}"
+            )
+        return (
+            f"{instructions}"
+            f"Current user message:\n{current_user}\n\n"
+            f"Current assistant answer:\n{current_output}"
+        )
+
+    prompt_without_history = assemble("")
+    remaining_for_history = MAX_RECOMMEND_PROMPT_CHARS - len(prompt_without_history) - 40
+    history = _clip_text(
+        _normalize_text(history_context),
+        min(_HISTORY_MAX_CHARS, max(0, remaining_for_history)),
+    )
+    prompt = assemble(history)
+    if count_recommend_prompt_tokens(prompt) <= MAX_RECOMMEND_PROMPT_TOKENS:
+        return prompt
+
+    low = 0
+    high = len(history)
+    best = ""
+    while low <= high:
+        mid = (low + high) // 2
+        candidate_history = _clip_text(history, mid)
+        candidate_prompt = assemble(candidate_history)
+        if count_recommend_prompt_tokens(candidate_prompt) <= MAX_RECOMMEND_PROMPT_TOKENS:
+            best = candidate_history
+            low = mid + 1
+        else:
+            high = mid - 1
+
+    prompt = assemble(best)
+    if count_recommend_prompt_tokens(prompt) <= MAX_RECOMMEND_PROMPT_TOKENS:
+        return prompt
+
+    # Extremely long current messages can still exceed the budget after history is removed.
+    return _clip_prompt_to_token_budget(
+        f"{instructions}"
+        f"Current user message:\n{current_user}\n\n"
+        f"Current assistant answer:\n{current_output}",
+        MAX_RECOMMEND_PROMPT_TOKENS,
+    )
 
 
 def _extract_text(content: Any) -> str:
@@ -107,17 +369,15 @@ async def _ainvoke_with_retry(model: Any, prompt: str, max_retries: int | None =
     raise RuntimeError("Unexpected state: no error but retry loop exhausted")
 
 
-async def generate_recommend_questions(user_input: str, output_text: str = "") -> list[str]:
+async def generate_recommend_questions(
+    user_input: str,
+    output_text: str = "",
+    history_context: str = "",
+) -> list[str]:
     """Generate follow-up questions using the same model config as session titles."""
     from src.infra.llm.client import LLMClient
 
-    prompt = (
-        "Generate exactly 3 concise follow-up questions for a chat UI.\n"
-        "Use the same language as the user message.\n"
-        "Return ONLY a JSON array of strings, no markdown, no explanation.\n\n"
-        f"User message:\n{user_input[:800]}\n\n"
-        f"Assistant answer:\n{output_text[:1200]}"
-    )
+    prompt = build_recommend_prompt(user_input, output_text, history_context)
 
     try:
         model = await LLMClient.get_model(
@@ -154,13 +414,27 @@ async def recommendation_node(
     return {}
 
 
-def schedule_recommend_questions(presenter: Any, user_input: str) -> asyncio.Task:
+def schedule_recommend_questions(
+    presenter: Any,
+    user_input: str,
+    output_text: str = "",
+    messages: list[Any] | None = None,
+) -> asyncio.Task:
     """Start recommendation generation in the background without blocking chat."""
 
     async def run() -> None:
         if getattr(presenter, "recommend_questions_recorded", False):
             return
-        questions = await generate_recommend_questions(user_input)
+        history_context = format_history_from_messages(
+            messages or [],
+            current_user_input=user_input,
+            current_output=output_text,
+        )
+        questions = await generate_recommend_questions(
+            user_input,
+            output_text=output_text,
+            history_context=history_context,
+        )
         if questions:
             await presenter.emit_recommend_questions(questions)
 
@@ -173,6 +447,48 @@ def schedule_recommend_questions(presenter: Any, user_input: str) -> asyncio.Tas
             done_task.result()
         except Exception as exc:
             logger.warning("Recommended question background task failed: %s", exc)
+
+    task.add_done_callback(log_failure)
+    return task
+
+
+def schedule_recommend_questions_from_state(
+    presenter: Any,
+    user_input: str,
+    inner_graph: Any,
+    inner_config: Any,
+) -> asyncio.Task:
+    """Best-effort concurrent recommendation scheduling from existing graph state."""
+
+    async def run() -> None:
+        if not user_input or getattr(presenter, "recommend_questions_recorded", False):
+            return
+        history_messages: list[Any] = []
+        try:
+            current_state = await inner_graph.aget_state(inner_config)
+            values = getattr(current_state, "values", {}) or {}
+            history_messages = values.get("messages") or []
+        except Exception as exc:
+            logger.debug("Failed to read recommendation state messages: %s", exc)
+
+        try:
+            schedule_recommend_questions(
+                presenter,
+                user_input,
+                messages=history_messages,
+            )
+        except Exception as exc:
+            logger.debug("Failed to schedule recommended questions: %s", exc)
+
+    task = asyncio.create_task(run())
+
+    def log_failure(done_task: asyncio.Task) -> None:
+        if done_task.cancelled():
+            return
+        try:
+            done_task.result()
+        except Exception as exc:
+            logger.debug("Recommended question state task failed: %s", exc)
 
     task.add_done_callback(log_failure)
     return task

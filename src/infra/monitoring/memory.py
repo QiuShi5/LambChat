@@ -184,9 +184,19 @@ class MemoryMonitor:
                 if self._should_emit_alert(now):
                     self._last_alert = None
                     if self.heavy_diagnostics_enabled:
-                        self._last_alert = await self._run_monitor_blocking(
-                            self._capture_diagnostics_snapshot
-                        )
+                        try:
+                            self._last_alert = await self._run_monitor_blocking(
+                                self._capture_diagnostics_snapshot
+                            )
+                        except asyncio.TimeoutError:
+                            self._last_error = "heavy diagnostics timed out"
+                            self._last_alert = self._build_timeout_diagnostics_snapshot(
+                                captured_at=now
+                            )
+                            logger.warning(
+                                "[MemoryMonitor] heavy diagnostics timed out after %ss",
+                                _BLOCKING_SAMPLE_TIMEOUT_SECONDS,
+                            )
                     self._last_alert_at = now
                     logger.warning(
                         "[MemoryMonitor] suspicious memory growth detected rss=%s growth=%s top_growth=%s top_allocations=%s top_objects=%s",
@@ -393,6 +403,20 @@ class MemoryMonitor:
             "captured_at": (captured_at or utc_now()).isoformat(),
             "heavy_diagnostics_enabled": False,
             "reason": "heavy_diagnostics_disabled",
+            "top_growth": [],
+            "top_allocations": [],
+            "top_object_types": [],
+        }
+
+    def _build_timeout_diagnostics_snapshot(
+        self,
+        *,
+        captured_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "captured_at": (captured_at or utc_now()).isoformat(),
+            "heavy_diagnostics_enabled": True,
+            "reason": "heavy_diagnostics_timeout",
             "top_growth": [],
             "top_allocations": [],
             "top_object_types": [],

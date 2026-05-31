@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   getLatestAutoPreviewTarget,
   getLatestChatAutoPreviewTarget,
+  getLatestObservedCompletionAutoPreviewTarget,
+  getLatestObservedCompletionRevealPreviewRequest,
 } from "../autoPreviewEligibility.ts";
 
 test("returns the latest reveal tool part when auto preview is allowed", () => {
@@ -89,6 +91,248 @@ test("keeps the base latest auto preview lookup unchanged", () => {
     {
       messageId: "message-1",
       partIndex: 0,
+    },
+  );
+});
+
+test("does not auto preview historical reveal results until a streaming message completes", () => {
+  const messages = [
+    {
+      id: "historical-message",
+      parts: [
+        {
+          type: "tool" as const,
+          name: "reveal_project",
+          args: {},
+          success: true,
+          isPending: false,
+          cancelled: false,
+        },
+      ],
+    },
+    {
+      id: "completed-after-streaming",
+      parts: [
+        {
+          type: "tool" as const,
+          name: "reveal_file",
+          args: {},
+          success: true,
+          isPending: false,
+          cancelled: false,
+        },
+      ],
+    },
+  ];
+
+  assert.equal(
+    getLatestObservedCompletionAutoPreviewTarget({
+      messages,
+      observedStreamingMessageIds: new Set(),
+    }),
+    null,
+  );
+
+  assert.deepEqual(
+    getLatestObservedCompletionAutoPreviewTarget({
+      messages,
+      observedStreamingMessageIds: new Set(["completed-after-streaming"]),
+    }),
+    {
+      messageId: "completed-after-streaming",
+      partIndex: 0,
+    },
+  );
+});
+
+test("allows the latest reveal from the current run even if streaming was not observed", () => {
+  assert.deepEqual(
+    getLatestObservedCompletionAutoPreviewTarget({
+      messages: [
+        {
+          id: "historical-message",
+          runId: "run-history",
+          parts: [
+            {
+              type: "tool" as const,
+              name: "reveal_project",
+              args: {},
+              success: true,
+              isPending: false,
+              cancelled: false,
+            },
+          ],
+        },
+        {
+          id: "current-run-message",
+          runId: "run-current",
+          parts: [
+            {
+              type: "tool" as const,
+              name: "reveal_file",
+              args: {},
+              success: true,
+              isPending: false,
+              cancelled: false,
+            },
+          ],
+        },
+      ],
+      observedStreamingMessageIds: new Set(),
+      currentRunId: "run-current",
+    }),
+    {
+      messageId: "current-run-message",
+      partIndex: 0,
+    },
+  );
+});
+
+test("finds the latest nested reveal preview request from the current run", () => {
+  const preview = getLatestObservedCompletionRevealPreviewRequest({
+    messages: [
+      {
+        id: "current-run-message",
+        runId: "run-current",
+        parts: [
+          {
+            type: "subagent" as const,
+            agent_id: "agent-1",
+            agent_name: "builder",
+            input: "create report",
+            depth: 1,
+            parts: [
+              {
+                type: "tool" as const,
+                name: "reveal_file",
+                args: {},
+                success: true,
+                isPending: false,
+                cancelled: false,
+                result: {
+                  key: "revealed/report.pdf",
+                  url: "/api/upload/file/revealed/report.pdf",
+                  name: "report.pdf",
+                  type: "document",
+                  mimeType: "application/pdf",
+                  size: 2048,
+                  _meta: {
+                    path: "/workspace/report.pdf",
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    observedStreamingMessageIds: new Set(),
+    currentRunId: "run-current",
+  });
+
+  assert.deepEqual(preview, {
+    kind: "file",
+    previewKey: "revealed/report.pdf",
+    filePath: "/workspace/report.pdf",
+    s3Key: "revealed/report.pdf",
+    signedUrl: "/api/upload/file/revealed/report.pdf",
+    fileSize: 2048,
+  });
+});
+
+test("returns image file reveal preview requests for latest-file auto preview", () => {
+  const preview = getLatestObservedCompletionRevealPreviewRequest({
+    messages: [
+      {
+        id: "current-run-message",
+        runId: "run-current",
+        parts: [
+          {
+            type: "tool" as const,
+            name: "reveal_file",
+            args: {},
+            success: true,
+            isPending: false,
+            cancelled: false,
+            result: {
+              key: "revealed/chart.png",
+              url: "/api/upload/file/revealed/chart.png",
+              name: "chart.png",
+              type: "image",
+              mimeType: "image/png",
+              size: 4096,
+              _meta: {
+                path: "/workspace/chart.png",
+              },
+            },
+          },
+        ],
+      },
+    ],
+    observedStreamingMessageIds: new Set(),
+    currentRunId: "run-current",
+  });
+
+  assert.deepEqual(preview, {
+    kind: "file",
+    previewKey: "revealed/chart.png",
+    filePath: "/workspace/chart.png",
+    s3Key: "revealed/chart.png",
+    signedUrl: "/api/upload/file/revealed/chart.png",
+    fileSize: 4096,
+  });
+});
+
+test("can return the latest historical reveal preview request after history has loaded", () => {
+  const messages = [
+    {
+      id: "historical-message",
+      runId: "run-history",
+      parts: [
+        {
+          type: "tool" as const,
+          name: "reveal_file",
+          args: {},
+          success: true,
+          isPending: false,
+          cancelled: false,
+          result: {
+            key: "revealed/application.md",
+            url: "/api/upload/file/revealed/application.md",
+            name: "application.md",
+            type: "document",
+            mimeType: "text/markdown",
+            size: 2134,
+            _meta: {
+              path: "/home/user/application.md",
+            },
+          },
+        },
+      ],
+    },
+  ];
+
+  assert.equal(
+    getLatestObservedCompletionRevealPreviewRequest({
+      messages,
+      observedStreamingMessageIds: new Set(),
+    }),
+    null,
+  );
+
+  assert.deepEqual(
+    getLatestObservedCompletionRevealPreviewRequest({
+      messages,
+      observedStreamingMessageIds: new Set(),
+      allowHistoricalLatest: true,
+    }),
+    {
+      kind: "file",
+      previewKey: "revealed/application.md",
+      filePath: "/home/user/application.md",
+      s3Key: "revealed/application.md",
+      signedUrl: "/api/upload/file/revealed/application.md",
+      fileSize: 2134,
     },
   );
 });

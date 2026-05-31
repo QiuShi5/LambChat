@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -10,6 +11,7 @@ class _FakeDeepAgent:
         self.captured_create_kwargs = None
         self.captured_inner_config = None
         self.aget_state_calls = 0
+        self.state_messages = []
 
     def with_config(self, _config):
         return self
@@ -21,7 +23,7 @@ class _FakeDeepAgent:
 
     async def aget_state(self, _config):
         self.aget_state_calls += 1
-        return SimpleNamespace(values={"messages": []})
+        return SimpleNamespace(values={"messages": self.state_messages})
 
 
 class _FakeEventProcessor:
@@ -91,6 +93,7 @@ def _patch_common(monkeypatch: pytest.MonkeyPatch, module, fake_graph: _FakeDeep
     monkeypatch.setattr(module.settings, "ENABLE_MCP", False)
     monkeypatch.setattr(module.settings, "ENABLE_MEMORY", False)
     monkeypatch.setattr(module.settings, "ENABLE_SKILLS", False)
+    monkeypatch.setattr(module.settings, "ENABLE_RECOMMEND_QUESTIONS", False)
 
 
 def _reset_fake_event_processor() -> None:
@@ -281,15 +284,25 @@ async def test_fast_agent_node_returns_output_text_before_final_processor_cleanu
 
 
 @pytest.mark.asyncio
-async def test_fast_agent_node_does_not_reload_final_checkpoint_messages(
+async def test_fast_agent_node_reads_existing_state_messages_for_recommendations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _reset_fake_event_processor()
     from src.agents.fast_agent import nodes as fast_nodes
 
     fake_graph = _FakeDeepAgent()
+    fake_graph.state_messages = ["history message"]
     _patch_common(monkeypatch, fast_nodes, fake_graph)
     monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    monkeypatch.setattr(fast_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
+
+    import src.agents.core.recommendations as recommendations
+
+    monkeypatch.setattr(
+        recommendations,
+        "schedule_recommend_questions",
+        lambda *_args, **_kwargs: None,
+    )
 
     context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
     config = {
@@ -305,9 +318,95 @@ async def test_fast_agent_node_does_not_reload_final_checkpoint_messages(
         {"input": "hello", "session_id": "session-1", "attachments": []},
         config,
     )
+    await asyncio.sleep(0)
 
-    assert fake_graph.aget_state_calls == 0
+    assert fake_graph.aget_state_calls == 1
     assert result["messages"] == []
+
+
+@pytest.mark.asyncio
+async def test_fast_agent_node_passes_existing_state_messages_to_concurrent_recommendations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _reset_fake_event_processor()
+    from src.agents.fast_agent import nodes as fast_nodes
+
+    fake_graph = _FakeDeepAgent()
+    fake_graph.state_messages = ["history message"]
+    _patch_common(monkeypatch, fast_nodes, fake_graph)
+    monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    monkeypatch.setattr(fast_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
+    _FakeEventProcessor.next_output_text = "assistant answer"
+    calls = []
+
+    def fake_schedule_recommend_questions(presenter, user_input, output_text="", messages=None):
+        calls.append((presenter, user_input, output_text, messages))
+
+    import src.agents.core.recommendations as recommendations
+
+    monkeypatch.setattr(
+        recommendations,
+        "schedule_recommend_questions",
+        fake_schedule_recommend_questions,
+    )
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    presenter = object()
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": presenter,
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    await fast_nodes.fast_agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+    await asyncio.sleep(0)
+
+    assert calls == [(presenter, "hello", "", ["history message"])]
+
+
+@pytest.mark.asyncio
+async def test_fast_agent_node_continues_when_recommendation_scheduling_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _reset_fake_event_processor()
+    from src.agents.fast_agent import nodes as fast_nodes
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, fast_nodes, fake_graph)
+    monkeypatch.setattr(fast_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    monkeypatch.setattr(fast_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
+    _FakeEventProcessor.next_output_text = "assistant answer"
+
+    def fail_schedule(*_args, **_kwargs):
+        raise RuntimeError("recommendation unavailable")
+
+    import src.agents.core.recommendations as recommendations
+
+    monkeypatch.setattr(recommendations, "schedule_recommend_questions", fail_schedule)
+
+    context = SimpleNamespace(user_id="user-1", skills=[], deferred_manager=None)
+    config = {
+        "configurable": {
+            "context": context,
+            "presenter": object(),
+            "base_url": "",
+            "agent_options": {},
+        }
+    }
+
+    result = await fast_nodes.fast_agent_node(
+        {"input": "hello", "session_id": "session-1", "attachments": []},
+        config,
+    )
+    await asyncio.sleep(0)
+
+    assert result["output"] == "assistant answer"
 
 
 @pytest.mark.asyncio
@@ -495,14 +594,24 @@ async def test_search_agent_node_returns_output_text_before_final_processor_clea
 
 
 @pytest.mark.asyncio
-async def test_search_agent_node_does_not_reload_final_checkpoint_messages(
+async def test_search_agent_node_reads_existing_state_messages_for_recommendations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _reset_fake_event_processor()
     from src.agents.search_agent import nodes as search_nodes
 
     fake_graph = _FakeDeepAgent()
+    fake_graph.state_messages = ["history message"]
     _patch_common(monkeypatch, search_nodes, fake_graph)
+    monkeypatch.setattr(search_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
+
+    import src.agents.core.recommendations as recommendations
+
+    monkeypatch.setattr(
+        recommendations,
+        "schedule_recommend_questions",
+        lambda *_args, **_kwargs: None,
+    )
 
     async def fake_create_backend_and_prompt(**_kwargs):
         return object(), "system prompt", object(), None, None
@@ -523,8 +632,9 @@ async def test_search_agent_node_does_not_reload_final_checkpoint_messages(
         {"input": "hello", "session_id": "session-1", "attachments": []},
         config,
     )
+    await asyncio.sleep(0)
 
-    assert fake_graph.aget_state_calls == 0
+    assert fake_graph.aget_state_calls == 1
     assert result["messages"] == []
 
 

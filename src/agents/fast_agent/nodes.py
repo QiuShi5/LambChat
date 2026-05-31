@@ -282,6 +282,16 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
     logger.info("[FastAgent] Creating AgentEventProcessor")
     event_processor = AgentEventProcessor(presenter, base_url=configurable.get("base_url", ""))
 
+    if user_input and settings.ENABLE_RECOMMEND_QUESTIONS:
+        from src.agents.core.recommendations import schedule_recommend_questions_from_state
+
+        schedule_recommend_questions_from_state(
+            presenter,
+            user_input,
+            inner_graph,
+            inner_config,
+        )
+
     logger.info("[FastAgent] Starting astream_events")
     # 流式处理事件（不重试，直接调用）
     try:
@@ -328,6 +338,6 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
 
     return {
         "output": output_text,
-        # 历史消息由内层 checkpointer 持久化；外层 graph 不再复制完整消息历史。
+        # 历史消息由内层 checkpointer 持久化；推荐问题启动时直接读取已有 state。
         "messages": [],
     }

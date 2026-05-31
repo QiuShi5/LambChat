@@ -222,6 +222,8 @@ export function ChatView({
     sessionId,
     externalNavigationToken,
     externalNavigationPreview,
+    currentRunId,
+    isLoadingHistory,
   );
 
   // --- Goal visibility ---

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { countProjectRevealFiles } from "../projectRevealState.ts";
+import {
+  countProjectRevealFiles,
+  shouldLoadProjectRevealFiles,
+} from "../projectRevealState.ts";
 
 test("counts text and binary reveal_project files together", () => {
   assert.equal(
@@ -29,5 +32,37 @@ test("counts pure binary reveal_project folders", () => {
       },
     ),
     3,
+  );
+});
+
+test("loads versioned project files only when preview work is actually needed", () => {
+  assert.equal(
+    shouldLoadProjectRevealFiles({
+      isVersionedProject: true,
+      success: true,
+      isPreviewOpen: false,
+      allowAutoPreview: false,
+    }),
+    false,
+  );
+
+  assert.equal(
+    shouldLoadProjectRevealFiles({
+      isVersionedProject: true,
+      success: true,
+      isPreviewOpen: true,
+      allowAutoPreview: false,
+    }),
+    true,
+  );
+
+  assert.equal(
+    shouldLoadProjectRevealFiles({
+      isVersionedProject: true,
+      success: true,
+      isPreviewOpen: false,
+      allowAutoPreview: true,
+    }),
+    true,
   );
 });

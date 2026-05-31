@@ -10,6 +10,22 @@ const source = readFileSync(
   "utf8",
 );
 
+function mobileSidebarPanelClass() {
+  return Array.from(
+    source.matchAll(/className=\{`(?<className>[^`]*fixed left-0[\s\S]*?)`\}/g),
+  )
+    .map((match) => match.groups?.className ?? "")
+    .find((className) => className.includes("bg-[var(--theme-bg-sidebar)]"));
+}
+
+function mobileSidebarPanelStyle() {
+  const panelClass = mobileSidebarPanelClass();
+  if (!panelClass) return undefined;
+  const classStart = source.indexOf(`className={\`${panelClass}\`}`);
+  return source.slice(classStart).match(/style=\{\{(?<style>[\s\S]*?)\}\}/)
+    ?.groups?.style;
+}
+
 test("mobile sidebar overlay starts below the iOS safe-area top inset", () => {
   const overlayBlock = source.match(
     /className=\{`fixed left-0 right-0 z-\[60\][\s\S]*?style=\{\{(?<style>[\s\S]*?)\}\}/,
@@ -24,9 +40,7 @@ test("mobile sidebar overlay starts below the iOS safe-area top inset", () => {
 });
 
 test("mobile sidebar panel starts below the iOS safe-area top inset", () => {
-  const panelBlock = source.match(
-    /className=\{`rounded-r-lg fixed left-0[\s\S]*?style=\{\{(?<style>[\s\S]*?)\}\}/,
-  )?.groups?.style;
+  const panelBlock = mobileSidebarPanelStyle();
 
   assert.ok(panelBlock, "mobile sidebar panel block should be present");
   assert.match(panelBlock, /top:\s*"env\(safe-area-inset-top\)"/);
@@ -35,4 +49,13 @@ test("mobile sidebar panel starts below the iOS safe-area top inset", () => {
     /height:\s*"calc\(var\(--app-viewport-height, 100dvh\) - env\(safe-area-inset-top\)\)"/,
   );
   assert.doesNotMatch(panelBlock, /paddingTop:\s*"env\(safe-area-inset-top\)"/);
+});
+
+test("mobile sidebar panel fills the viewport width", () => {
+  const panelClass = mobileSidebarPanelClass();
+
+  assert.ok(panelClass, "mobile sidebar panel class should be present");
+  assert.match(panelClass, /\bw-full\b/);
+  assert.doesNotMatch(panelClass, /\bw-64\b/);
+  assert.doesNotMatch(panelClass, /\brounded-r-lg\b/);
 });

@@ -1,5 +1,6 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import clsx from "clsx";
 import i18n from "i18next";
 
 interface Props {
@@ -42,7 +43,18 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-sm font-medium hover:bg-stone-800 dark:hover:bg-stone-200 transition-colors duration-200"
+              className={clsx(
+                "inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl",
+                "text-sm font-medium text-white",
+                "transition-all duration-200 ease-out",
+                "hover:shadow-[0_4px_16px_-4px_var(--theme-shadow-color,rgba(0,0,0,0.25))]",
+                "active:scale-[0.97]",
+                "[&>svg]:transition-transform [&>svg]:duration-300",
+                "hover:[&>svg]:-rotate-180",
+                "bg-[var(--theme-primary,#1c1917)] dark:bg-[var(--theme-primary,#e7e5e4)]",
+                "dark:text-stone-900",
+                "hover:brightness-110 dark:hover:brightness-90",
+              )}
             >
               <RotateCcw className="w-4 h-4" />
               {t("errorBoundary.reloadPage")}

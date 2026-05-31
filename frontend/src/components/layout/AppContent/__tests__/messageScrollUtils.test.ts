@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   forceScrollerToPhysicalBottom,
   forceVirtuosoToBottom,
+  getUnexpectedTopJumpRecoveryUntilAfterUserIntent,
   getAutoScrollResumeThresholdPx,
   getAtBottomThresholdPx,
   getAwayFromBottomThresholdPx,
@@ -156,7 +157,7 @@ test("forces the physical bottom by scrolling the footer sentinel into view", ()
   assert.equal(scroller.scrollTop, scroller.scrollHeight);
 });
 
-test("keeps bottom-lock pinned to the physical scroller bottom when footer is available", async () => {
+test("keeps bottom-lock inside Virtuoso when a virtual list handle is available", async () => {
   let scrollToIndexCalls = 0;
   let footerCalls = 0;
   const scroller = {
@@ -174,11 +175,10 @@ test("keeps bottom-lock pinned to the physical scroller bottom when footer is av
     scrollTo: () => undefined,
     scrollToIndex: () => {
       scrollToIndexCalls += 1;
-      scroller.scrollTop = scroller.scrollHeight - scroller.clientHeight;
     },
   };
 
-  startVirtuosoScrollToBottom({
+  const stop = startVirtuosoScrollToBottom({
     virtuoso,
     scroller,
     footer,
@@ -188,10 +188,59 @@ test("keeps bottom-lock pinned to the physical scroller bottom when footer is av
   });
 
   await new Promise((resolve) => setTimeout(resolve, 20));
+  stop();
 
-  assert.ok(footerCalls > 0);
-  assert.equal(scrollToIndexCalls, 0);
-  assert.equal(scroller.scrollTop, scroller.scrollHeight);
+  assert.ok(scrollToIndexCalls > 0);
+  assert.equal(footerCalls, 0);
+  assert.equal(scroller.scrollTop, 0);
+});
+
+test("treats a top jump right after bottom-locking as recoverable", () => {
+  assert.equal(
+    shouldIgnoreUnexpectedTopJumpDuringBottomLock({
+      scrollTop: 0,
+      clientHeight: 600,
+      scrollHeight: 2400,
+      autoScrollActive: false,
+      recentlyBottomLocked: true,
+      userScrolledUp: false,
+      manualDetachActive: false,
+    }),
+    true,
+  );
+});
+
+test("does not recover a top jump after the user intentionally detached", () => {
+  assert.equal(
+    shouldIgnoreUnexpectedTopJumpDuringBottomLock({
+      scrollTop: 0,
+      clientHeight: 600,
+      scrollHeight: 2400,
+      autoScrollActive: false,
+      recentlyBottomLocked: true,
+      userScrolledUp: true,
+      manualDetachActive: false,
+    }),
+    false,
+  );
+});
+
+test("clears the unexpected top jump recovery window on user intent", () => {
+  assert.equal(
+    getUnexpectedTopJumpRecoveryUntilAfterUserIntent({
+      recoverUntil: 2000,
+      now: 1000,
+    }),
+    0,
+  );
+
+  assert.equal(
+    getUnexpectedTopJumpRecoveryUntilAfterUserIntent({
+      recoverUntil: 1000,
+      now: 2000,
+    }),
+    1000,
+  );
 });
 
 test("forces the list to the last item when Virtuoso supports scrollToIndex", () => {
@@ -221,7 +270,7 @@ test("forces the list to the last item when Virtuoso supports scrollToIndex", ()
     align: "end",
     behavior: "auto",
   });
-  assert.equal(scroller.scrollTop, scroller.scrollHeight);
+  assert.equal(scroller.scrollTop, 0);
 });
 
 test("prefers Virtuoso scrolling without nudging the footer sentinel when handles are available", async () => {
@@ -581,6 +630,60 @@ test("keeps history bottom lock alive for late layout shifts after the first set
 
   await new Promise((resolve) => setTimeout(resolve, 130));
   assert.equal(completionReason, "settled");
+});
+
+test("does not keep extending post-settle observation on repeated layout changes", async () => {
+  let resizeCallback: () => void = () => {
+    assert.fail("resize observer was not registered");
+  };
+  let completionReason: "settled" | "aborted" | "max-attempts" | null = null;
+  const scroller = {
+    scrollTop: 400,
+    clientHeight: 100,
+    scrollHeight: 500,
+  };
+  const virtuoso = {
+    scrollTo: () => {
+      scroller.scrollTop = scroller.scrollHeight - scroller.clientHeight;
+    },
+  };
+
+  startVirtuosoScrollToBottom({
+    virtuoso,
+    scroller,
+    intervalMs: 5,
+    maxAttempts: 80,
+    maxDurationMs: 60,
+    settleWindowMs: 10,
+    observeLayoutChanges: true,
+    observeAfterSettleMs: 50,
+    onComplete: (reason) => {
+      completionReason = reason;
+    },
+    resizeObserverFactory: (callback) => {
+      resizeCallback = callback;
+      return {
+        observe: () => undefined,
+        disconnect: () => undefined,
+      };
+    },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 35));
+  assert.equal(completionReason, null);
+
+  for (let i = 0; i < 3; i += 1) {
+    scroller.scrollHeight += 100;
+    resizeCallback();
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  assert.equal(completionReason, "settled");
+
+  scroller.scrollTop = 123;
+  scroller.scrollHeight += 100;
+  resizeCallback();
+  assert.equal(scroller.scrollTop, 123);
 });
 
 test("keeps default bottom lock alive briefly for post-stream layout shifts", async () => {

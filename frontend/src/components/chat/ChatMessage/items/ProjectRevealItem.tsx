@@ -15,9 +15,9 @@ import {
   type RevealPreviewRequest,
 } from "./revealPreviewData";
 import {
-  EMPTY_BINARY_FILES,
   areStringRecordMapsEqual,
   normalizeProjectRevealBinaryFiles,
+  shouldLoadProjectRevealFiles,
   shouldReplaceProjectRevealFiles,
 } from "./projectRevealState";
 import type { RevealPreviewOpenSource } from "./revealPreviewState";
@@ -60,7 +60,7 @@ export function ProjectRevealItem({
         ? `${seconds}s`
         : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-[var(--theme-text-secondary)] tabular-nums">
+      <span className="inline-flex items-center gap-1 text-xs text-[var(--theme-text-secondary)] tabular-nums px-2">
         <Clock size={11} className="shrink-0" />
         {text}
       </span>
@@ -102,6 +102,12 @@ export function ProjectRevealItem({
   const [binaryFiles, setBinaryFiles] = useState<Record<string, string>>(
     normalizeProjectRevealBinaryFiles(cachedProjectFiles?.binaryFiles),
   );
+  const shouldLoadFiles = shouldLoadProjectRevealFiles({
+    isVersionedProject: parsed?.version === 2,
+    success,
+    isPreviewOpen,
+    allowAutoPreview,
+  });
   const previewRequest = useMemo(() => {
     if (!parsed || !projectAutoOpenKey) return null;
 
@@ -155,16 +161,30 @@ export function ProjectRevealItem({
   ]);
 
   useEffect(() => {
-    if (!parsed || parsed.version !== 2 || !projectAutoOpenKey || !success) {
+    if (
+      !parsed ||
+      parsed.version !== 2 ||
+      !projectAutoOpenKey ||
+      !shouldLoadFiles
+    ) {
+      const cached =
+        parsed?.version === 2
+          ? getCachedProjectRevealFiles(projectAutoOpenKey)
+          : null;
+      const nextLoadedFiles = cached?.files || inlineFiles;
+      const nextBinaryFiles = normalizeProjectRevealBinaryFiles(
+        cached?.binaryFiles,
+      );
+
       setLoadedFiles((current) =>
-        shouldReplaceProjectRevealFiles(current, inlineFiles)
-          ? inlineFiles
+        shouldReplaceProjectRevealFiles(current, nextLoadedFiles)
+          ? nextLoadedFiles
           : current,
       );
       setBinaryFiles((current) =>
-        areStringRecordMapsEqual(current, EMPTY_BINARY_FILES)
+        areStringRecordMapsEqual(current, nextBinaryFiles)
           ? current
-          : EMPTY_BINARY_FILES,
+          : nextBinaryFiles,
       );
       return;
     }
@@ -212,7 +232,7 @@ export function ProjectRevealItem({
     return () => {
       cancelled = true;
     };
-  }, [parsed, projectAutoOpenKey, success, inlineFiles]);
+  }, [parsed, projectAutoOpenKey, shouldLoadFiles, inlineFiles]);
 
   if (isPending) {
     return (

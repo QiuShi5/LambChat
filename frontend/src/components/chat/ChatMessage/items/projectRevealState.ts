@@ -17,6 +17,19 @@ export function countProjectRevealFiles(
   return new Set([...Object.keys(files), ...Object.keys(binaryFiles)]).size;
 }
 
+export function shouldLoadProjectRevealFiles(input: {
+  isVersionedProject: boolean;
+  success?: boolean;
+  isPreviewOpen?: boolean;
+  allowAutoPreview?: boolean;
+}): boolean {
+  return (
+    input.isVersionedProject &&
+    input.success === true &&
+    (input.isPreviewOpen === true || input.allowAutoPreview === true)
+  );
+}
+
 export function areStringRecordMapsEqual(
   left: Record<string, string>,
   right: Record<string, string>,

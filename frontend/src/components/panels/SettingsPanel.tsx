@@ -787,11 +787,17 @@ export function SettingsPanel() {
                                             ? [
                                                 {
                                                   value: "true",
-                                                  label: "true",
+                                                  label: t(
+                                                    "settings.true",
+                                                    "true",
+                                                  ),
                                                 },
                                                 {
                                                   value: "false",
-                                                  label: "false",
+                                                  label: t(
+                                                    "settings.false",
+                                                    "false",
+                                                  ),
                                                 },
                                               ]
                                             : setting.options?.map((opt) => ({

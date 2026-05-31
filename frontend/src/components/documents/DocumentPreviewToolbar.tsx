@@ -23,7 +23,6 @@ type ToolbarProps = Pick<
   | "viewSource"
   | "isSidebar"
   | "isFullscreen"
-  | "toolbarCompact"
   | "markdownFile"
   | "codeFile"
   | "hasTextContent"
@@ -46,13 +45,12 @@ type ToolbarProps = Pick<
   | "toolbarRef"
   | "setViewSource"
   | "setViewMode"
-  | "setIsFullscreen"
+  | "handleFullscreenToggle"
+  | "exitFullscreen"
 >;
 
-const toolbarBtnClass = (compact: boolean) =>
-  compact
-    ? "flex items-center justify-center size-8 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer"
-    : "flex items-center justify-center size-8 rounded-xl size-auto gap-1.5 px-2.5 py-2 text-xs text-sm font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
+const toolbarBtnClass =
+  "flex items-center justify-center size-8 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-200/80 dark:hover:bg-stone-700/60 active:bg-stone-200 dark:active:bg-stone-600/60 transition-all duration-200 active:scale-95 cursor-pointer";
 
 export default function DocumentPreviewToolbar({
   t,
@@ -61,7 +59,6 @@ export default function DocumentPreviewToolbar({
   viewSource,
   isSidebar,
   isFullscreen,
-  toolbarCompact,
   markdownFile,
   codeFile,
   hasTextContent,
@@ -84,8 +81,26 @@ export default function DocumentPreviewToolbar({
   toolbarRef,
   setViewSource,
   setViewMode,
-  setIsFullscreen,
+  handleFullscreenToggle,
+  exitFullscreen,
 }: ToolbarProps) {
+  // Fullscreen: floating exit button — matches SkillFormFullscreen style
+  if (isFullscreen) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="fixed top-4 right-4 z-[410] flex items-center justify-center w-11 h-11 rounded-xl bg-black/80 hover:bg-black text-white shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+        title={t("common.close")}
+      >
+        <X size={18} />
+      </button>
+    );
+  }
+
   return (
     <div
       ref={toolbarRef}
@@ -98,11 +113,10 @@ export default function DocumentPreviewToolbar({
             e.stopPropagation();
             effectiveOnBack();
           }}
-          className={toolbarBtnClass(toolbarCompact) + " shrink-0"}
+          className={toolbarBtnClass + " shrink-0"}
           title={t("common.back", "Back")}
         >
           <BackIcon size={16} />
-          {!toolbarCompact && <span>{t("common.back", "Back")}</span>}
         </button>
       )}
       <FileIcon icon={Icon} bg={fileInfo.bg} color={fileInfo.color} />
@@ -136,20 +150,10 @@ export default function DocumentPreviewToolbar({
               e.stopPropagation();
               setViewSource(!viewSource);
             }}
-            className={toolbarBtnClass(toolbarCompact)}
+            className={toolbarBtnClass}
             title={viewSource ? t("documents.preview") : t("documents.source")}
           >
-            {viewSource ? (
-              <>
-                <Eye size={16} />
-                {!toolbarCompact && <span>{t("documents.preview")}</span>}
-              </>
-            ) : (
-              <>
-                <Code2 size={16} />
-                {!toolbarCompact && <span>{t("documents.source")}</span>}
-              </>
-            )}
+            {viewSource ? <Eye size={16} /> : <Code2 size={16} />}
           </button>
         )}
         <button
@@ -161,29 +165,17 @@ export default function DocumentPreviewToolbar({
               setViewMode("center");
             } else {
               setViewMode("sidebar");
-              if (isFullscreen) setIsFullscreen(false);
+              if (isFullscreen) exitFullscreen();
             }
           }}
-          className={toolbarBtnClass(toolbarCompact)}
+          className={toolbarBtnClass}
           title={
             isSidebar
               ? t("documents.centerView", "Center view")
               : t("documents.sidebarView", "Sidebar view")
           }
         >
-          {isSidebar ? (
-            <>
-              <Columns2 size={16} />
-              {!toolbarCompact && (
-                <span>{t("documents.centerView", "居中")}</span>
-              )}
-            </>
-          ) : (
-            <>
-              <PanelRight size={16} />
-              {!toolbarCompact && <span>{t("documents.sidebarView")}</span>}
-            </>
-          )}
+          {isSidebar ? <Columns2 size={16} /> : <PanelRight size={16} />}
         </button>
         <button
           type="button"
@@ -193,26 +185,16 @@ export default function DocumentPreviewToolbar({
             if (!isFullscreen && isSidebar) {
               setViewMode("center");
             }
-            setIsFullscreen(!isFullscreen);
+            handleFullscreenToggle();
           }}
-          className={toolbarBtnClass(toolbarCompact)}
+          className={toolbarBtnClass}
           title={
             isFullscreen
               ? t("documents.exitFullscreen")
               : t("documents.fullscreen")
           }
         >
-          {isFullscreen ? (
-            <>
-              <Shrink size={16} />
-              {!toolbarCompact && <span>{t("documents.exitFullscreen")}</span>}
-            </>
-          ) : (
-            <>
-              <Expand size={16} />
-              {!toolbarCompact && <span>{t("documents.fullscreen")}</span>}
-            </>
-          )}
+          {isFullscreen ? <Shrink size={16} /> : <Expand size={16} />}
         </button>
         {(data?.content ||
           s3Key ||
@@ -226,11 +208,10 @@ export default function DocumentPreviewToolbar({
                 e.stopPropagation();
                 handleDownload();
               }}
-              className={toolbarBtnClass(toolbarCompact)}
+              className={toolbarBtnClass}
               title={t("documents.download")}
             >
               <Download size={16} />
-              {!toolbarCompact && <span>{t("documents.download")}</span>}
             </button>
             {data?.content && !unsupportedPreviewFile && (
               <button
@@ -239,26 +220,16 @@ export default function DocumentPreviewToolbar({
                   e.stopPropagation();
                   handleCopy();
                 }}
-                className={toolbarBtnClass(toolbarCompact)}
+                className={toolbarBtnClass}
                 title={t("documents.copy")}
               >
                 {copied ? (
-                  <>
-                    <Check
-                      size={16}
-                      className="text-green-500 dark:text-green-400"
-                    />
-                    {!toolbarCompact && (
-                      <span className="text-green-500 dark:text-green-400">
-                        {t("documents.copied")}
-                      </span>
-                    )}
-                  </>
+                  <Check
+                    size={16}
+                    className="text-green-500 dark:text-green-400"
+                  />
                 ) : (
-                  <>
-                    <Copy size={16} />
-                    {!toolbarCompact && <span>{t("documents.copy")}</span>}
-                  </>
+                  <Copy size={16} />
                 )}
               </button>
             )}
@@ -270,12 +241,11 @@ export default function DocumentPreviewToolbar({
             e.stopPropagation();
             onClose();
           }}
-          className={toolbarBtnClass(toolbarCompact)}
+          className={toolbarBtnClass}
           title={t("common.close")}
           aria-label={t("common.close")}
         >
           <X size={16} />
-          {!toolbarCompact && <span>{t("common.close")}</span>}
         </button>
       </div>
     </div>

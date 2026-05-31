@@ -18,13 +18,8 @@ export default function DocumentPreview(props: DocumentPreviewProps) {
       registryKey={state.registryKey}
       viewMode={state.isMobile ? "center" : state.viewMode}
       isFullscreen={state.isFullscreen}
+      panelElementRef={state.panelRef}
       mobileFillViewport={state.mobileFillViewport}
-      overlayClass={
-        state.isSidebar
-          ? undefined
-          : "sm:items-center sm:justify-center bg-black/70"
-      }
-      panelClass={state.isSidebar ? undefined : state.centerPanelClass}
       onUserInteraction={state.onUserInteraction}
       onBack={state.effectiveOnBack}
       footer={

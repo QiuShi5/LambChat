@@ -100,19 +100,25 @@ async def debug_log_event(event: Any) -> None:
     are converted via ``model_dump()`` / ``vars()`` fallback.
 
     File writes are offloaded to a thread to avoid blocking the event loop.
+    Failures are silently swallowed so that debug logging can never crash
+    production agent execution.
     """
     if not _is_enabled():
         return
 
-    record: dict[str, Any] = {
-        "_ts": time.strftime("%H:%M:%S.") + f"{time.time() % 1:.3f}"[2:],
-    }
-    record.update(_sanitize(event))
+    try:
+        record: dict[str, Any] = {
+            "_ts": time.strftime("%H:%M:%S.") + f"{time.time() % 1:.3f}"[2:],
+        }
+        record.update(_sanitize(event))
 
-    line = json.dumps(record, ensure_ascii=False, default=str) + "\n"
-    log_file = _get_log_file()
+        line = json.dumps(record, ensure_ascii=False, default=str) + "\n"
+        log_file = _get_log_file()
 
-    await run_blocking_io(_write_line, log_file, line, timeout=1.0)
+        await run_blocking_io(_write_line, log_file, line, timeout=1.0)
+    except Exception:
+        # Debug logging is non-critical — must never kill the agent stream.
+        pass
 
 
 def _write_line(log_file: Any, line: str) -> None:

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CollapsiblePill, CopyButton, LoadingSpinner } from "../../common";
 import type { CollapsibleStatus } from "../../common";
 import { ToolResultContent } from "./items/McpBlockPreview";
+import { CollapsibleSection } from "./SubagentBlocks";
 import { openPersistentToolPanel } from "./items/persistentToolPanelState";
 
 /** Returns the number of seconds elapsed since the tool started, or 0 when not pending. */
@@ -149,26 +150,20 @@ export function ToolCallItem({
   const panelContent = canExpand && (
     <div className="space-y-3 max-h-full overflow-y-auto p-2 sm:p-4 [&_pre]:!text-sm">
       {hasArgs && (
-        <div className="group/args relative p-3 sm:p-4 rounded-lg sm:rounded-xl bg-stone-100 dark:bg-stone-700/50">
-          <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-2 font-medium">
-            {t("chat.message.args")}
-          </div>
+        <CollapsibleSection
+          title={t("chat.message.args")}
+          action={<CopyButton text={argsJson} size={12} />}
+        >
           <pre className="text-sm text-stone-600 dark:text-stone-300 overflow-x-auto overflow-y-auto min-w-0 font-mono">
             {argsJson}
           </pre>
-          <div className="absolute top-2 right-2 opacity-0 group-hover/args:opacity-100 transition-opacity">
-            <CopyButton text={argsJson} size={12} />
-          </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {hasResult && (
-        <div className="group/result relative p-3 sm:p-4 rounded-lg sm:rounded-xl bg-stone-100 dark:bg-stone-700/50">
-          <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-2 font-medium">
-            {t("chat.message.result")}
-          </div>
-          <ToolResultContent result={result} hideCopyButton />
-          <div className="absolute top-2 right-2 opacity-0 group-hover/result:opacity-100 transition-opacity">
+        <CollapsibleSection
+          title={t("chat.message.result")}
+          action={
             <CopyButton
               text={
                 typeof result === "string"
@@ -177,8 +172,10 @@ export function ToolCallItem({
               }
               size={12}
             />
-          </div>
-        </div>
+          }
+        >
+          <ToolResultContent result={result} hideCopyButton />
+        </CollapsibleSection>
       )}
 
       {isPending && (
@@ -186,13 +183,6 @@ export function ToolCallItem({
           <LoadingSpinner size="xs" />
           <span>{t("chat.message.running")}</span>
           <span className="tabular-nums">{formatElapsed(elapsedSeconds)}</span>
-        </div>
-      )}
-
-      {!isPending && finalDuration !== null && (
-        <div className="flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500">
-          <Clock size={11} className="shrink-0" />
-          <span className="tabular-nums">{formatDuration(finalDuration)}</span>
         </div>
       )}
     </div>
@@ -234,26 +224,20 @@ export function ToolCallItem({
         {canExpand && (
           <div className="mt-2 ml-4 pl-3 border-l-2 border-stone-200/60 dark:border-stone-700/50 space-y-2 max-h-96 overflow-y-auto min-w-0">
             {hasArgs && (
-              <div className="group/args relative p-2 rounded-md bg-stone-50/80 dark:bg-stone-800/50">
-                <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-1 font-medium">
-                  {t("chat.message.args")}
-                </div>
+              <CollapsibleSection
+                title={t("chat.message.args")}
+                action={<CopyButton text={argsJson} size={10} />}
+              >
                 <pre className="text-xs text-stone-600 dark:text-stone-300 overflow-x-auto max-h-40 overflow-y-auto min-w-0">
                   {argsJson}
                 </pre>
-                <div className="absolute top-1 right-1 opacity-0 group-hover/args:opacity-100 transition-opacity">
-                  <CopyButton text={argsJson} size={10} />
-                </div>
-              </div>
+              </CollapsibleSection>
             )}
 
             {hasResult && (
-              <div className="group/result relative p-2 rounded-md bg-stone-50/80 dark:bg-stone-800/50">
-                <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-1 font-medium">
-                  {t("chat.message.result")}
-                </div>
-                <ToolResultContent result={result} hideCopyButton />
-                <div className="absolute top-1 right-1 opacity-0 group-hover/result:opacity-100 transition-opacity">
+              <CollapsibleSection
+                title={t("chat.message.result")}
+                action={
                   <CopyButton
                     text={
                       typeof result === "string"
@@ -262,8 +246,10 @@ export function ToolCallItem({
                     }
                     size={10}
                   />
-                </div>
-              </div>
+                }
+              >
+                <ToolResultContent result={result} hideCopyButton />
+              </CollapsibleSection>
             )}
 
             {isPending && (
@@ -272,15 +258,6 @@ export function ToolCallItem({
                 <span>{t("chat.message.running")}</span>
                 <span className="tabular-nums">
                   {formatElapsed(elapsedSeconds)}
-                </span>
-              </div>
-            )}
-
-            {!isPending && finalDuration !== null && (
-              <div className="flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500">
-                <Clock size={11} className="shrink-0" />
-                <span className="tabular-nums">
-                  {formatDuration(finalDuration)}
                 </span>
               </div>
             )}

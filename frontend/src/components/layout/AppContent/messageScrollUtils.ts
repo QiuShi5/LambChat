@@ -273,6 +273,7 @@ export function shouldIgnoreUnexpectedTopJumpDuringBottomLock({
   clientHeight,
   scrollHeight,
   autoScrollActive,
+  recentlyBottomLocked = false,
   userScrolledUp,
   manualDetachActive,
 }: {
@@ -280,16 +281,27 @@ export function shouldIgnoreUnexpectedTopJumpDuringBottomLock({
   clientHeight: number;
   scrollHeight: number;
   autoScrollActive: boolean;
+  recentlyBottomLocked?: boolean;
   userScrolledUp: boolean;
   manualDetachActive: boolean;
 }): boolean {
   return (
-    autoScrollActive &&
+    (autoScrollActive || recentlyBottomLocked) &&
     !userScrolledUp &&
     !manualDetachActive &&
     scrollTop <= 1 &&
     scrollHeight > clientHeight + 1
   );
+}
+
+export function getUnexpectedTopJumpRecoveryUntilAfterUserIntent({
+  recoverUntil,
+  now,
+}: {
+  recoverUntil: number;
+  now: number;
+}): number {
+  return now <= recoverUntil ? 0 : recoverUntil;
 }
 
 export function shouldAutoScrollAfterViewportChange({
@@ -340,27 +352,17 @@ export function forceVirtuosoToBottom({
   scroller?: ScrollerLike | null;
   footer?: FooterLike | null;
 }): void {
-  const pinScrollerToBottom = () => {
-    if (scroller) {
-      scroller.scrollTop = scroller.scrollHeight;
-      return true;
-    }
-    return false;
-  };
-
   if (virtuoso?.scrollToIndex) {
     virtuoso.scrollToIndex({
       index: "LAST",
       align: "end",
       behavior: "auto",
     });
-    pinScrollerToBottom();
     return;
   }
 
   if (typeof virtuoso?.autoscrollToBottom === "function") {
     virtuoso.autoscrollToBottom();
-    pinScrollerToBottom();
     return;
   }
 
@@ -369,11 +371,11 @@ export function forceVirtuosoToBottom({
       top: Number.MAX_SAFE_INTEGER,
       behavior: "auto",
     });
-    pinScrollerToBottom();
     return;
   }
 
-  if (pinScrollerToBottom()) {
+  if (scroller) {
+    scroller.scrollTop = scroller.scrollHeight;
     return;
   }
 
@@ -423,7 +425,7 @@ export function startVirtuosoScrollToBottom({
   };
   const scroll = () => {
     onAutoScroll?.();
-    if (preferPhysicalBottom && (footer || scroller)) {
+    if (preferPhysicalBottom && !virtuoso && (footer || scroller)) {
       forceScrollerToPhysicalBottom({ scroller, footer });
       return;
     }
@@ -457,10 +459,6 @@ export function startVirtuosoScrollToBottom({
     startedAt = Date.now();
   };
   const noteLayoutChange = () => {
-    if (postSettleObserveUntil > 0) {
-      postSettleObserveUntil = Date.now() + observeAfterSettleMs;
-    }
-
     if (resetBudgetOnLayoutChange && !keepAliveActive) {
       resetSettleBudget();
       return;

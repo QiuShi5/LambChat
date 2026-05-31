@@ -4,7 +4,10 @@ import type { AutoPreviewTarget } from "../../chat/ChatMessage/autoPreviewEligib
 import type { RevealPreviewRequest } from "../../chat/ChatMessage/items/revealPreviewData";
 import { clearFileRevealAutoOpenState } from "../../chat/ChatMessage/items/fileRevealAutoOpen";
 import { clearProjectRevealAutoOpenState } from "../../chat/ChatMessage/items/projectRevealAutoOpen";
-import { getLatestChatAutoPreviewTarget } from "../../chat/ChatMessage/autoPreviewEligibility";
+import {
+  getLatestObservedCompletionAutoPreviewTarget,
+  getLatestObservedCompletionRevealPreviewRequest,
+} from "../../chat/ChatMessage/autoPreviewEligibility";
 import { isFileLink } from "../../documents/utils";
 import { getFullUrl } from "../../../services/api/config";
 import { closePersistentToolPanel } from "../../chat/ChatMessage/items/persistentToolPanelState";
@@ -44,6 +47,8 @@ export function useRevealPreview(
   sessionId: string | null,
   externalNavigationToken?: string | null,
   externalNavigationPreview?: RevealPreviewRequest | null,
+  currentRunId?: string | null,
+  isLoadingHistory = false,
 ): RevealPreviewReturn {
   const [, forcePreviewRender] = useState(0);
   const activePreviewStateRef = useRef<ActiveRevealPreviewState | null>(
@@ -54,6 +59,8 @@ export function useRevealPreview(
     typeof setTimeout
   > | null>(null);
   const dismissedPreviewKeysRef = useRef<Set<string>>(new Set());
+  const observedStreamingMessageIdsRef = useRef<Set<string>>(new Set());
+  const observedStreamingSessionIdRef = useRef<string | null>(sessionId);
   const handledExternalPreviewRef = useRef<{
     token: string | null;
     sessionId: string | null;
@@ -63,6 +70,11 @@ export function useRevealPreview(
   });
   const externalPreviewActiveRef = useRef(false);
   const activePreview = activePreviewStateRef.current?.request ?? null;
+
+  if (observedStreamingSessionIdRef.current !== sessionId) {
+    observedStreamingSessionIdRef.current = sessionId;
+    observedStreamingMessageIdsRef.current.clear();
+  }
 
   useEffect(() => {
     isNearBottomRef.current = isNearBottom;
@@ -187,6 +199,7 @@ export function useRevealPreview(
 
   useEffect(() => {
     dismissedPreviewKeysRef.current.clear();
+    observedStreamingMessageIdsRef.current.clear();
     clearFileRevealAutoOpenState();
     clearProjectRevealAutoOpenState();
     clearSidebarHistory();
@@ -194,6 +207,14 @@ export function useRevealPreview(
     externalPreviewActiveRef.current = false;
     closePersistentToolPanel();
   }, [sessionId]);
+
+  useEffect(() => {
+    for (const message of messages) {
+      if (message.isStreaming) {
+        observedStreamingMessageIdsRef.current.add(message.id);
+      }
+    }
+  }, [messages]);
 
   useEffect(() => {
     if (
@@ -235,12 +256,34 @@ export function useRevealPreview(
 
   const latestAutoPreview = useMemo(
     () =>
-      getLatestChatAutoPreviewTarget({
+      getLatestObservedCompletionAutoPreviewTarget({
         messages,
+        observedStreamingMessageIds: observedStreamingMessageIdsRef.current,
         suppressAutoPreview: !!externalNavigationPreview,
+        currentRunId,
       }),
-    [messages, externalNavigationPreview],
+    [messages, externalNavigationPreview, currentRunId],
   );
+
+  const latestAutoPreviewRequest = useMemo(
+    () =>
+      getLatestObservedCompletionRevealPreviewRequest({
+        messages,
+        observedStreamingMessageIds: observedStreamingMessageIdsRef.current,
+        suppressAutoPreview: !!externalNavigationPreview,
+        currentRunId,
+        allowHistoricalLatest: !isLoadingHistory,
+      }),
+    [messages, externalNavigationPreview, currentRunId, isLoadingHistory],
+  );
+
+  useEffect(() => {
+    if (!latestAutoPreviewRequest) {
+      return;
+    }
+
+    handleOpenPreview(latestAutoPreviewRequest, "auto");
+  }, [handleOpenPreview, latestAutoPreviewRequest]);
 
   return {
     activePreview,

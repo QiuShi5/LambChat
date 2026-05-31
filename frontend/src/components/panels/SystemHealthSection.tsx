@@ -231,7 +231,7 @@ export function SystemHealthSection() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <MetricCard
                   icon={MemoryStick}
-                  label="RSS"
+                  label={t("systemHealth.rss", "RSS")}
                   value={overview.rss}
                 />
                 <MetricCard

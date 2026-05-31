@@ -11,6 +11,7 @@ import {
   XCircle,
   Ban,
   ChevronRight,
+  ChevronDown,
   Brain,
   Bot,
   Box,
@@ -99,6 +100,7 @@ type SubagentRoleIconMeta = {
   icon: LucideIcon;
   className: string;
   bgClassName: string;
+  emoji?: string;
 };
 
 const SUBAGENT_ROLE_ICON_META: Record<
@@ -152,12 +154,14 @@ const SUBAGENT_ROLE_ICON_META: Record<
     icon: Star,
     className: "text-[var(--theme-primary)]",
     bgClassName: "bg-[var(--theme-primary-light)]",
+    emoji: "⭐",
   },
   general: {
     kind: "general",
     icon: Bot,
     className: "text-[var(--theme-primary)]",
     bgClassName: "bg-[var(--theme-primary-light)]",
+    emoji: "🤖",
   },
 };
 
@@ -317,6 +321,84 @@ export function openSubagentPanelByAgentId(agentId: string): boolean {
 }
 
 // ==========================================
+// Collapsible section for panel content
+// ==========================================
+
+function extractPartsText(parts: MessagePart[]): string {
+  return parts
+    .map((p) => {
+      if (p.type === "text" || p.type === "thinking") return p.content;
+      if (p.type === "tool")
+        return `[${p.name}]${p.result != null ? " " + String(p.result) : ""}`;
+      if (p.type === "subagent")
+        return `[${p.agent_name}]${p.result ? " " + p.result : ""}`;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function CollapsibleSection({
+  title,
+  defaultExpanded = true,
+  action,
+  variant = "default",
+  children,
+}: {
+  title: string;
+  defaultExpanded?: boolean;
+  action?: React.ReactNode;
+  variant?: "default" | "error";
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const isError = variant === "error";
+  return (
+    <div
+      className={clsx(
+        "p-3 sm:p-4 rounded-lg sm:rounded-xl",
+        isError
+          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50"
+          : "bg-stone-100 dark:bg-stone-700/50",
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center justify-between w-full text-left"
+      >
+        <div className="flex items-center gap-1.5">
+          <ChevronDown
+            size={12}
+            className={clsx(
+              "transition-transform duration-200",
+              isError
+                ? "text-red-500 dark:text-red-400"
+                : "text-stone-400 dark:text-stone-500",
+              !expanded && "-rotate-90",
+            )}
+          />
+          <span
+            className={clsx(
+              "text-xs uppercase tracking-wider font-medium",
+              isError
+                ? "text-red-600 dark:text-red-400"
+                : "text-stone-400 dark:text-stone-500",
+            )}
+          >
+            {title}
+          </span>
+        </div>
+        {action && <span onClick={(e) => e.stopPropagation()}>{action}</span>}
+      </button>
+      {expanded && (
+        <div className="mt-2 animate-[fade-in_150ms_ease-out]">{children}</div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
 // Subagent panel content (reactive)
 // ==========================================
 
@@ -421,57 +503,55 @@ function SubagentPanelContent({ agentId }: { agentId: string }) {
     >
       <div ref={contentRef} className="space-y-3">
         {data.input && (
-          <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-stone-100 dark:bg-stone-700/50">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-                {t("chat.message.args")}
-              </div>
-              <CopyButton text={data.input} />
-            </div>
+          <CollapsibleSection
+            title={t("chat.message.args")}
+            action={<CopyButton text={data.input} />}
+          >
             <div className="text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
               <MarkdownContent content={data.input} />
             </div>
-          </div>
+          </CollapsibleSection>
         )}
         {data.parts && data.parts.length > 0 && (
-          <div className="space-y-2 pl-3 border-l-2 border-stone-200 dark:border-stone-700">
-            {data.parts.map((part, index) => (
-              <MessagePartRenderer
-                key={index}
-                part={part}
-                messageId={createSubagentAnchorOwnerId(agentId)}
-                partIndex={index}
-                isStreaming={data.isPending}
-                isLast={index === data.parts!.length - 1}
-              />
-            ))}
-          </div>
+          <CollapsibleSection
+            title={t("chat.message.processing")}
+            defaultExpanded={false}
+            action={<CopyButton text={extractPartsText(data.parts)} />}
+          >
+            <div className="space-y-2">
+              {data.parts.map((part, index) => (
+                <MessagePartRenderer
+                  key={index}
+                  part={part}
+                  messageId={createSubagentAnchorOwnerId(agentId)}
+                  partIndex={index}
+                  isStreaming={data.isPending}
+                  isLast={index === data.parts!.length - 1}
+                />
+              ))}
+            </div>
+          </CollapsibleSection>
         )}
         {data.error && effectiveStatus === "error" && (
-          <div className="p-3 sm:p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-xs text-red-600 dark:text-red-400 font-medium">
-                {t("chat.message.error")}
-              </div>
-              <CopyButton text={data.error} />
-            </div>
+          <CollapsibleSection
+            title={t("chat.message.error")}
+            action={<CopyButton text={data.error} />}
+            variant="error"
+          >
             <div className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
               {data.error}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
         {data.result && effectiveStatus === "complete" && (
-          <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-stone-100 dark:bg-stone-700/50">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs uppercase tracking-wider text-stone-400 dark:text-stone-500 font-medium">
-                {t("chat.message.result")}
-              </div>
-              <CopyButton text={data.result} />
-            </div>
+          <CollapsibleSection
+            title={t("chat.message.result")}
+            action={<CopyButton text={data.result} />}
+          >
             <div className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed">
               <MarkdownContent content={data.result} />
             </div>
-          </div>
+          </CollapsibleSection>
         )}
         {data.isPending && !data.parts?.length && (
           <div className="flex items-center gap-2 text-stone-500 dark:text-stone-400">
@@ -719,8 +799,8 @@ export function SubagentBlock({
               : roleIconMeta.bgClassName,
           )}
         >
-          {roleIconMeta.kind === "grading" ? (
-            <FluentEmoji emoji="⭐" size={28} type="3d" />
+          {roleIconMeta.emoji ? (
+            <FluentEmoji emoji={roleIconMeta.emoji} size={22} type="3d" />
           ) : (
             <RoleIcon size={15} className={roleIconMeta.className} />
           )}
