@@ -60,6 +60,10 @@ async def test_upload_avatar_stores_object_url_without_base64(monkeypatch: pytes
     uploaded = {}
 
     class _FakeStorage:
+        async def delete_file(self, key: str):
+            del key
+            raise AssertionError("avatar upload without previous avatar should not delete files")
+
         async def upload_file(
             self,
             file,
@@ -89,6 +93,10 @@ async def test_upload_avatar_stores_object_url_without_base64(monkeypatch: pytes
             raise AssertionError("avatar upload should not base64/upload bytes")
 
     class _FakeUserStorage:
+        async def get_by_id(self, user_id):
+            del user_id
+            return None
+
         async def update(self, user_id, update):
             stored_update["user_id"] = user_id
             stored_update["avatar_url"] = update.avatar_url
@@ -156,6 +164,10 @@ async def test_upload_avatar_offloads_spooled_header_probe(monkeypatch: pytest.M
             )
 
     class _FakeUserStorage:
+        async def get_by_id(self, user_id):
+            del user_id
+            return None
+
         async def update(self, user_id, update):
             del user_id, update
             return None
@@ -183,6 +195,96 @@ async def test_upload_avatar_offloads_spooled_header_probe(monkeypatch: pytest.M
 
     assert result["content_type"] == "image/png"
     assert uploaded["data"] == b"\x89PNG\r\n\x1a\nimage-data"
+
+
+@pytest.mark.asyncio
+async def test_upload_avatar_deletes_previous_avatar_object_after_replacement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    deleted: list[str] = []
+    updates: list[str | None] = []
+
+    class _FakeStorage:
+        async def upload_file(
+            self,
+            file,
+            folder: str,
+            filename: str,
+            content_type: str,
+            *,
+            skip_size_limit: bool = False,
+        ):
+            del file, content_type, skip_size_limit
+            return SimpleNamespace(
+                key=f"{folder}/{filename}",
+                url=f"https://cdn.example.com/{folder}/{filename}",
+                size=18,
+            )
+
+        async def delete_file(self, key: str):
+            deleted.append(key)
+            return True
+
+    class _FakeUserStorage:
+        async def get_by_id(self, user_id):
+            assert user_id == "user-1"
+            return SimpleNamespace(
+                avatar_url="https://cdn.example.com/avatars/user-1/old-avatar.png"
+            )
+
+        async def update(self, user_id, update):
+            assert user_id == "user-1"
+            updates.append(update.avatar_url)
+            return None
+
+    async def _get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_route, "get_or_init_storage", _get_or_init_storage)
+    monkeypatch.setattr("src.infra.user.storage.UserStorage", lambda: _FakeUserStorage())
+
+    await upload_route.upload_avatar(
+        file=_ChunkedUpload([b"\x89PNG\r\n\x1a\n", b"image-data", b""]),
+        current_user=SimpleNamespace(sub="user-1"),
+    )
+
+    assert updates == ["https://cdn.example.com/avatars/user-1/avatar.png"]
+    assert deleted == ["avatars/user-1/old-avatar.png"]
+
+
+@pytest.mark.asyncio
+async def test_delete_avatar_deletes_previous_avatar_object(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    deleted: list[str] = []
+    updates: list[str | None] = []
+
+    class _FakeStorage:
+        async def delete_file(self, key: str):
+            deleted.append(key)
+            return True
+
+    class _FakeUserStorage:
+        async def get_by_id(self, user_id):
+            assert user_id == "user-1"
+            return SimpleNamespace(avatar_url="/api/upload/file/avatars/user-1/avatar.png")
+
+        async def update(self, user_id, update):
+            assert user_id == "user-1"
+            updates.append(update.avatar_url)
+            return None
+
+    async def _get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_route, "get_or_init_storage", _get_or_init_storage)
+    monkeypatch.setattr("src.infra.user.storage.UserStorage", lambda: _FakeUserStorage())
+
+    result = await upload_route.delete_avatar(current_user=SimpleNamespace(sub="user-1"))
+
+    assert result == {"deleted": True}
+    assert updates == [None]
+    assert deleted == ["avatars/user-1/avatar.png"]
 
 
 @pytest.mark.asyncio

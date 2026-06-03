@@ -62,6 +62,11 @@ class ModelStorage:
             await self._get_collection().drop_index("value_1")
         if "value_1" not in existing or existing["value_1"].get("unique"):
             await self._get_collection().create_index("value")
+        await self._get_collection().create_index(
+            [("value", 1), ("provider", 1), ("api_base", 1)],
+            unique=True,
+            name="value_provider_api_base_unique",
+        )
         await self._get_collection().create_index("enabled")
         await self._get_collection().create_index("order")
 
@@ -322,6 +327,14 @@ class ModelStorage:
         doc = await self._get_collection().find_one({"value": value})
         return doc is not None
 
+    @staticmethod
+    def _upsert_identity_filter(model: ModelConfig) -> dict[str, Any]:
+        return {
+            "value": model.value,
+            "provider": model.provider,
+            "api_base": model.api_base,
+        }
+
     async def count(self, include_disabled: bool = False) -> dict[str, int]:
         """统计模型数量
 
@@ -391,9 +404,17 @@ class ModelStorage:
         Returns:
             (模型配置, 是否为新创建)
         """
-        existing = await self.get_by_value(model.value)
+        identity_filter = self._upsert_identity_filter(model)
+        existing_doc = await self._get_collection().find_one(identity_filter)
+        existing = None
+        if existing_doc:
+            existing_doc.pop("_id", None)
+            existing_doc = await self._decrypt_doc(existing_doc)
+            existing = ModelConfig(**existing_doc)
         if existing:
-            update_data = model.model_dump(exclude={"id", "value", "created_at"})
+            update_data = model.model_dump(
+                exclude={"id", "value", "provider", "api_base", "created_at"}
+            )
             update_data["updated_at"] = utc_now_iso()
 
             # 加密 api_key
@@ -401,7 +422,7 @@ class ModelStorage:
                 update_data["api_key"] = await self._encrypt_api_key(update_data["api_key"])
 
             updated = await self._get_collection().find_one_and_update(
-                {"value": model.value},
+                identity_filter,
                 {"$set": update_data},
                 return_document=True,
             )
@@ -425,8 +446,11 @@ class ModelStorage:
         import uuid
 
         operations = []
+        identity_filters = []
         for model in models:
             model_dict = model.model_dump()
+            identity_filter = self._upsert_identity_filter(model)
+            identity_filters.append(identity_filter)
             # 加密 api_key
             if model_dict.get("api_key"):
                 model_dict["api_key"] = await self._encrypt_api_key(model_dict["api_key"])
@@ -436,18 +460,22 @@ class ModelStorage:
                 model_dict["id"] = str(uuid.uuid4())
 
             update_fields = {
-                k: v for k, v in model_dict.items() if k not in ("id", "value", "created_at")
+                k: v
+                for k, v in model_dict.items()
+                if k not in ("id", "value", "provider", "api_base", "created_at")
             }
             update_fields["updated_at"] = now
 
             operations.append(
                 UpdateOne(
-                    {"value": model.value},
+                    identity_filter,
                     {
                         "$set": update_fields,
                         "$setOnInsert": {
                             "id": model_dict["id"],
                             "value": model.value,
+                            "provider": model.provider,
+                            "api_base": model.api_base,
                             "created_at": now,
                         },
                     },
@@ -459,13 +487,12 @@ class ModelStorage:
             await _bulk_write_in_batches(self._get_collection(), operations)
 
         # 返回更新后的模型列表
-        values = [m.value for m in models]
         result = []
-        for start in range(0, len(values), MODEL_RESTRICTED_LIST_LIMIT):
-            batch_values = values[start : start + MODEL_RESTRICTED_LIST_LIMIT]
-            if not batch_values:
+        for start in range(0, len(identity_filters), MODEL_RESTRICTED_LIST_LIMIT):
+            batch_filters = identity_filters[start : start + MODEL_RESTRICTED_LIST_LIMIT]
+            if not batch_filters:
                 continue
-            cursor = self._get_collection().find({"value": {"$in": batch_values}})
+            cursor = self._get_collection().find({"$or": batch_filters})
             async for doc in cursor:
                 doc.pop("_id", None)
                 doc = await self._decrypt_doc(doc)

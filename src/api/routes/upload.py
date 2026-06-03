@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass
 from tempfile import SpooledTemporaryFile
 from typing import Any, Protocol
+from urllib.parse import unquote, urlsplit
 
 from fastapi import (
     APIRouter,
@@ -125,6 +126,41 @@ def _build_upload_response(
     if exists:
         payload["exists"] = True
     return payload
+
+
+def _avatar_object_key_from_url(avatar_url: str | None, user_id: str) -> str | None:
+    if not avatar_url:
+        return None
+
+    parsed = urlsplit(avatar_url)
+    path = unquote(parsed.path or avatar_url)
+    proxy_prefix = "/api/upload/file/"
+    if proxy_prefix in path:
+        key = path.split(proxy_prefix, 1)[1]
+    else:
+        key = path.lstrip("/")
+
+    owned_prefix = f"avatars/{user_id}/"
+    if key.startswith(owned_prefix):
+        return key
+    return None
+
+
+async def _delete_avatar_object_if_owned(
+    storage: Any,
+    user_id: str,
+    avatar_url: str | None,
+    *,
+    keep_key: str | None = None,
+) -> None:
+    key = _avatar_object_key_from_url(avatar_url, user_id)
+    if key is None or key == keep_key:
+        return
+
+    try:
+        await storage.delete_file(key)
+    except Exception as e:
+        logger.warning("Failed to delete previous avatar object %s: %s", key, e, exc_info=True)
 
 
 def _path_exists(file_path) -> bool:
@@ -587,9 +623,17 @@ async def upload_avatar(
 
         logger.info(f"Uploading avatar for user: {current_user.sub}, filename: {file.filename}")
         user_storage = UserStorage()
+        previous_user = await user_storage.get_by_id(current_user.sub)
+        previous_avatar_url = getattr(previous_user, "avatar_url", None)
         await user_storage.update(
             current_user.sub,
             UserUpdate(avatar_url=avatar_url),
+        )
+        await _delete_avatar_object_if_owned(
+            storage,
+            current_user.sub,
+            previous_avatar_url,
+            keep_key=upload_result.key,
         )
         logger.info(f"Avatar uploaded successfully for user: {current_user.sub}")
 
@@ -626,10 +670,18 @@ async def delete_avatar(
         from src.kernel.schemas.user import UserUpdate
 
         logger.info(f"Deleting avatar for user: {current_user.sub}")
-        storage = UserStorage()
-        await storage.update(
+        user_storage = UserStorage()
+        previous_user = await user_storage.get_by_id(current_user.sub)
+        previous_avatar_url = getattr(previous_user, "avatar_url", None)
+        await user_storage.update(
             current_user.sub,
             UserUpdate(avatar_url=None),
+        )
+        object_storage = await get_or_init_storage()
+        await _delete_avatar_object_if_owned(
+            object_storage,
+            current_user.sub,
+            previous_avatar_url,
         )
         logger.info(f"Avatar deleted successfully for user: {current_user.sub}")
 

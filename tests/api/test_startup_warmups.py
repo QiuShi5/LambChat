@@ -102,7 +102,7 @@ async def test_initialize_startup_indexes_runs_independent_groups_concurrently(
 
 
 @pytest.mark.asyncio
-async def test_schedule_startup_indexes_does_not_wait_for_index_initialization(
+async def test_run_startup_indexes_waits_for_index_initialization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     started = asyncio.Event()
@@ -122,16 +122,17 @@ async def test_schedule_startup_indexes_does_not_wait_for_index_initialization(
     )
     app = SimpleNamespace(state=SimpleNamespace())
 
-    task = api_main._schedule_startup_indexes(app)
+    task = asyncio.create_task(api_main._run_startup_indexes(app))
 
     await asyncio.wait_for(started.wait(), timeout=1)
-    assert task is app.state.startup_indexes_task
+    assert app.state.startup_indexes_task is not None
     assert calls == ["started"]
     assert task.done() is False
 
     release.set()
     await task
     assert calls == ["started", "finished"]
+    assert app.state.startup_indexes_task.done() is True
 
 
 @pytest.mark.asyncio

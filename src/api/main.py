@@ -83,7 +83,6 @@ _LIFESPAN_BACKGROUND_TASK_NAMES = (
     "agent_discovery_task",
     "models_preload_task",
     "stale_task_cleanup_task",
-    "startup_indexes_task",
     "feishu_task",
 )
 
@@ -346,23 +345,12 @@ async def _initialize_startup_indexes() -> None:
     )
 
 
-def _schedule_startup_indexes(app: FastAPI) -> asyncio.Task[None]:
-    """Initialize storage indexes in the background so app readiness is not blocked."""
+async def _run_startup_indexes(app: FastAPI) -> None:
+    """Initialize storage indexes before app readiness."""
     task = asyncio.create_task(_initialize_startup_indexes())
     app.state.startup_indexes_task = task
-
-    def _log_completion(done_task: asyncio.Task[None]) -> None:
-        if done_task.cancelled():
-            return
-        try:
-            done_task.result()
-        except Exception as e:
-            logger.warning("Startup storage index initialization failed: %s", e, exc_info=True)
-        else:
-            logger.info("Startup storage indexes initialized")
-
-    task.add_done_callback(_log_completion)
-    return task
+    await task
+    logger.info("Startup storage indexes initialized")
 
 
 @asynccontextmanager
@@ -420,7 +408,7 @@ async def lifespan(app: FastAPI):
     # 后台预热 Agent 注册，避免阻塞服务启动；请求路径仍有懒发现兜底
     app.state.agent_discovery_task = asyncio.create_task(_warm_agent_registry())
 
-    _schedule_startup_indexes(app)
+    await _run_startup_indexes(app)
 
     # 启动分布式运行时监听器（任务/设置/模型/记忆/WebSocket）
     await start_runtime_services()

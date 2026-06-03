@@ -76,10 +76,12 @@ class _RecordingModelCollection:
 class _BulkWriteRecordingCollection:
     def __init__(self) -> None:
         self.bulk_sizes: list[int] = []
+        self.bulk_operations: list[Any] = []
         self.find_queries: list[dict[str, Any]] = []
         self.cursor = _EmptyAsyncCursor()
 
     async def bulk_write(self, operations: list[Any]):
+        self.bulk_operations.extend(operations)
         self.bulk_sizes.append(len(operations))
 
         class _Result:
@@ -96,14 +98,23 @@ class _CrudModelCollection:
     def __init__(self, doc: dict[str, Any] | None = None) -> None:
         self.doc = dict(doc) if doc else None
         self.inserted_docs: list[dict[str, Any]] = []
+        self.find_one_queries: list[dict[str, Any]] = []
+        self.updated_queries: list[dict[str, Any]] = []
 
     async def find_one(self, query: dict[str, Any], **_kwargs):
+        self.find_one_queries.append(query)
         if self.doc and all(self.doc.get(key) == value for key, value in query.items()):
             return dict(self.doc)
         return None
 
     async def insert_one(self, doc: dict[str, Any]):
         self.inserted_docs.append(dict(doc))
+
+    async def find_one_and_update(self, query: dict[str, Any], *_args, **_kwargs):
+        self.updated_queries.append(query)
+        if self.doc and all(self.doc.get(key) == value for key, value in query.items()):
+            return dict(self.doc)
+        return None
 
 
 def _model_doc() -> dict[str, Any]:
@@ -249,4 +260,96 @@ async def test_bulk_upsert_by_value_flushes_and_reads_back_in_bounded_batches(
     await storage.bulk_upsert_by_value(models)
 
     assert collection.bulk_sizes == [100, 100, 50]
-    assert [len(query["value"]["$in"]) for query in collection.find_queries] == [100, 100, 50]
+    assert [len(query["$or"]) for query in collection.find_queries] == [100, 100, 50]
+
+
+@pytest.mark.asyncio
+async def test_bulk_upsert_by_value_scopes_identity_to_provider_and_api_base() -> None:
+    storage = ModelStorage()
+    collection = _BulkWriteRecordingCollection()
+    storage._collection = collection
+
+    await storage.bulk_upsert_by_value(
+        [
+            model_storage.ModelConfig(
+                value="gpt-4o-mini",
+                provider="openai",
+                api_base="https://api.openai.com/v1",
+                label="OpenAI GPT-4o mini",
+            ),
+            model_storage.ModelConfig(
+                value="gpt-4o-mini",
+                provider="azure",
+                api_base="https://example.openai.azure.com",
+                label="Azure GPT-4o mini",
+            ),
+        ]
+    )
+
+    filters = [operation._filter for operation in collection.bulk_operations]
+    assert filters == [
+        {
+            "value": "gpt-4o-mini",
+            "provider": "openai",
+            "api_base": "https://api.openai.com/v1",
+        },
+        {
+            "value": "gpt-4o-mini",
+            "provider": "azure",
+            "api_base": "https://example.openai.azure.com",
+        },
+    ]
+    assert collection.find_queries == [
+        {
+            "$or": [
+                {
+                    "value": "gpt-4o-mini",
+                    "provider": "openai",
+                    "api_base": "https://api.openai.com/v1",
+                },
+                {
+                    "value": "gpt-4o-mini",
+                    "provider": "azure",
+                    "api_base": "https://example.openai.azure.com",
+                },
+            ]
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_upsert_by_value_does_not_overwrite_different_provider() -> None:
+    storage = ModelStorage()
+    collection = _CrudModelCollection(
+        {
+            "id": "openai-model",
+            "value": "gpt-4o-mini",
+            "provider": "openai",
+            "api_base": "https://api.openai.com/v1",
+            "label": "OpenAI GPT-4o mini",
+            "enabled": True,
+            "order": 0,
+        }
+    )
+    storage._collection = collection
+
+    model, created = await storage.upsert_by_value(
+        model_storage.ModelConfig(
+            value="gpt-4o-mini",
+            provider="azure",
+            api_base="https://example.openai.azure.com",
+            label="Azure GPT-4o mini",
+        )
+    )
+
+    assert created is True
+    assert model.provider == "azure"
+    assert collection.find_one_queries == [
+        {
+            "value": "gpt-4o-mini",
+            "provider": "azure",
+            "api_base": "https://example.openai.azure.com",
+        }
+    ]
+    assert collection.updated_queries == []
+    assert collection.inserted_docs[0]["provider"] == "azure"
