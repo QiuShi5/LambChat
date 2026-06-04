@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 # 支持的语言白名单
 SUPPORTED_LANGUAGES = frozenset(["en", "zh", "ja", "ko"])
 SESSION_EVENT_TYPE_FILTER_LIMIT = 100
-SESSION_EVENT_RESPONSE_LIMIT_MAX = 1000
+SESSION_EVENT_RESPONSE_LIMIT_MAX = 10000
 SESSION_RAW_TRACE_RESPONSE_LIMIT_MAX = 20
 SESSION_RAW_TRACE_EVENTS_LIMIT_MAX = 200
 
@@ -281,11 +281,11 @@ async def get_session_events(
     exclude_run_id: Optional[str] = Query(
         None, description="排除的 Run ID（用于排除正在运行的 run）"
     ),
-    limit: int = Query(
-        1000,
+    limit: Optional[int] = Query(
+        None,
         ge=1,
         le=SESSION_EVENT_RESPONSE_LIMIT_MAX,
-        description="最大返回事件数",
+        description="最大返回事件数，不传则不限制",
     ),
     user: TokenPayload = Depends(get_current_user_required),
 ):
@@ -316,7 +316,7 @@ async def get_session_events(
 
     # 重要：completed_only=True，确保正在运行的 trace 中的事件不要被返回，而是单独去请求/stream接口，避免重复返回事件，导致前端消息重复显示。
     # 否则刷新页面时，当前 run 的 user:message 事件会丢失，导致消息合并
-    events_probe_limit = limit + 1
+    events_probe_limit = (limit + 1) if limit is not None else None
     events = await dual_writer.read_session_events(
         session_id,
         types_list,
@@ -325,7 +325,7 @@ async def get_session_events(
         completed_only=True,
         max_events=events_probe_limit,
     )
-    events_limited = len(events) > limit
+    events_limited = limit is not None and len(events) > limit
     if events_limited:
         events = events[:limit]
 
@@ -638,12 +638,18 @@ async def fork_session_from_checkpoint(
     except NotFoundError as exc:
         detail = "检查点不存在" if "checkpoint" in str(exc) else "资源不存在"
         logger.warning(
-            "Fork checkpoint 404: session=%s checkpoint=%s exc=%s", session_id, checkpoint_id, exc
+            "Fork checkpoint 404: session=%s checkpoint=%s exc=%s",
+            session_id,
+            checkpoint_id,
+            exc,
         )
         raise HTTPException(status_code=404, detail=detail) from exc
     except SessionError as exc:
         logger.error(
-            "Fork checkpoint 500: session=%s checkpoint=%s exc=%s", session_id, checkpoint_id, exc
+            "Fork checkpoint 500: session=%s checkpoint=%s exc=%s",
+            session_id,
+            checkpoint_id,
+            exc,
         )
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
