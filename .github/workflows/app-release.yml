@@ -21,6 +21,7 @@ permissions:
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '10.32.1'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
   LAMBCHAT_APP_URL: ${{ inputs.app_url || vars.LAMBCHAT_APP_URL || secrets.LAMBCHAT_APP_URL }}
 
@@ -102,19 +103,20 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          mapfile -t files < <(find frontend -type f \
+          find frontend -type f \
             \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \) \
             -not -path '*/node_modules/*' \
             -not -path '*/.pnpm/*' \
-            -print)
-          if [ "${#files[@]}" -eq 0 ]; then
+            -print > release-assets/files.txt
+          if [ ! -s release-assets/files.txt ]; then
             echo "No desktop artifacts found"
             exit 1
           fi
-          for file in "${files[@]}"; do
+          while IFS= read -r file; do
             base="$(basename "$file")"
             cp "$file" "release-assets/LambChat-${{ matrix.artifact_slug }}-${RELEASE_TAG}-${base}"
-          done
+          done < release-assets/files.txt
+          rm release-assets/files.txt
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
@@ -157,7 +159,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3

@@ -14,10 +14,15 @@ const normalizedAppUrl = appUrl.replace(/\/+$/, "");
 
 const result = spawnSync(pnpmCommand, ["build"], {
   stdio: "inherit",
+  shell: process.platform === "win32",
   env: {
     ...process.env,
     VITE_API_BASE: normalizedAppUrl,
   },
 });
+
+if (result.error) {
+  console.error(result.error);
+}
 
 process.exit(result.status ?? 1);

@@ -19,6 +19,8 @@ test("release workflow publishes branded desktop and mobile artifacts", () => {
   assert.match(workflow, /package:desktop/);
   assert.match(workflow, /assembleRelease/);
   assert.match(workflow, /softprops\/action-gh-release/);
+  assert.match(workflow, /java-version: '21'/);
+  assert.doesNotMatch(workflow, /mapfile/);
 });
 
 test("release workflow publishes a debug Android APK when signing secrets are missing", () => {
@@ -46,4 +48,6 @@ test("mobile package scripts generate and validate branded native images", () =>
   assert.match(packageJson.scripts["brand:assets:check"], /--check/);
   assert.match(assetScript, /LambChat/);
   assert.match(assetScript, /public\/icons\/icon-512\.png/);
+  assert.match(assetScript, /scalePngNearest/);
+  assert.match(assetScript, /1024/);
 });

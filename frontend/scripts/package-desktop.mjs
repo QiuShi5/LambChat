@@ -56,6 +56,11 @@ if (process.env.PAKE_DEBUG === "1") {
 
 const result = spawnSync(pnpmCommand, args, {
   stdio: "inherit",
+  shell: process.platform === "win32",
 });
+
+if (result.error) {
+  console.error(result.error);
+}
 
 process.exit(result.status ?? 1);
