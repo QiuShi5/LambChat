@@ -16,6 +16,13 @@ export { API_BASE };
 export interface BrowserLocationLike {
   protocol: string;
   host: string;
+  hostname?: string;
+}
+
+interface NativeRuntimeGlobalLike {
+  Capacitor?: { isNativePlatform?: () => boolean };
+  __TAURI__?: unknown;
+  __TAURI_INTERNALS__?: unknown;
 }
 
 export function buildApiUrl(path: string, apiBase: string = API_BASE): string {
@@ -72,4 +79,83 @@ export function getFullUrl(
   // 如果是相对路径，拼接 base URL（优先使用当前 origin，否则使用 API_BASE）
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   return baseUrl + url;
+}
+
+export function isNativeAppRuntime(
+  locationLike?: Partial<BrowserLocationLike> | null,
+  globalLike?: NativeRuntimeGlobalLike | null,
+): boolean {
+  const location =
+    locationLike || (typeof window !== "undefined" ? window.location : null);
+  const globalObject =
+    globalLike ||
+    (typeof globalThis !== "undefined"
+      ? (globalThis as NativeRuntimeGlobalLike)
+      : null);
+
+  if (globalObject?.Capacitor?.isNativePlatform?.()) {
+    return true;
+  }
+  if (globalObject?.__TAURI__ || globalObject?.__TAURI_INTERNALS__) {
+    return true;
+  }
+
+  const protocol = location?.protocol?.toLowerCase() || "";
+  const hostname = location?.hostname?.toLowerCase() || "";
+  return (
+    protocol === "capacitor:" ||
+    protocol === "ionic:" ||
+    protocol === "tauri:" ||
+    hostname === "tauri.localhost"
+  );
+}
+
+function encodeUploadObjectKey(key: string): string {
+  return key.split("/").map(encodeURIComponent).join("/");
+}
+
+export function buildUploadProxyUrl(
+  url: string | undefined | null,
+  apiBase: string = API_BASE,
+  options: {
+    force?: boolean;
+    locationLike?: Partial<BrowserLocationLike> | null;
+    globalLike?: NativeRuntimeGlobalLike | null;
+  } = {},
+): string | undefined {
+  const fullUrl = getFullUrl(url, apiBase) || url || undefined;
+  if (!fullUrl) return undefined;
+  if (
+    !options.force &&
+    !isNativeAppRuntime(options.locationLike, options.globalLike)
+  ) {
+    return fullUrl;
+  }
+
+  const fallbackBase =
+    typeof window !== "undefined" ? window.location.origin : "http://localhost";
+
+  try {
+    const parsed = new URL(fullUrl, fallbackBase);
+    if (!parsed.pathname.startsWith("/api/upload/file/")) {
+      return fullUrl;
+    }
+    parsed.searchParams.set("proxy", "true");
+    return parsed.toString();
+  } catch {
+    return fullUrl;
+  }
+}
+
+export function buildUploadProxyUrlFromKey(
+  key: string | undefined | null,
+  apiBase: string = API_BASE,
+  options: Parameters<typeof buildUploadProxyUrl>[2] = {},
+): string | undefined {
+  if (!key) return undefined;
+  return buildUploadProxyUrl(
+    `/api/upload/file/${encodeUploadObjectKey(key)}`,
+    apiBase,
+    options,
+  );
 }

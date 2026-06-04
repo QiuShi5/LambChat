@@ -8,7 +8,11 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { uploadApi } from "../../services/api";
-import { getFullUrl } from "../../services/api/config";
+import {
+  buildUploadProxyUrl,
+  buildUploadProxyUrlFromKey,
+  getFullUrl,
+} from "../../services/api/config";
 import {
   getSidebarHistoryLength,
   goBackSidebar,
@@ -313,13 +317,17 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           const resolvedSignedUrl = getFullUrl(signedUrl) || signedUrl;
           const url =
             resolvedSignedUrl ||
-            (s3Key ? await uploadApi.getSignedUrl(s3Key) : null);
+            (s3Key
+              ? buildUploadProxyUrlFromKey(s3Key) ||
+                (await uploadApi.getSignedUrl(s3Key))
+              : null);
 
           if (!url) {
             throw new Error("No URL available");
           }
 
           setResolvedUrl(url);
+          const readUrl = buildUploadProxyUrl(url) || url;
 
           if (resolvedImageFile) {
             setImageUrl(url);
@@ -329,7 +337,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           }
 
           if (resolvedPdfFile) {
-            const buffer = await fetchDocumentArrayBuffer(url);
+            const buffer = await fetchDocumentArrayBuffer(readUrl);
             const blob = new Blob([buffer], { type: "application/pdf" });
             const previewUrl = URL.createObjectURL(blob);
             setPdfUrl(previewUrl);
@@ -353,7 +361,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           }
 
           if (cadFile) {
-            setCadUrl(url);
+            setCadUrl(readUrl);
             setCadKind(dxfFile ? "dxf" : "dwg");
             setData({ content: "", path });
             setLoading(false);
@@ -361,7 +369,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           }
 
           if (pptFile) {
-            const buffer = await fetchDocumentArrayBuffer(url);
+            const buffer = await fetchDocumentArrayBuffer(readUrl);
             setPptxBuffer(buffer);
             setData({ content: "", path });
             setLoading(false);
@@ -371,7 +379,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           if (htmlFile) {
             setHtmlUrl(url);
             try {
-              const text = await fetchDocumentText(url);
+              const text = await fetchDocumentText(readUrl);
               setHtmlContent(text);
             } catch (e) {
               console.error("Failed to fetch HTML content:", e);
@@ -382,7 +390,7 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           }
 
           if (excalidrawFile) {
-            const text = await fetchDocumentText(url);
+            const text = await fetchDocumentText(readUrl);
             setExcalidrawData(text);
             setData({ content: "", path });
             setLoading(false);
@@ -401,11 +409,11 @@ export function useDocumentPreviewState(props: DocumentPreviewProps) {
           } else if (unsupportedPreviewFile) {
             setData({ content: "", path });
           } else if (wordPreviewFile || excelFile) {
-            const buffer = await fetchDocumentArrayBuffer(url);
+            const buffer = await fetchDocumentArrayBuffer(readUrl);
             setArrayBuffer(buffer);
             setData({ content: "", path });
           } else {
-            const text = await fetchDocumentText(url);
+            const text = await fetchDocumentText(readUrl);
             setData({ content: text, path });
           }
           setLoading(false);

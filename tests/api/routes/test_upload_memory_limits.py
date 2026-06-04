@@ -223,6 +223,51 @@ async def test_local_file_proxy_checks_file_existence_in_blocking_executor(
     assert "_path_exists" in blocking_calls
 
 
+@pytest.mark.asyncio
+async def test_s3_file_proxy_can_stream_through_app_for_preview_fetches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FakeStorage:
+        is_local = False
+        _config = SimpleNamespace(public_bucket=False)
+
+        async def file_exists(self, key: str) -> bool:
+            assert key == "docs/report.txt"
+            return True
+
+        async def download_stream(self, key: str, chunk_size: int = 1024 * 1024):
+            assert key == "docs/report.txt"
+            del chunk_size
+            yield b"hello "
+            yield b"world"
+
+        async def get_presigned_url(self, key: str, expires: int):
+            raise AssertionError("proxy preview fetches should not redirect to object storage")
+
+    class _FakeRecordStorage:
+        async def find_by_key(self, key: str):
+            assert key == "docs/report.txt"
+            return {"name": "report.txt", "mime_type": "text/plain"}
+
+    async def fake_get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_route, "get_or_init_storage", fake_get_or_init_storage)
+    monkeypatch.setattr(upload_route, "_file_record_storage", _FakeRecordStorage())
+
+    response = await upload_route.get_file_proxy(
+        "docs/report.txt",
+        request=SimpleNamespace(base_url="https://app.example.com/"),
+        proxy=True,
+    )
+
+    body = b"".join([chunk async for chunk in response.body_iterator])
+
+    assert response.media_type == "text/plain"
+    assert body == b"hello world"
+    assert response.headers["Cache-Control"] == "public, max-age=300"
+
+
 def test_signed_url_request_rejects_too_many_keys() -> None:
     with pytest.raises(ValidationError):
         SignedUrlRequest.model_validate(

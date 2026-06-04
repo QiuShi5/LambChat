@@ -20,7 +20,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
@@ -165,6 +165,21 @@ async def _delete_avatar_object_if_owned(
 
 def _path_exists(file_path) -> bool:
     return file_path.exists()
+
+
+async def _get_file_response_metadata(key: str) -> tuple[str | None, str]:
+    record = await _file_record_storage.find_by_key(key)
+    filename_for_disposition = record["name"] if record else None
+    content_type = record["mime_type"] if record and record.get("mime_type") else None
+
+    if not content_type:
+        import mimetypes
+
+        content_type, _ = mimetypes.guess_type(key)
+        if not content_type:
+            content_type = "application/octet-stream"
+
+    return filename_for_disposition, content_type
 
 
 async def _read_upload_file_limited(
@@ -928,6 +943,7 @@ async def get_file_proxy(
     key: str,
     request: Request,
     direct: bool = False,
+    proxy: bool = False,
 ) -> Response:
     """
     Dynamic proxy endpoint for file access
@@ -938,6 +954,7 @@ async def get_file_proxy(
 
     Query params:
         direct: If true, return the URL as JSON instead of redirecting.
+        proxy: If true, stream non-local storage through the app instead of redirecting.
     """
     from fastapi.responses import JSONResponse
 
@@ -955,18 +972,7 @@ async def get_file_proxy(
             if not await run_blocking_io(_path_exists, file_path):
                 raise HTTPException(status_code=404, detail="File not found")
 
-            # Try to get original filename and content type from file records
-            record = await _file_record_storage.find_by_key(key)
-            filename_for_disposition = record["name"] if record else None
-            content_type = record["mime_type"] if record and record.get("mime_type") else None
-
-            # Fallback to guessing from filename if not in record
-            if not content_type:
-                import mimetypes
-
-                content_type, _ = mimetypes.guess_type(key)
-                if not content_type:
-                    content_type = "application/octet-stream"
+            filename_for_disposition, content_type = await _get_file_response_metadata(key)
 
             return FileResponse(
                 path=str(file_path),
@@ -990,6 +996,18 @@ async def get_file_proxy(
         raise
     except Exception as e:
         logger.warning(f"Failed to check file existence for {key}: {e}")
+
+    if proxy:
+        filename_for_disposition, content_type = await _get_file_response_metadata(key)
+        headers = {"Cache-Control": "public, max-age=300"}
+        if filename_for_disposition:
+            headers["Content-Disposition"] = f'inline; filename="{filename_for_disposition}"'
+
+        return StreamingResponse(
+            storage.download_stream(key),
+            media_type=content_type,
+            headers=headers,
+        )
 
     try:
         if storage._config.public_bucket:

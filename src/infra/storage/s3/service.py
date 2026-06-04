@@ -377,6 +377,11 @@ class S3StorageService:
         """Download a file into a file-like sink without materializing bytes."""
         return await self._get_backend().download_to_file(key, file, chunk_size=chunk_size)
 
+    async def download_stream(self, key: str, chunk_size: int = 1024 * 1024):
+        """Stream a file without materializing the full object in memory."""
+        async for chunk in self._get_backend().download_stream(key, chunk_size=chunk_size):
+            yield chunk
+
     async def file_exists(self, key: str) -> bool:
         """Check if a file exists"""
         return await self._get_backend().exists(key)
