@@ -79,7 +79,7 @@ test("legacy GlassSelect delegates to the shared Select primitive", () => {
   const source = readSource("../GlassSelect.tsx");
 
   assert.match(source, /import \{ Select \}/);
-  assert.match(source, /return <Select/);
+  assert.match(source, /return \([\s\S]*<Select/);
   assert.match(
     source,
     /placeholder=\{placeholder \?\? options\[0\]\?\.label \?\? ""\}/,
@@ -113,9 +113,13 @@ test("first migrated admin forms consume shared primitives instead of generic le
 test("mcp server form uses shared icon buttons for generic icon actions", () => {
   const source = readSource("../../mcp/MCPServerForm.tsx");
 
-  assert.match(source, /import \{ Button, IconButton \}/);
+  assert.match(source, /import \{ Button, IconButton, Input, Select \}/);
+  assert.match(source, /<Select[\s\S]*availableTransports/);
+  assert.match(source, /<Input[\s\S]*mcp\.form\.serverNamePlaceholder/);
   assert.match(source, /<IconButton[\s\S]*removeHeader/);
   assert.doesNotMatch(source, /className="btn-icon[^"]*"/);
+  assert.doesNotMatch(source, /GlassSelect/);
+  assert.doesNotMatch(source, /className="glass-input/);
 });
 
 test("skills list actions use shared buttons for generic commands", () => {
@@ -223,4 +227,64 @@ test("core admin crud panels use shared panel controls for generic actions", () 
     /className="btn-(primary|secondary|danger|icon)[^"]*"/,
   );
   assert.doesNotMatch(sources, /<GlassSelect/);
+});
+
+test("roles admin form uses shared field primitives for generic fields", () => {
+  const source = readSource("../../panels/RolesPanel.tsx");
+
+  assert.match(
+    source,
+    /import \{[\s\S]*Button[\s\S]*Input[\s\S]*PanelFooterActions[\s\S]*Textarea[\s\S]*\}/,
+  );
+  assert.match(source, /<Input[\s\S]*roles\.roleNamePlaceholder/);
+  assert.match(source, /<Textarea[\s\S]*roles\.descriptionPlaceholder/);
+  assert.doesNotMatch(source, /className="glass-input/);
+});
+
+test("model admin modal footers use shared panel actions", () => {
+  const source = [
+    readSource("../../panels/ModelPanel/tabs/ModelFormModal.tsx"),
+    readSource("../../panels/ModelPanel/tabs/BatchCreateModal.tsx"),
+  ].join("\n");
+
+  assert.match(source, /PanelFooterActions/);
+  assert.match(source, /<Button[\s>]/);
+  assert.doesNotMatch(source, /className="btn-(primary|secondary)[^"]*"/);
+});
+
+test("agent and model admin tab actions use shared buttons", () => {
+  const sources = [
+    readSource("../../panels/AgentPanel/tabs/GlobalAgentTab.tsx"),
+    readSource("../../panels/AgentPanel/tabs/RolesAgentTab.tsx"),
+    readSource("../../panels/ModelPanel/tabs/ModelConfigTab.tsx"),
+    readSource("../../panels/ModelPanel/tabs/RolesModelTab.tsx"),
+  ].join("\n");
+
+  assert.match(sources, /import \{[\s\S]*Button[\s\S]*\}/);
+  assert.match(sources, /<Button[\s\S]*agentConfig\.addModel/);
+  assert.match(sources, /<Button[\s\S]*common\.save/);
+  assert.doesNotMatch(sources, /className="btn-(primary|secondary)[^"]*"/);
+});
+
+test("global agent editor fields use shared field primitives", () => {
+  const source = readSource("../../panels/AgentPanel/tabs/GlobalAgentTab.tsx");
+
+  assert.match(source, /import \{[\s\S]*Input[\s\S]*Textarea[\s\S]*\}/);
+  assert.match(source, /<Input[\s\S]*sort_order/);
+  assert.match(source, /<Input[\s\S]*agentConfig\.displayName/);
+  assert.match(source, /<Textarea[\s\S]*agentConfig\.displayDescription/);
+  assert.doesNotMatch(source, /className="glass-input/);
+});
+
+test("approval panel generated form fields use shared field primitives", () => {
+  const source = readSource("../../panels/ApprovalPanel.tsx");
+
+  assert.match(source, /import \{[\s\S]*Input[\s\S]*Select[\s\S]*Textarea/);
+  assert.match(source, /case "text":[\s\S]*<Input/);
+  assert.match(source, /case "number":[\s\S]*<Input/);
+  assert.match(source, /case "textarea":[\s\S]*<Textarea/);
+  assert.match(source, /case "select":[\s\S]*<Select/);
+  assert.doesNotMatch(source, /GlassSelect/);
+  assert.doesNotMatch(source, /<input[\s\S]*approval-input/);
+  assert.doesNotMatch(source, /<textarea[\s\S]*approval-input/);
 });

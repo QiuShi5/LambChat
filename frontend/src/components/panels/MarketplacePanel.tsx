@@ -6,6 +6,7 @@ import { PanelHeader } from "../common/PanelHeader";
 import { Button, IconButton } from "../common";
 import { MarketplacePanelSkeleton } from "../skeletons";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { EmptyState } from "../common/EmptyState";
 import { SkillFormSidebar } from "./SkillsPanel/SkillFormSidebar";
 import { useMarketplace } from "../../hooks/useMarketplace";
 import { useSkills } from "../../hooks/useSkills";
@@ -395,30 +396,26 @@ export function MarketplacePanel({ embedded = false }: MarketplacePanelProps) {
       {/* Skills List */}
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         {skills.length === 0 ? (
-          <div className="skill-empty-state">
-            <div className="skill-empty-state__icon">
-              <ShoppingBag size={28} />
-            </div>
-            <p className="skill-empty-state__title">
-              {searchQuery || selectedTags.length > 0
+          <EmptyState
+            icon={<ShoppingBag size={28} />}
+            title={
+              searchQuery || selectedTags.length > 0
                 ? t("marketplace.noMatchingSkills")
-                : t("marketplace.noSkills")}
-            </p>
-            <p className="skill-empty-state__description">
-              {searchQuery || selectedTags.length > 0
+                : t("marketplace.noSkills")
+            }
+            description={
+              searchQuery || selectedTags.length > 0
                 ? t("marketplace.subtitle")
-                : t("marketplace.createHint")}
-            </p>
-            {hasActiveFilters && (
-              <Button
-                variant="secondary"
-                onClick={clearFilters}
-                className="mt-4"
-              >
-                {t("marketplace.clearFilters")}
-              </Button>
-            )}
-          </div>
+                : t("marketplace.createHint")
+            }
+            action={
+              hasActiveFilters ? (
+                <Button variant="secondary" onClick={clearFilters}>
+                  {t("marketplace.clearFilters")}
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="grid auto-grid-cols gap-5">
             {skills.map((skill, index) => (

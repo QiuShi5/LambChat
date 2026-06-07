@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "../../../../i18n";
 import { AgentIcon } from "../../../agent/AgentIcon";
 import { AgentPanelSkeleton } from "../../../skeletons";
+import { Button } from "../../../common";
 import {
   resolveAgentDescription,
   resolveAgentDisplayName,
@@ -157,14 +158,15 @@ export function RolesAgentTab({
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                 {currentRoleAgents.length} / {availableAgents.length}
               </span>
-              <button
+              <Button
+                variant="primary"
                 onClick={handleSave}
-                disabled={isSaving}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm"
+                loading={isSaving}
+                leftIcon={<Save size={16} />}
+                className="px-5 py-2.5 text-sm"
               >
-                <Save size={16} />
                 {t("common.save")}
-              </button>
+              </Button>
             </div>
           )}
         </>

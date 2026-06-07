@@ -22,7 +22,7 @@ import { PanelHeader } from "../common/PanelHeader";
 import { UsersPanelSkeleton } from "../skeletons";
 import { EditorSidebar } from "../common/EditorSidebar";
 import { ConfirmDialog } from "../common/ConfirmDialog";
-import { Button, IconButton, PanelFooterActions } from "../common";
+import { Button, IconButton, Input, PanelFooterActions } from "../common";
 import { getFullUrl } from "../../services/api";
 import { Checkbox } from "../common/Checkbox";
 import { Pagination } from "../common/Pagination";
@@ -207,35 +207,27 @@ function UserFormModal({
         {/* 用户名 */}
         <div className="es-field">
           <label className="es-label">{t("users.username")}</label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-theme-text-secondary">
-              <User size={16} />
-            </div>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="glass-input es-input es-input--with-leading-icon"
-              placeholder={t("users.usernamePlaceholder")}
-            />
-          </div>
+          <Input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            leadingIcon={<User size={16} />}
+            className="es-input"
+            placeholder={t("users.usernamePlaceholder")}
+          />
         </div>
 
         {/* 邮箱 */}
         <div className="es-field">
           <label className="es-label">{t("users.email")}</label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-theme-text-secondary">
-              <Mail size={16} />
-            </div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="glass-input es-input es-input--with-leading-icon"
-              placeholder={t("users.emailPlaceholder")}
-            />
-          </div>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            leadingIcon={<Mail size={16} />}
+            className="es-input"
+            placeholder={t("users.emailPlaceholder")}
+          />
         </div>
 
         {/* 密码 */}
@@ -243,22 +235,18 @@ function UserFormModal({
           <label className="es-label">
             {t("users.password")} {isEditing && t("users.passwordHint")}
           </label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-theme-text-secondary">
-              <Lock size={16} />
-            </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="glass-input es-input es-input--with-leading-icon"
-              placeholder={
-                isEditing
-                  ? t("users.passwordPlaceholderEdit")
-                  : t("users.passwordPlaceholder")
-              }
-            />
-          </div>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            leadingIcon={<Lock size={16} />}
+            className="es-input"
+            placeholder={
+              isEditing
+                ? t("users.passwordPlaceholderEdit")
+                : t("users.passwordPlaceholder")
+            }
+          />
         </div>
 
         {/* 角色 */}

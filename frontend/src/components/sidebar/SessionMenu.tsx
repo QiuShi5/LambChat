@@ -224,7 +224,7 @@ export function SessionMenu({
               onClick={() => handleSelectProject(project.id)}
               className={`flex w-full items-center gap-2.5 px-2.5 py-2 text-sm rounded-lg transition-all duration-150 ${
                 isCurrent
-                  ? "text-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-[inset_0_0_0_1.5px_var(--theme-primary-light,theme(rgb(99_102_241/0.35)))]"
+                  ? "text-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-[inset_0_0_0_1.5px_var(--theme-primary-light)]"
                   : "text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] hover:bg-[var(--theme-bg-hover,rgba(0,0,0,0.04))]"
               }`}
             >
@@ -254,7 +254,7 @@ export function SessionMenu({
           onClick={() => handleSelectProject(null)}
           className={`flex w-full items-center gap-2.5 px-2.5 py-2 text-sm rounded-lg transition-all duration-150 ${
             currentProjectId === null
-              ? "text-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-[inset_0_0_0_1.5px_var(--theme-primary-light,theme(rgb(99_102_241/0.35)))]"
+              ? "text-[var(--theme-primary)] bg-[var(--theme-primary-light)] shadow-[inset_0_0_0_1.5px_var(--theme-primary-light)]"
               : "text-[var(--theme-text-secondary)] hover:text-[var(--theme-text)] hover:bg-[var(--theme-bg-hover,rgba(0,0,0,0.04))]"
           }`}
         >

@@ -2,9 +2,9 @@ import { useState, useCallback } from "react";
 import { Save, Plus, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { LoadingSpinner } from "../../../common/LoadingSpinner";
 import { EditorSidebar } from "../../../common/EditorSidebar";
 import { GlassSelect } from "../../../common/GlassSelect";
+import { Button, PanelFooterActions } from "../../../common";
 import { ProviderSelect } from "../../AgentPanel/shared";
 import { modelApi } from "../../../../services/api/model";
 import type {
@@ -171,19 +171,17 @@ export const ModelFormModal = ({
       }
       icon={isEditing ? <Pencil size={16} /> : <Plus size={16} />}
       footer={
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="btn-secondary">
-            {t("common.cancel")}
-          </button>
-          <button
+        <PanelFooterActions>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button
+            variant="primary"
             onClick={handleSave}
-            disabled={isSaving}
-            className="btn-primary disabled:opacity-50"
+            loading={isSaving}
+            leftIcon={<Save size={16} />}
           >
-            {isSaving ? <LoadingSpinner size="sm" /> : <Save size={16} />}
             {t("common.save")}
-          </button>
-        </div>
+          </Button>
+        </PanelFooterActions>
       }
     >
       <div className="es-form">

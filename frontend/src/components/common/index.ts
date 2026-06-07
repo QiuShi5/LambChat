@@ -42,6 +42,9 @@ export type {
 export { StatusBadge } from "./StatusBadge";
 export type { StatusBadgeProps, StatusColor } from "./StatusBadge";
 
+export { EmptyState } from "./EmptyState";
+export type { EmptyStateProps } from "./EmptyState";
+
 export { Button, IconButton, Input, Textarea, Select, FormField } from "./ui";
 export type {
   ButtonProps,

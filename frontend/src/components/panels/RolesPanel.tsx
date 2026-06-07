@@ -7,24 +7,31 @@ import {
   Shield,
   Plus,
   Edit,
-  Trash2,
   Save,
   AlertCircle,
-  Lock,
+  ShieldCheck,
   ChevronDown,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { PanelHeader } from "../common/PanelHeader";
+import { RoleDetailSidebar } from "./RoleDetailSidebar";
 import { RolesPanelSkeleton } from "../skeletons";
 import { Pagination } from "../common/Pagination";
 import { EditorSidebar } from "../common/EditorSidebar";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { Checkbox } from "../common/Checkbox";
-import { Button, IconButton, PanelFooterActions } from "../common";
+import {
+  Button,
+  IconButton,
+  Input,
+  PanelFooterActions,
+  Textarea,
+} from "../common";
 import { roleApi, authApi } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
-import { formatDate } from "../../utils/datetime";
 import { Permission } from "../../types";
 import type {
   Role,
@@ -275,12 +282,12 @@ function RoleFormModal({
         {/* 角色名称 */}
         <div className="es-field">
           <label className="es-label">{t("roles.roleName")}</label>
-          <input
+          <Input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={isSystem}
-            className="glass-input es-input px-3"
+            className="es-input px-3"
             placeholder={t("roles.roleNamePlaceholder")}
           />
         </div>
@@ -288,11 +295,11 @@ function RoleFormModal({
         {/* 描述 */}
         <div className="es-field">
           <label className="es-label">{t("roles.description")}</label>
-          <textarea
+          <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="glass-input es-textarea"
+            className="es-textarea"
             placeholder={t("roles.descriptionPlaceholder")}
           />
         </div>
@@ -300,7 +307,7 @@ function RoleFormModal({
         {/* 最大渠道数量 */}
         <div className="es-field">
           <label className="es-label">{t("roles.maxChannels")}</label>
-          <input
+          <Input
             type="number"
             min="0"
             value={maxChannels}
@@ -309,7 +316,7 @@ function RoleFormModal({
                 e.target.value === "" ? "" : Number(e.target.value),
               )
             }
-            className="glass-input es-input px-3"
+            className="es-input px-3"
             placeholder={t("roles.maxChannelsPlaceholder")}
           />
           <p className="es-hint">{t("roles.maxChannelsHint")}</p>
@@ -325,7 +332,7 @@ function RoleFormModal({
               <label className="es-label">
                 {t("roles.maxConcurrentChats")}
               </label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 value={maxConcurrentChats}
@@ -334,13 +341,13 @@ function RoleFormModal({
                     e.target.value === "" ? "" : Number(e.target.value),
                   )
                 }
-                className="glass-input es-input px-3"
+                className="es-input px-3"
                 placeholder="5"
               />
             </div>
             <div className="es-field">
               <label className="es-label">{t("roles.maxQueuedChats")}</label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 value={maxQueuedChats}
@@ -349,7 +356,7 @@ function RoleFormModal({
                     e.target.value === "" ? "" : Number(e.target.value),
                   )
                 }
-                className="glass-input es-input px-3"
+                className="es-input px-3"
                 placeholder="10"
               />
             </div>
@@ -404,7 +411,7 @@ function RoleFormModal({
               ].map(({ label, value, setter }) => (
                 <div key={label} className="es-field">
                   <label className="es-label">{t(`roles.${label}`)}</label>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     value={value}
@@ -413,7 +420,7 @@ function RoleFormModal({
                         e.target.value === "" ? "" : Number(e.target.value),
                       )
                     }
-                    className="glass-input es-input px-3"
+                    className="es-input px-3"
                     placeholder={t("roles.maxChannelsPlaceholder")}
                   />
                 </div>
@@ -509,7 +516,7 @@ export function RolesPanel() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [deleteRole, setDeleteRole] = useState<Role | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   // 权限检查
   const canManage = hasPermission(Permission.ROLE_MANAGE);
@@ -672,111 +679,91 @@ export function RolesPanel() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-3 auto-grid-cols">
             {paginatedRoles.map((role) => (
-              <div key={role.id} className="panel-card">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--glass-bg-subtle)]">
-                        <Lock size={14} className="text-theme-text-secondary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-theme-text">
-                            {role.name}
-                          </h3>
-                          {role.is_system && (
-                            <span className="rounded bg-[var(--glass-bg-subtle)] px-1.5 py-0.5 text-xs text-theme-text-secondary">
-                              {t("roles.systemRole")}
-                            </span>
-                          )}
-                        </div>
-                        {role.description && (
-                          <p className="text-sm text-theme-text-secondary">
-                            {role.description}
-                          </p>
-                        )}
-                        <p className="text-xs text-theme-text-secondary mt-0.5">
-                          {t("roles.permissionCount", {
-                            count: role.permissions.length,
-                          })}
-                        </p>
-                      </div>
-                    </div>
+              <div
+                key={role.id}
+                className="glass-card group relative flex flex-col rounded-xl p-4 sm:p-5 cursor-pointer transition-all duration-200 animate-glass-enter"
+                onClick={() => setSelectedRole(role)}
+              >
+                {/* Header badges */}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                      role.is_system
+                        ? "bg-[var(--theme-primary)]/10 text-[var(--theme-primary)]"
+                        : "bg-[var(--glass-bg-subtle)] text-[var(--theme-text-secondary)]"
+                    }`}
+                  >
+                    <ShieldCheck size={11} />
+                    {role.is_system
+                      ? t("roles.systemRole")
+                      : t("roles.customRole")}
+                  </span>
+                  <span className="text-[11px] text-[var(--theme-text-secondary)]">
+                    {t("roles.permissionCount", {
+                      count: role.permissions.length,
+                    })}
+                  </span>
+                </div>
 
-                    {/* 权限按钮 */}
-                    {expandedRoleId === role.id && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {role.permissions.map((permission) => (
-                          <span
-                            key={permission}
-                            className="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium bg-theme-bg-card text-theme-text border border-theme-border cursor-default"
-                          >
-                            {permissionLabels[permission] || permission}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                {/* Title & description */}
+                <h4 className="truncate text-base font-semibold text-[var(--theme-text)]">
+                  {role.name}
+                </h4>
+                {role.description && (
+                  <p className="mt-1 text-sm leading-relaxed text-[var(--theme-text-secondary)] line-clamp-2">
+                    {role.description}
+                  </p>
+                )}
 
-                  {/* 操作按钮 */}
-                  <div className="flex items-center gap-2">
+                {/* Permissions preview */}
+                <div className="mt-3 mb-2 flex flex-wrap gap-1.5">
+                  {role.permissions.slice(0, 3).map((perm) => (
+                    <span
+                      key={perm}
+                      className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--theme-text-secondary)]"
+                    >
+                      {permissionLabels[perm] || perm}
+                    </span>
+                  ))}
+                  {role.permissions.length > 3 && (
+                    <span className="inline-flex items-center rounded-md bg-[var(--glass-bg-subtle)] px-2 py-0.5 text-[11px] text-[var(--theme-text-secondary)]">
+                      +{role.permissions.length - 3}
+                    </span>
+                  )}
+                </div>
+
+                {/* Footer actions */}
+                {canManage && (
+                  <div className="mt-auto flex items-center gap-2 border-t border-[var(--glass-border)] pt-3 mt-3.5">
+                    <div className="ml-auto" />
                     <IconButton
-                      aria-label={
-                        expandedRoleId === role.id
-                          ? t("common.collapse")
-                          : t("common.expand")
-                      }
-                      icon={
-                        <ChevronDown
-                          size={18}
-                          className={`transition-transform duration-200 ${
-                            expandedRoleId === role.id ? "rotate-180" : ""
-                          }`}
-                        />
-                      }
-                      onClick={() =>
-                        setExpandedRoleId((prev) =>
-                          prev === role.id ? null : role.id,
-                        )
-                      }
-                      className="btn-icon"
-                      title={
-                        expandedRoleId === role.id
-                          ? t("common.collapse")
-                          : t("common.expand")
-                      }
+                      aria-label={t("common.edit")}
+                      icon={<Pencil size={14} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(role);
+                      }}
+                      size="sm"
+                      className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                      title={t("common.edit")}
                     />
-                    {canManage && (
-                      <IconButton
-                        aria-label={t("roles.edit")}
-                        icon={<Edit size={18} />}
-                        onClick={() => openEditModal(role)}
-                        title={t("roles.edit")}
-                      />
-                    )}
-                    {canManage && !role.is_system && (
+                    {!role.is_system && (
                       <IconButton
                         aria-label={t("common.delete")}
-                        icon={<Trash2 size={18} />}
-                        onClick={() => setDeleteRole(role)}
-                        className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                        icon={<Trash2 size={14} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteRole(role);
+                        }}
+                        size="sm"
+                        className="h-8 w-8 rounded-lg text-[var(--theme-text-secondary)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                         title={t("common.delete")}
                       />
                     )}
                   </div>
-                </div>
-
-                {/* 时间信息 */}
-                <div className="mt-3 flex items-center gap-4 text-xs text-theme-text-secondary">
-                  <span>
-                    {t("roles.created")}: {formatDate(role.created_at)}
-                  </span>
-                  <span>
-                    {t("roles.updated")}: {formatDate(role.updated_at)}
-                  </span>
-                </div>
+                )}
               </div>
             ))}
           </div>
@@ -820,6 +807,21 @@ export function RolesPanel() {
         onConfirm={handleDeleteRole}
         onCancel={() => setDeleteRole(null)}
       />
+
+      {/* 详情侧边栏 */}
+      {selectedRole && (
+        <RoleDetailSidebar
+          role={selectedRole}
+          permissionGroups={permissionGroups}
+          permissionLabels={permissionLabels}
+          onClose={() => setSelectedRole(null)}
+          onEdit={(role) => {
+            setSelectedRole(null);
+            openEditModal(role);
+          }}
+          onDelete={(role) => setDeleteRole(role)}
+        />
+      )}
     </div>
   );
 }

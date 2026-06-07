@@ -443,12 +443,13 @@ export function SharedPage() {
       .join("\n");
 
     setDescription(description);
-    setCanonical(window.location.href);
+    const shareUrl = getFullUrl(`/shared/${shareId}`) || window.location.href;
+    setCanonical(shareUrl);
 
     // Open Graph
     setOg("og:title", title);
     setOg("og:description", description);
-    setOg("og:url", window.location.href);
+    setOg("og:url", shareUrl);
     setOg("og:type", "article");
 
     // Twitter Card

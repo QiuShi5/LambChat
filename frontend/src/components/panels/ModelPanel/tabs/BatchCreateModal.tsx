@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { Plus, Trash2, Upload, Check, X, ListPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { LoadingSpinner } from "../../../common/LoadingSpinner";
 import { EditorSidebar } from "../../../common/EditorSidebar";
+import { Button, PanelFooterActions } from "../../../common";
 import { ProviderSelect } from "../../AgentPanel/shared";
 import { modelApi } from "../../../../services/api/model";
 import type {
@@ -186,44 +186,32 @@ export const BatchCreateModal = ({
       icon={<ListPlus size={16} />}
       width="wide"
       footer={
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="btn-secondary">
-            {t("common.cancel")}
-          </button>
+        <PanelFooterActions>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
           {batchActiveTab === "addOneByOne" ? (
-            <button
+            <Button
+              variant="primary"
               onClick={handleBatchCreateRows}
               disabled={batchSaving || validBatchRows.length === 0}
-              className="btn-primary disabled:opacity-50"
+              loading={batchSaving}
+              leftIcon={<Upload size={16} />}
             >
-              {batchSaving ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <Upload size={16} />
-              )}
               {t("agentConfig.batchCreateBtn", {
                 count: validBatchRows.length,
               })}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              variant="primary"
               onClick={handleJsonImport}
               disabled={batchSaving || !importValidation.valid}
-              className="btn-primary disabled:opacity-50"
+              loading={batchSaving}
+              leftIcon={<Upload size={16} />}
             >
-              <span className="inline-flex items-center justify-center gap-2">
-                <span className="inline-flex h-4 w-4 items-center justify-center">
-                  {batchSaving ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <Upload size={16} />
-                  )}
-                </span>
-                <span>{t("agentConfig.batchImportBtn")}</span>
-              </span>
-            </button>
+              {t("agentConfig.batchImportBtn")}
+            </Button>
           )}
-        </div>
+        </PanelFooterActions>
       }
     >
       <div className="flex flex-col h-full">

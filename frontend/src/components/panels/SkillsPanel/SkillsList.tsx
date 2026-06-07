@@ -16,6 +16,7 @@ import { SkillsPanelSkeleton } from "../../skeletons";
 import { Pagination } from "../../common/Pagination";
 import { SkillCard } from "../../skill/SkillCard";
 import { Button, IconButton } from "../../common";
+import { EmptyState } from "../../common/EmptyState";
 import type { SkillResponse } from "../../../types";
 
 interface SkillsListProps {
@@ -254,37 +255,33 @@ export function SkillsList({
       {/* Skills List */}
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 lg:px-8 lg:py-8">
         {filteredSkills.length === 0 ? (
-          <div className="skill-empty-state">
-            <div className="skill-empty-state__icon">
-              <FolderOpen size={28} />
-            </div>
-            <p className="skill-empty-state__title">
-              {hasActiveFilters
+          <EmptyState
+            icon={<FolderOpen size={28} />}
+            title={
+              hasActiveFilters
                 ? t("skills.noMatchingSkills")
-                : t("skills.noSkills")}
-            </p>
-            <p className="skill-empty-state__description">
-              {hasActiveFilters
-                ? t("skills.subtitle")
-                : t("skills.createFirst")}
-            </p>
-            {!hasActiveFilters && canWrite && (
-              <Button variant="primary" onClick={onCreate} className="mt-4">
-                <Plus size={16} />
-                <span>{t("skills.newSkill")}</span>
-              </Button>
-            )}
-            {hasActiveFilters && (
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={clearFilters}
-                className="mt-4"
-              >
-                {t("marketplace.clearFilters")}
-              </Button>
-            )}
-          </div>
+                : t("skills.noSkills")
+            }
+            description={
+              hasActiveFilters ? t("skills.subtitle") : t("skills.createFirst")
+            }
+            action={
+              !hasActiveFilters && canWrite ? (
+                <Button variant="primary" onClick={onCreate}>
+                  <Plus size={16} />
+                  <span>{t("skills.newSkill")}</span>
+                </Button>
+              ) : hasActiveFilters ? (
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={clearFilters}
+                >
+                  {t("marketplace.clearFilters")}
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="skill-grid grid auto-grid-cols gap-4">
             {paginatedSkills.map((skill) => (

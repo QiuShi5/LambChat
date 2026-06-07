@@ -32,6 +32,7 @@ import {
 } from "./shareDialogState";
 import { getTimeMs } from "../../utils/datetime";
 import { copyToClipboard } from "../../utils/clipboard";
+import { getFullUrl } from "../../services/api/config";
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -150,7 +151,8 @@ export function ShareDialog({
       });
 
       // Copy link to clipboard
-      const shareUrl = `${window.location.origin}${response.url}`;
+      const shareUrl =
+        getFullUrl(response.url) || `${window.location.origin}${response.url}`;
       await copyToClipboard(shareUrl);
       toast.success(t("share.linkCopied"));
 
@@ -165,7 +167,9 @@ export function ShareDialog({
   };
 
   const handleCopyLink = async (shareId: string) => {
-    const shareUrl = `${window.location.origin}/shared/${shareId}`;
+    const shareUrl =
+      getFullUrl(`/shared/${shareId}`) ||
+      `${window.location.origin}/shared/${shareId}`;
     await copyToClipboard(shareUrl);
     setCopiedId(shareId);
     toast.success(t("share.linkCopied"));
