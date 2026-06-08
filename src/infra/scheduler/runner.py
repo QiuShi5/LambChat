@@ -10,18 +10,23 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from src.infra.channel.manager import get_channel_coordinator
 from src.infra.chat.user_message_timestamp import format_user_message_with_timestamp
 from src.infra.logging import get_logger
 from src.infra.role.storage import RoleStorage
-from src.infra.scheduler.locks import acquire_task_lock, release_task_lock
+from src.infra.scheduler.locks import (
+    acquire_task_lock,
+    acquire_task_slot_lock,
+    release_task_lock,
+)
 from src.infra.scheduler.runtime import get_runtime_scheduler
 from src.infra.scheduler.storage import get_scheduled_task_storage
 from src.infra.session.trace_storage import get_trace_storage
 from src.infra.user.storage import UserStorage
-from src.infra.utils.datetime import utc_now
+from src.infra.utils.datetime import ensure_utc, utc_now
 from src.kernel.config import settings
 from src.kernel.schemas.scheduled_task import (
     RunStatus,
@@ -92,6 +97,21 @@ class ScheduledTaskRunner:
         if not task.enabled or task.status != "active":
             return {"skipped": True, "reason": "disabled"}
 
+        now = utc_now()
+        if trigger_type != "manual":
+            slot = self._build_schedule_slot(task, trigger_type, now)
+            if slot is not None:
+                slot_id, slot_ttl, due_at = slot
+                if due_at is not None and due_at > now:
+                    return {
+                        "skipped": True,
+                        "reason": "not_due",
+                        "next_due_at": due_at.isoformat(),
+                    }
+                slot_claimed = await acquire_task_slot_lock(task_id, slot_id, ttl=slot_ttl)
+                if not slot_claimed:
+                    return {"skipped": True, "reason": "slot_contended"}
+
         run_id = str(uuid.uuid4())
 
         # 1. Acquire distributed lock (multi-instance dedup)
@@ -107,7 +127,6 @@ class ScheduledTaskRunner:
             }
 
         # 2. Create execution record
-        now = utc_now()
         base_session_id = self._build_session_id(task_id, run_id)
         record = TaskRunRecord.model_validate(
             {
@@ -233,6 +252,39 @@ class ScheduledTaskRunner:
     @staticmethod
     def _build_session_id(task_id: str, run_id: str) -> str:
         return f"sch_{task_id}_{run_id[:8]}"
+
+    @staticmethod
+    def _build_schedule_slot(
+        task: ScheduledTask,
+        trigger_type: str,
+        now: datetime,
+    ) -> tuple[str, int, datetime | None] | None:
+        """Return a distributed schedule slot id, TTL, and optional due time."""
+        if task.run_on_start and task.total_runs == 0:
+            anchor = task.created_at or now
+            return f"run_on_start:{int(ensure_utc(anchor).timestamp())}", 86400, None
+
+        if trigger_type == TriggerType.INTERVAL.value and task.trigger_type == TriggerType.INTERVAL:
+            seconds = max(1, int(task.trigger_config.get("seconds", 1)))
+            anchor = task.last_run_at or task.created_at
+            if anchor is not None:
+                due_at = ensure_utc(anchor) + timedelta(seconds=seconds)
+                return f"interval:{int(due_at.timestamp())}", max(seconds * 2, 60), due_at
+            bucket = int(now.timestamp()) // seconds
+            return f"interval:{bucket}", max(seconds * 2, 60), None
+
+        if trigger_type == TriggerType.DATE.value and task.trigger_type == TriggerType.DATE:
+            run_date = task.trigger_config.get("run_date")
+            if run_date:
+                due_at = ensure_utc(datetime.fromisoformat(str(run_date)))
+                return f"date:{int(due_at.timestamp())}", 86400, due_at
+            return f"date:{int(now.timestamp())}", 86400, None
+
+        if trigger_type == TriggerType.CRON.value and task.trigger_type == TriggerType.CRON:
+            slot_time = now.replace(microsecond=0)
+            return f"cron:{int(slot_time.timestamp())}", 86400, None
+
+        return None
 
     async def _execute_agent(self, task: ScheduledTask, run_id: str, session_id: str) -> dict:
         """Execute the agent via BackgroundTaskManager in a dedicated session."""

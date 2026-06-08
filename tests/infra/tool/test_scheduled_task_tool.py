@@ -498,7 +498,7 @@ async def test_create_confirmation_shows_preview_and_waits(monkeypatch: pytest.M
     assert approval_kwargs["fields"] == []
     assert approval_kwargs["session_id"] == "session-1"
     assert approval_kwargs["user_id"] == "user-1"
-    assert "No scheduled task has been created yet" in approval_kwargs["message"]
+    assert "No task has been created yet" in approval_kwargs["message"]
     assert "Generate daily report" in approval_kwargs["message"]
     assert "The task will also run immediately after creation" in approval_kwargs["message"]
 

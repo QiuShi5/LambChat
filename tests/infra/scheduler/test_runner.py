@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -32,6 +33,7 @@ def _make_task(**overrides: Any) -> ScheduledTask:
         owner_id="user_1",
         timeout_seconds=60,
         max_retries=0,
+        created_at=datetime(2026, 6, 8, 5, 0, tzinfo=timezone.utc),
     )
     defaults.update(overrides)
     return ScheduledTask(**defaults)
@@ -52,6 +54,10 @@ def mock_lock():
             "src.infra.scheduler.runner.acquire_task_lock",
             new=AsyncMock(return_value="token"),
         ),
+        patch(
+            "src.infra.scheduler.runner.acquire_task_slot_lock",
+            new=AsyncMock(return_value=True),
+        ),
         patch("src.infra.scheduler.runner.release_task_lock", new=AsyncMock()),
     ):
         yield
@@ -69,6 +75,10 @@ async def test_runner_lock_ttl_covers_all_attempts(
             "src.infra.scheduler.runner.acquire_task_lock",
             new=AsyncMock(return_value="token"),
         ) as acquire_lock,
+        patch(
+            "src.infra.scheduler.runner.acquire_task_slot_lock",
+            new=AsyncMock(return_value=True),
+        ),
         patch("src.infra.scheduler.runner.release_task_lock", new=AsyncMock()),
     ):
         runner = ScheduledTaskRunner()
@@ -80,6 +90,93 @@ async def test_runner_lock_ttl_covers_all_attempts(
 
     acquire_lock.assert_awaited_once()
     assert acquire_lock.call_args.kwargs["ttl"] >= 180
+
+
+@pytest.mark.asyncio
+async def test_runner_skips_when_distributed_schedule_slot_is_claimed(
+    mock_storage: AsyncMock,
+) -> None:
+    task = _make_task()
+    mock_storage.get_task = AsyncMock(return_value=task)
+    runner = ScheduledTaskRunner()
+    runner._execute_agent = AsyncMock()  # type: ignore[method-assign]
+
+    with (
+        patch(
+            "src.infra.scheduler.runner.acquire_task_slot_lock",
+            new=AsyncMock(return_value=False),
+        ) as acquire_slot,
+        patch(
+            "src.infra.scheduler.runner.acquire_task_lock",
+            new=AsyncMock(return_value="token"),
+        ) as acquire_lock,
+    ):
+        result = await runner.run("task_1", trigger_type="interval")
+
+    assert result == {"skipped": True, "reason": "slot_contended"}
+    acquire_slot.assert_awaited_once()
+    acquire_lock.assert_not_awaited()
+    runner._execute_agent.assert_not_awaited()
+    mock_storage.create_run.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_runner_manual_run_bypasses_distributed_schedule_slot(
+    mock_storage: AsyncMock,
+) -> None:
+    task = _make_task()
+    mock_storage.get_task = AsyncMock(return_value=task)
+    runner = ScheduledTaskRunner()
+    runner._execute_agent = AsyncMock(  # type: ignore[method-assign]
+        return_value={"session_status": "completed", "session_id": "session_1"}
+    )
+
+    with (
+        patch(
+            "src.infra.scheduler.runner.acquire_task_slot_lock",
+            new=AsyncMock(return_value=False),
+        ) as acquire_slot,
+        patch(
+            "src.infra.scheduler.runner.acquire_task_lock",
+            new=AsyncMock(return_value="token"),
+        ),
+        patch("src.infra.scheduler.runner.release_task_lock", new=AsyncMock()),
+    ):
+        result = await runner.run("task_1", trigger_type="manual")
+
+    assert result["status"] == RunStatus.SUCCESS.value
+    acquire_slot.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_runner_allows_first_run_on_start_before_interval_due(
+    mock_storage: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime(2026, 6, 8, 5, 0, tzinfo=timezone.utc)
+    task = _make_task(run_on_start=True, total_runs=0, created_at=now)
+    mock_storage.get_task = AsyncMock(return_value=task)
+    monkeypatch.setattr("src.infra.scheduler.runner.utc_now", lambda: now)
+    runner = ScheduledTaskRunner()
+    runner._execute_agent = AsyncMock(  # type: ignore[method-assign]
+        return_value={"session_status": "completed", "session_id": "session_1"}
+    )
+
+    with (
+        patch(
+            "src.infra.scheduler.runner.acquire_task_slot_lock",
+            new=AsyncMock(return_value=True),
+        ) as acquire_slot,
+        patch(
+            "src.infra.scheduler.runner.acquire_task_lock",
+            new=AsyncMock(return_value="token"),
+        ),
+        patch("src.infra.scheduler.runner.release_task_lock", new=AsyncMock()),
+    ):
+        result = await runner.run("task_1", trigger_type="interval")
+
+    assert result["status"] == RunStatus.SUCCESS.value
+    assert acquire_slot.call_args.args[1].startswith("run_on_start:")
 
 
 @pytest.mark.asyncio

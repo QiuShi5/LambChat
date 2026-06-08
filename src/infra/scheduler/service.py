@@ -7,6 +7,7 @@ storage, runner, and scheduler components.
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -88,7 +89,7 @@ class ScheduledTaskService:
 
         storage = get_scheduled_task_storage()
         await storage.create_task(task)
-        self._register_to_scheduler(task)
+        self._register_to_scheduler(task, honor_run_on_start=True)
 
         logger.info(
             "[Service] created task %s agent=%s trigger=%s",
@@ -310,14 +311,19 @@ class ScheduledTaskService:
 
     # ── Internal ───────────────────────────────────
 
-    def _register_to_scheduler(self, task: ScheduledTask) -> None:
+    def _register_to_scheduler(
+        self,
+        task: ScheduledTask,
+        *,
+        honor_run_on_start: bool = False,
+    ) -> None:
         """Register a persisted task with the in-process APScheduler."""
         signature = self._scheduler_signature(task)
         scheduler = get_runtime_scheduler()
         if _managed_task_signatures.get(task.id) == signature and scheduler.has_job(task.id):
             return
 
-        trigger = self._build_trigger(task.trigger_type, task.trigger_config)
+        trigger = self._build_task_trigger(task)
         runner = get_scheduled_task_runner()
         task_id = task.id
         trigger_type_value = task.trigger_type.value
@@ -329,7 +335,7 @@ class ScheduledTaskService:
             trigger=trigger,
             handler=lambda: runner.run(task_id, trigger_type=trigger_type_value),
             enabled=task.enabled,
-            run_on_start=task.run_on_start,
+            run_on_start=bool(honor_run_on_start and task.run_on_start),
             max_instances=1,
             coalesce=True,
         )
@@ -351,17 +357,42 @@ class ScheduledTaskService:
                 "status": task.status.value,
                 "run_on_start": task.run_on_start,
                 "name": task.name,
+                "last_run_at": task.last_run_at,
+                "created_at": task.created_at,
             },
             default=str,
             sort_keys=True,
         )
 
     @staticmethod
+    def _build_task_trigger(task: ScheduledTask) -> BaseTrigger:
+        """Build a trigger for a concrete persisted task.
+
+        Interval tasks are anchored to persisted timestamps so multiple
+        processes compute the same future fire times instead of drifting from
+        each process startup time.
+        """
+        if task.trigger_type == TriggerType.INTERVAL:
+            interval_cfg = IntervalTriggerConfig(**task.trigger_config)
+            anchor = task.last_run_at or task.created_at
+            start_date = (
+                ensure_utc(anchor) + timedelta(seconds=interval_cfg.seconds)
+                if anchor is not None
+                else None
+            )
+            return IntervalTrigger(
+                seconds=interval_cfg.seconds,
+                start_date=start_date,
+                timezone="UTC",
+            )
+        return ScheduledTaskService._build_trigger(task.trigger_type, task.trigger_config)
+
+    @staticmethod
     def _build_trigger(trigger_type: TriggerType, config: dict) -> BaseTrigger:
         """Build an APScheduler trigger from the stored config dict."""
         if trigger_type == TriggerType.INTERVAL:
             interval_cfg = IntervalTriggerConfig(**config)
-            return IntervalTrigger(seconds=interval_cfg.seconds)
+            return IntervalTrigger(seconds=interval_cfg.seconds, timezone="UTC")
         if trigger_type == TriggerType.CRON:
             cron_cfg = CronTriggerConfig(**config)
             return CronTrigger(
