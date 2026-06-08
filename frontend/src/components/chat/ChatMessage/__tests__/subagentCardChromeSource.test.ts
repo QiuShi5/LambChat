@@ -7,8 +7,18 @@ const source = readFileSync(
   "utf8",
 );
 
-test("subagent complete and cancelled chrome matches todo block border treatment", () => {
-  assert.match(source, /ring-stone-200 dark:ring-stone-700\/80/);
+test("subagent card chrome uses status-colored border treatment", () => {
+  assert.match(source, /ring-amber-300\/70 dark:ring-amber-700\/50/);
+  assert.match(source, /ring-emerald-300\/60 dark:ring-emerald-800\/45/);
+  assert.match(source, /ring-red-300\/70 dark:ring-red-900\/45/);
   assert.match(source, /bg-stone-50\/80 dark:bg-stone-800\/40/);
+  assert.doesNotMatch(source, /ring-amber-200\/60/);
+  assert.doesNotMatch(source, /ring-red-200\/60/);
   assert.doesNotMatch(source, /border-theme-border\/60/);
+});
+
+test("subagent status badge does not use theme-blue border chrome", () => {
+  assert.match(source, /bg-theme-bg-card\/90 shadow-sm ring-1/);
+  assert.doesNotMatch(source, /ring-theme-border\/70/);
+  assert.doesNotMatch(source, /subagent-border-pulse/);
 });

@@ -3230,25 +3230,3 @@
     background-color 0.15s ease,
     border-color 0.15s ease;
 }
-
-/* ═══════════════════════════════════════════
-   Subagent Block — Running pulse
-   ═══════════════════════════════════════════ */
-
-@keyframes subagent-border-pulse {
-  0%,
-  100% {
-    border-color: color-mix(
-      in srgb,
-      var(--theme-border) 70%,
-      color-mix(in srgb, #f59e0b 30%, transparent)
-    );
-  }
-  50% {
-    border-color: color-mix(
-      in srgb,
-      #f59e0b 20%,
-      color-mix(in srgb, var(--theme-border) 60%, transparent)
-    );
-  }
-}
