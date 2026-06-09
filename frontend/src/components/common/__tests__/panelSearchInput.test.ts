@@ -6,6 +6,13 @@ function source(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
+function cssBlock(sourceText: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = sourceText.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  assert.ok(match, `Expected CSS block for ${selector}`);
+  return match[1];
+}
+
 const componentsCss = source("../../../styles/components.css");
 
 test("panel search inputs use an editing-safe shared input", () => {
@@ -77,8 +84,14 @@ test("panel headers move mobile actions into a search-row overflow menu", () => 
   );
   assert.match(
     componentsCss,
-    /\.panel-header__mobile-menu-accessory > :is\(\.relative, \.flex\),\s*\.panel-header__mobile-menu-item > :is\(\.relative, \.flex\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?width:\s*100%;[\s\S]*?gap:\s*0\.375rem;/,
+    /\.panel-header__mobile-menu-accessory > :is\(\.relative, \.flex, \.panel-header-actions\),\s*\.panel-header__mobile-menu-item > :is\(\.relative, \.flex, \.panel-header-actions\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?width:\s*100%;[\s\S]*?gap:\s*0\.375rem;/,
   );
+  const mobileMenuBlock = cssBlock(componentsCss, ".panel-header__mobile-menu");
+  assert.match(
+    mobileMenuBlock,
+    /width:\s*min\(18rem,\s*calc\(100vw - 2rem\)\);/,
+  );
+  assert.match(mobileMenuBlock, /min-width:\s*0;/);
   assert.match(componentsCss, /\.panel-header__mobile-more > svg/);
   assert.match(
     componentsCss,
@@ -95,6 +108,10 @@ test("panel headers move mobile actions into a search-row overflow menu", () => 
   assert.match(
     componentsCss,
     /\.panel-header__mobile-menu-item > :is\(button, a\),[\s\S]*?\.panel-header__mobile-menu-accessory \[data-filter-menu\] > button\s*\{[\s\S]*?display:\s*flex;[\s\S]*?width:\s*100%;[\s\S]*?justify-content:\s*flex-start;/,
+  );
+  assert.match(
+    componentsCss,
+    /\.panel-header__mobile-menu-item[\s\S]*?> \.panel-header-actions[\s\S]*?\[data-filter-menu\][\s\S]*?\.panel-filter-trigger,[\s\S]*?\{[\s\S]*?display:\s*flex;[\s\S]*?width:\s*100%;[\s\S]*?justify-content:\s*flex-start;/,
   );
   assert.match(
     componentsCss,
@@ -194,7 +211,9 @@ test("marketplace refresh action has a mobile menu label", () => {
 test("notification panel header aligns with shared panel spacing", () => {
   const notificationPanel = source("../../panels/NotificationPanel.tsx");
 
-  assert.match(notificationPanel, /className="btn-primary h-10"/);
+  assert.match(notificationPanel, /<PanelHeader/);
+  assert.match(notificationPanel, /<Button[\s\S]*?variant="primary"/);
+  assert.match(notificationPanel, /leftIcon=\{<Plus size=\{16\} \/>\}/);
   assert.doesNotMatch(
     notificationPanel,
     /inline-flex items-center gap-2 rounded-xl bg-stone-900 px-4 py-2\.5/,

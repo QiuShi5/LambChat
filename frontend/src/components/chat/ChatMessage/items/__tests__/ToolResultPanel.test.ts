@@ -94,3 +94,31 @@ test("tool result overlay reserves vertical safe-area spacing", () => {
     "tool result overlay should keep sidebar, center, and fullscreen panels inside vertical safe areas",
   );
 });
+
+test("tool result header truncates long titles and subtitles on narrow screens", () => {
+  const componentSource = readFileSync(
+    new URL("../ToolResultPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    componentSource,
+    /className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden"/,
+    "title row should clip overflowing text within the available header space",
+  );
+  assert.match(
+    componentSource,
+    /className="min-w-0 max-w-\[40%\] truncate font-medium text-sm text-theme-text"/,
+    "title should not expand beyond its content, but should still shrink and truncate",
+  );
+  assert.match(
+    componentSource,
+    /className="inline-flex h-5 min-w-0 max-w-\[45vw\] sm:max-w-\[min\(28rem,45%\)\] items-center justify-start overflow-hidden rounded-full bg-theme-bg-subtle px-1 text-\[10px\] font-semibold leading-none text-theme-text-secondary"/,
+    "subtitle pill should shrink, cap its responsive width, and truncate long prompt text",
+  );
+  assert.match(
+    componentSource,
+    /<span className="block min-w-0 truncate">\s*\{subtitle\}\s*<\/span>/s,
+    "subtitle text should truncate from the start edge instead of being centered inside the pill",
+  );
+});

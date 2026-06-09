@@ -37,9 +37,14 @@ export { getLangSupport } from "./getLangSupport";
 
 export { CopyButton } from "./CopyButton";
 
-export { PanelFilterSelect, PanelFooterActions } from "./PanelControls";
+export {
+  PanelFilterSelect,
+  PanelHeaderActions,
+  PanelFooterActions,
+} from "./PanelControls";
 export type {
   PanelFilterSelectProps,
+  PanelHeaderActionsProps,
   PanelFooterActionsProps,
 } from "./PanelControls";
 

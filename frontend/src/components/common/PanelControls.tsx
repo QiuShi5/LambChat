@@ -50,6 +50,20 @@ export interface PanelFooterActionsProps {
   className?: string;
 }
 
+export interface PanelHeaderActionsProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function PanelHeaderActions({
+  children,
+  className,
+}: PanelHeaderActionsProps) {
+  return (
+    <div className={cx("panel-header-actions", className)}>{children}</div>
+  );
+}
+
 export function PanelFooterActions({
   children,
   align = "end",

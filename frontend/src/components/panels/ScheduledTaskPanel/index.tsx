@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { PanelHeader } from "../../common/PanelHeader";
+import { PanelHeaderActions } from "../../common";
 import { Button } from "../../common/ui/Button";
 import { ScheduledTaskPanelSkeleton } from "../../skeletons";
 import { Pagination } from "../../common/Pagination";
@@ -347,19 +348,20 @@ export function ScheduledTaskPanel({
               <Clock size={20} className="text-stone-600 dark:text-stone-400" />
             }
             actions={
-              <div className="flex items-center gap-2">
+              <PanelHeaderActions>
                 <StatusFilter value={statusFilter} onChange={setStatusFilter} />
                 {canWrite && (
                   <Button
                     variant="primary"
                     size="md"
+                    className="panel-header-primary-action"
                     onClick={() => setIsCreating(true)}
                     leftIcon={<Plus size={16} />}
                   >
                     {t("scheduledTask.create")}
                   </Button>
                 )}
-              </div>
+              </PanelHeaderActions>
             }
           />
 

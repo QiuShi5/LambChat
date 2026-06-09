@@ -400,19 +400,19 @@ export function ToolResultPanel({
 
               {/* Title */}
               {title && (
-                <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
                   <h3
-                    className="font-medium text-sm text-theme-text truncate"
+                    className="min-w-0 max-w-[40%] truncate font-medium text-sm text-theme-text"
                     title={title}
                   >
                     {title}
                   </h3>
                   {subtitle && (
                     <span
-                      className="shrink-0 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-theme-bg-subtle px-1.5 text-[10px] font-semibold leading-none text-theme-text-secondary"
+                      className="inline-flex h-5 min-w-0 max-w-[45vw] sm:max-w-[min(28rem,45%)] items-center justify-start overflow-hidden rounded-full bg-theme-bg-subtle px-1 text-[10px] font-semibold leading-none text-theme-text-secondary"
                       title={subtitle}
                     >
-                      {subtitle}
+                      <span className="block min-w-0 truncate">{subtitle}</span>
                     </span>
                   )}
                 </div>
