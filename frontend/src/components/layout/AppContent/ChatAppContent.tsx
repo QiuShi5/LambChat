@@ -42,6 +42,7 @@ import { ChatView } from "./ChatView";
 import { shouldShowMessageOutline } from "./messageOutline";
 
 const SCHEDULED_TASK_DEFAULTS_KEY = "lambchat_scheduled_task_defaults";
+const CHAT_SKILL_LIST_PARAMS = { limit: 100 };
 
 export interface ChatAppContentProps {
   showProfileModal: boolean;
@@ -97,7 +98,7 @@ export function ChatAppContent({
     fetchSkills,
     enabledCount: totalEnabledSkillCount,
     totalCount: totalSkillCount,
-  } = useSkills({ enabled: enableSkills, listParams: { limit: 100 } });
+  } = useSkills({ enabled: enableSkills, listParams: CHAT_SKILL_LIST_PARAMS });
 
   const canReadPersonaPresets = hasPermission(Permission.PERSONA_PRESET_READ);
   const canManagePersonaPresets =
