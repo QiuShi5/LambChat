@@ -5,6 +5,7 @@ import { X, Loader2, User, Bot } from "lucide-react";
 import { sessionApi } from "../../services/api/session";
 import type { SSEEventRecord } from "../../types/session";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface SessionPreviewDialogProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ export function SessionPreviewDialog({
   const [messages, setMessages] = useState<PreviewMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const swipeRef = useSwipeToClose({ onClose, enabled: isOpen });
+  useBodyScrollLock(isOpen);
 
   const loadMessages = useCallback(async () => {
     setIsLoading(true);
@@ -95,17 +97,6 @@ export function SessionPreviewDialog({
       return () => document.removeEventListener("keydown", handler);
     }
   }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

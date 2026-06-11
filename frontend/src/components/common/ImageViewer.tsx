@@ -5,6 +5,7 @@ import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { ViewerToolbar } from "./ViewerToolbar";
 import { ViewerTopBarButton } from "./ViewerTopBarButton";
 import { downloadUrl } from "./viewerDownload";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface ImageViewerProps {
   src: string;
@@ -51,6 +52,7 @@ export function ImageViewer({
   const [initialScale, setInitialScale] = useState(1);
   const canGoPrevious = hasPrevious && !!onPrevious;
   const canGoNext = hasNext && !!onNext;
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -81,14 +83,6 @@ export function ImageViewer({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [canGoNext, canGoPrevious, isOpen, onClose, onNext, onPrevious]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;

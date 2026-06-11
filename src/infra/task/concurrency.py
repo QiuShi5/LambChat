@@ -24,6 +24,7 @@ from src.infra.async_utils import run_blocking_io
 from src.infra.session.storage import SessionUpdate
 from src.infra.storage.redis import get_redis_client
 from src.infra.task.constants import HEARTBEAT_TIMEOUT
+from src.kernel.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -544,14 +545,13 @@ class UserConcurrencyLimiter:
 
             # --- Resolve task context (Redis-first, memory fallback) ---
             task_ctx = queue_data.get("task_context")
+            executor_key = None
             if task_ctx and task_ctx.get("executor_key"):
                 # New format: context stored in Redis, executor resolved from registry
-                executor_fn = get_registered_executor(task_ctx["executor_key"])
-                if executor_fn is None:
-                    logger.error(
-                        f"No executor registered for key '{task_ctx['executor_key']}' "
-                        f"(run={run_id})"
-                    )
+                executor_key = str(task_ctx["executor_key"])
+                executor_fn = get_registered_executor(executor_key)
+                if executor_fn is None and settings.TASK_BACKEND != "arq":
+                    logger.error(f"No executor registered for key '{executor_key}' (run={run_id})")
                     await self._release_active_slot_locked(user_id, run_id)
                     return
                 dispatch_user_id = queue_data.get("user_id", user_id)
@@ -587,7 +587,32 @@ class UserConcurrencyLimiter:
                 team_id = pending.get("team_id")
                 active_goal = pending.get("active_goal")
 
-            # --- Create and run the background task ---
+            if task_ctx and settings.TASK_BACKEND == "arq":
+                await task_manager.submit_arq(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    message=message,
+                    user_id=dispatch_user_id,
+                    executor_key=executor_key or "agent_stream",
+                    disabled_tools=disabled_tools,
+                    agent_options=agent_options,
+                    attachments=attachments,
+                    run_id=run_id,
+                    disabled_skills=disabled_skills,
+                    enabled_skills=enabled_skills,
+                    persona_system_prompt=persona_system_prompt,
+                    disabled_mcp_tools=disabled_mcp_tools,
+                    display_message=task_ctx.get("display_message"),
+                    recommendation_input=task_ctx.get("recommendation_input"),
+                    trace_id=task_ctx.get("trace_id"),
+                    user_message_written=task_ctx.get("user_message_written", False),
+                    team_id=team_id,
+                    active_goal=active_goal,
+                )
+                await self._send_queue_processing_event(session_id, run_id)
+                return
+
+            # --- Create and run the background task locally ---
             async with task_manager._lock:
                 executor = task_manager._executor
                 if executor is None:
@@ -628,23 +653,26 @@ class UserConcurrencyLimiter:
                 task_manager._tasks[run_id] = task
                 task.add_done_callback(lambda t: task_manager._on_task_done(run_id, t))
 
-            # Send queue_update SSE event so frontend knows processing started
-            try:
-                from src.infra.session.dual_writer import get_dual_writer
-
-                dual_writer = get_dual_writer()
-                await dual_writer.write_event(
-                    session_id=session_id,
-                    event_type="queue_update",
-                    data={"status": "processing", "queue_position": 0},
-                    run_id=run_id,
-                )
-            except Exception as e:
-                logger.warning(f"Failed to send queue_update event: {e}")
+            await self._send_queue_processing_event(session_id, run_id)
 
         except Exception as e:
             logger.error(f"Failed to dispatch queued task: {e}")
             await self._release_active_slot_locked(user_id, run_id)
+
+    async def _send_queue_processing_event(self, session_id: str, run_id: str) -> None:
+        """Send queue_update SSE event so frontend knows processing started."""
+        try:
+            from src.infra.session.dual_writer import get_dual_writer
+
+            dual_writer = get_dual_writer()
+            await dual_writer.write_event(
+                session_id=session_id,
+                event_type="queue_update",
+                data={"status": "processing", "queue_position": 0},
+                run_id=run_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send queue_update event: {e}")
 
     async def get_queue_position(self, user_id: str, run_id: str) -> int:
         """Get current queue position for a run_id. Returns 0 if not in queue."""

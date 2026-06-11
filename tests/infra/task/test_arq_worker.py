@@ -78,6 +78,22 @@ class _FakeLimiter:
 
 
 @pytest.mark.asyncio
+async def test_worker_settings_validate_distributed_runtime_on_startup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[object] = []
+
+    def _fake_validate(settings):
+        calls.append(settings)
+
+    monkeypatch.setattr(arq_worker, "validate_distributed_runtime_settings", _fake_validate)
+
+    await arq_worker.WorkerSettings.on_startup({})
+
+    assert calls == [arq_worker.settings]
+
+
+@pytest.mark.asyncio
 async def test_run_agent_task_loads_payload_and_invokes_executor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

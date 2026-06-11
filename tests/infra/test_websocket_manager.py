@@ -29,9 +29,11 @@ class _FailingWebSocket(_FakeWebSocket):
 class _FakeRedisClient:
     def __init__(self) -> None:
         self.values: dict[str, str] = {}
+        self.sets: dict[str, set[str]] = {}
         self.expirations: dict[str, int] = {}
         self.published: list[tuple[str, str]] = []
         self.publish_subscriber_count = 1
+        self.scan_calls = 0
 
     async def get(self, key: str) -> str | None:
         return self.values.get(key)
@@ -48,6 +50,28 @@ class _FakeRedisClient:
         self.expirations.pop(key, None)
         return 1 if existed else 0
 
+    async def sadd(self, key: str, *values: str) -> int:
+        existing = self.sets.setdefault(key, set())
+        before = len(existing)
+        existing.update(values)
+        return len(existing) - before
+
+    async def srem(self, key: str, *values: str) -> int:
+        existing = self.sets.setdefault(key, set())
+        removed = 0
+        for value in values:
+            if value in existing:
+                existing.remove(value)
+                removed += 1
+        return removed
+
+    async def smembers(self, key: str) -> set[str]:
+        return set(self.sets.get(key, set()))
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        self.expirations[key] = seconds
+        return True
+
     async def keys(self, pattern: str) -> list[str]:
         if pattern.endswith("*"):
             prefix = pattern[:-1]
@@ -60,6 +84,7 @@ class _FakeRedisClient:
         match: str | None = None,
         count: int | None = None,
     ) -> tuple[int, list[str]]:
+        self.scan_calls += 1
         del count
         if not match:
             return 0, []
@@ -163,7 +188,9 @@ async def test_connect_registers_user_route_in_redis(monkeypatch: pytest.MonkeyP
     await manager.connect(websocket, "user-1")
 
     assert fake_redis.values["ws:route:user-1:instance-a"] == "1"
+    assert fake_redis.sets["ws:routes:user-1"] == {"instance-a"}
     assert fake_redis.expirations["ws:route:user-1:instance-a"] > 0
+    assert fake_redis.expirations["ws:routes:user-1"] > 0
     assert isolated_pool_flags == [True]
 
 
@@ -185,6 +212,7 @@ async def test_disconnect_removes_route_when_last_local_connection_closes(
     await manager.disconnect(websocket, "user-1")
 
     assert "ws:route:user-1:instance-a" not in fake_redis.values
+    assert "instance-a" not in fake_redis.sets["ws:routes:user-1"]
 
 
 @pytest.mark.asyncio
@@ -194,6 +222,7 @@ async def test_send_to_user_uses_instance_targeted_channels(
     fake_redis = _FakeRedisClient()
     fake_redis.values["ws:route:user-1:instance-a"] = "1"
     fake_redis.values["ws:route:user-1:instance-b"] = "2"
+    fake_redis.sets["ws:routes:user-1"] = {"instance-a", "instance-b"}
     isolated_pool_flags: list[bool] = []
     monkeypatch.setattr(
         "src.infra.websocket.create_redis_client",
@@ -232,6 +261,7 @@ async def test_send_to_user_uses_instance_targeted_channels(
         ),
     ]
     assert isolated_pool_flags == [True]
+    assert fake_redis.scan_calls == 0
 
 
 @pytest.mark.asyncio
@@ -273,6 +303,7 @@ async def test_send_to_user_with_broadcast_offloads_delivery_json_serialization(
     calls: list[object] = []
     fake_redis = _FakeRedisClient()
     fake_redis.values["ws:route:user-1:instance-a"] = "1"
+    fake_redis.sets["ws:routes:user-1"] = {"instance-a"}
     monkeypatch.setattr(
         "src.infra.websocket.create_redis_client",
         lambda isolated_pool=False: fake_redis,
@@ -344,12 +375,13 @@ async def test_handle_pubsub_message_offloads_delivery_json_parse(
 
 
 @pytest.mark.asyncio
-async def test_send_to_user_scans_routes_without_blocking_redis_keys(
+async def test_send_to_user_uses_route_set_without_scanning_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_redis = _ScanOnlyRedisClient()
     fake_redis.values["ws:route:user-1:instance-a"] = "1"
     fake_redis.values["ws:route:user-1:instance-b"] = "2"
+    fake_redis.sets["ws:routes:user-1"] = {"instance-a", "instance-b"}
     monkeypatch.setattr(
         "src.infra.websocket.create_redis_client",
         lambda isolated_pool=False: fake_redis,
@@ -368,16 +400,20 @@ async def test_send_to_user_scans_routes_without_blocking_redis_keys(
         "ws:deliver:instance-a",
         "ws:deliver:instance-b",
     ]
+    assert fake_redis.scan_calls == 0
 
 
 @pytest.mark.asyncio
-async def test_send_to_user_limits_scanned_route_keys(
+async def test_send_to_user_limits_route_set_fanout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_redis = _PagedScanRedisClient(page_size=25)
     fake_redis.values = {
         f"ws:route:user-1:instance-{index:03d}": "1"
         for index in range(websocket_module.WS_ROUTE_SCAN_LIMIT + 50)
+    }
+    fake_redis.sets["ws:routes:user-1"] = {
+        f"instance-{index:03d}" for index in range(websocket_module.WS_ROUTE_SCAN_LIMIT + 50)
     }
     monkeypatch.setattr(
         "src.infra.websocket.create_redis_client",
@@ -397,7 +433,7 @@ async def test_send_to_user_limits_scanned_route_keys(
     assert fake_redis.published[-1][0] == (
         f"ws:deliver:instance-{websocket_module.WS_ROUTE_SCAN_LIMIT - 1:03d}"
     )
-    assert fake_redis.scan_calls < 10
+    assert fake_redis.scan_calls == 0
 
 
 @pytest.mark.asyncio
@@ -406,6 +442,7 @@ async def test_send_to_user_reports_zero_when_route_channel_has_no_subscribers(
 ) -> None:
     fake_redis = _FakeRedisClient()
     fake_redis.values["ws:route:user-1:instance-a"] = "1"
+    fake_redis.sets["ws:routes:user-1"] = {"instance-a"}
     fake_redis.publish_subscriber_count = 0
     monkeypatch.setattr(
         "src.infra.websocket.create_redis_client",

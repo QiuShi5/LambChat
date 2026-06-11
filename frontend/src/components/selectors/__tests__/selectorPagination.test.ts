@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createPagedGroups } from "../selectorPagination.ts";
+import { createPagedGroups } from "../shared/selectorPagination.ts";
 
 test("createPagedGroups paginates after applying stable grouped order", () => {
   const result = createPagedGroups(

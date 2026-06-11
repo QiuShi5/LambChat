@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 # Redis key/channel design for distributed WebSocket delivery
 WS_ROUTE_PREFIX = "ws:route"
+WS_ROUTE_SET_PREFIX = "ws:routes"
 WS_DELIVERY_CHANNEL_PREFIX = "ws:deliver"
 WS_ROUTE_TTL_SECONDS = 60
 WS_ROUTE_REFRESH_INTERVAL = 20
@@ -327,11 +328,18 @@ class ConnectionManager:
             )
             if payload is None:
                 return 0
-            route_keys = await _scan_redis_keys(redis_client, f"{WS_ROUTE_PREFIX}:{user_id}:*")
-
             published = 0
-            for route_key in sorted(route_keys):
-                instance_id = route_key.rsplit(":", 1)[-1]
+            instance_ids = await redis_client.smembers(self._route_set_key(user_id))
+            for raw_instance_id in sorted(instance_ids)[:WS_ROUTE_SCAN_LIMIT]:
+                instance_id = (
+                    raw_instance_id.decode("utf-8")
+                    if isinstance(raw_instance_id, bytes)
+                    else str(raw_instance_id)
+                )
+                route_key = self._route_key_for_instance(user_id, instance_id)
+                if await redis_client.get(route_key) is None:
+                    await redis_client.srem(self._route_set_key(user_id), instance_id)
+                    continue
                 subscriber_count = await redis_client.publish(
                     self._delivery_channel(instance_id),
                     payload,
@@ -354,14 +362,26 @@ class ConnectionManager:
     def _route_key(self, user_id: str) -> str:
         return f"{WS_ROUTE_PREFIX}:{user_id}:{self._instance_id}"
 
+    @staticmethod
+    def _route_key_for_instance(user_id: str, instance_id: str) -> str:
+        return f"{WS_ROUTE_PREFIX}:{user_id}:{instance_id}"
+
+    @staticmethod
+    def _route_set_key(user_id: str) -> str:
+        return f"{WS_ROUTE_SET_PREFIX}:{user_id}"
+
     async def _sync_route_registration(self, user_id: str, connection_count: int) -> None:
         try:
             redis_client = self._get_redis()
             route_key = self._route_key(user_id)
+            route_set_key = self._route_set_key(user_id)
             if connection_count > 0:
                 await redis_client.set(route_key, str(connection_count), ex=WS_ROUTE_TTL_SECONDS)
+                await redis_client.sadd(route_set_key, self._instance_id)
+                await redis_client.expire(route_set_key, WS_ROUTE_TTL_SECONDS)
             else:
                 await redis_client.delete(route_key)
+                await redis_client.srem(route_set_key, self._instance_id)
         except Exception as e:
             logger.warning("Failed to sync WebSocket route for user %s: %s", user_id, e)
 

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { LoadingSpinner } from "./LoadingSpinner";
 
 interface ConfirmDialogProps {
@@ -29,6 +30,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  useBodyScrollLock(isOpen);
 
   // Use default values from translations if not provided
   const confirmLabel = confirmText || t("common.confirm");
@@ -36,16 +38,8 @@ export function ConfirmDialog({
 
   useEffect(() => {
     if (isOpen) {
-      // Focus the confirm button when dialog opens
       confirmButtonRef.current?.focus();
-      // Prevent body scroll
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isOpen]);
 
   useEffect(() => {

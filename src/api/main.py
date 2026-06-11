@@ -51,6 +51,7 @@ from src.api.routes.agent import config as agent_config
 from src.api.routes.agent import model as agent_model
 from src.frontend_resolution import resolve_frontend_target
 from src.infra.async_utils import run_blocking_io
+from src.infra.distributed_validation import validate_distributed_runtime_settings
 from src.infra.local_filesystem import ensure_local_filesystem_dirs
 from src.infra.logging import get_logger, setup_logging
 from src.infra.monitoring import get_memory_monitor
@@ -443,6 +444,8 @@ async def lifespan(app: FastAPI):
     # 从数据库初始化设置
     await initialize_settings()
     logger.info("Settings initialized from database")
+
+    validate_distributed_runtime_settings(settings)
 
     # 初始化本地文件系统目录（使用数据库覆盖后的最终配置）
     ensure_local_filesystem_dirs(settings)

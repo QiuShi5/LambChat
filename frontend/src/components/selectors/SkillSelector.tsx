@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   Sparkles,
   ChevronRight,
-  X,
   Plus,
   FileCode,
   Store,
@@ -17,10 +16,17 @@ import { Checkbox } from "../common/Checkbox";
 import type { SkillResponse, SkillSource } from "../../types";
 import { collectSkillTags, skillMatchesQuery } from "../../utils/skillFilters";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useClientPagination } from "../../hooks/useClientPagination";
 import { Pagination } from "../common/Pagination";
-import { createPagedGroups } from "./selectorPagination";
-import { SelectorModalPortal } from "./SelectorModal";
+import {
+  createPagedGroups,
+  SelectorActionBar,
+  SelectorActionButton,
+  SelectorModalHeader,
+  SelectorModalPortal,
+  SelectorModalShell,
+} from "./shared";
 
 interface SkillSelectorProps {
   skills: SkillResponse[];
@@ -77,17 +83,7 @@ export function SkillSelector({
     enabled: isOpen,
   });
 
-  // 锁定滚动
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   // 按来源分组 - 使用 useMemo 缓存计算结果
   const filteredSkills = useMemo(
@@ -177,49 +173,25 @@ export function SkillSelector({
   };
 
   const ModalContent = () => (
-    <div
-      ref={swipeRef as React.RefObject<HTMLDivElement>}
-      className="sm:rounded-2xl rounded-t-2xl shadow-2xl w-full sm:w-[40%] sm:min-w-[600px] min-h-[40vh] sm:max-h-[80vh] max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden"
-      style={{ background: "var(--theme-bg-card)" }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b"
-        style={{ borderColor: "var(--theme-border)" }}
-      >
-        {/* Mobile drag handle */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-2 w-10 h-1 rounded-full bg-stone-300 dark:bg-stone-600 sm:hidden" />
-        <div className="flex items-center gap-3 mt-2 sm:mt-0">
-          <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 dark:from-amber-500/20 dark:to-orange-500/20 flex items-center justify-center">
-            <Sparkles
-              size={16}
-              className="text-stone-500 dark:text-amber-400 sm:w-[18px] sm:h-[18px]"
-            />
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-semibold text-stone-900 dark:text-stone-100 font-serif">
-              {t("skillSelector.title")}
-            </h2>
-            <p className="text-xs sm:text-xs text-stone-500 dark:text-stone-400">
-              {t("skillSelector.selected", {
-                enabled: enabledCount,
-                total: totalCount,
-              })}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 active:bg-stone-200 dark:active:bg-stone-600 transition-colors"
-        >
-          <X size={18} className="text-stone-400 dark:text-stone-500" />
-        </button>
-      </div>
+    <SelectorModalShell ref={swipeRef as React.RefObject<HTMLDivElement>}>
+      <SelectorModalHeader
+        icon={
+          <Sparkles
+            size={16}
+            className="text-stone-500 dark:text-amber-400 sm:w-[18px] sm:h-[18px]"
+          />
+        }
+        title={t("skillSelector.title")}
+        subtitle={t("skillSelector.selected", {
+          enabled: enabledCount,
+          total: totalCount,
+        })}
+        onClose={() => setIsOpen(false)}
+      />
 
       {/* Actions */}
-      <div className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 border-b border-stone-200/80 dark:border-stone-700/80 bg-stone-50/80 dark:bg-stone-800/50">
-        <button
+      <SelectorActionBar>
+        <SelectorActionButton
           onClick={async () => {
             const changedCount = totalCount - enabledCount;
             if (changedCount === 0) {
@@ -229,12 +201,12 @@ export function SkillSelector({
             showBatchToggleToast(true, changedCount, ok);
           }}
           disabled={personaControlled || isMutating || allSkillsEnabled}
-          className="px-3 py-2 sm:py-1.5 text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-700 active:bg-stone-200 dark:active:bg-stone-600 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          className="disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("skillSelector.selectAll")}
-        </button>
+        </SelectorActionButton>
         <div className="w-px h-4 bg-stone-200 dark:bg-stone-700" />
-        <button
+        <SelectorActionButton
           onClick={async () => {
             if (enabledCount === 0) {
               return;
@@ -243,23 +215,22 @@ export function SkillSelector({
             showBatchToggleToast(false, enabledCount, ok);
           }}
           disabled={personaControlled || isMutating || noSkillsEnabled}
-          className="px-3 py-2 sm:py-1.5 text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-700 active:bg-stone-200 dark:active:bg-stone-600 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          className="disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("skillSelector.deselectAll")}
-        </button>
+        </SelectorActionButton>
         <div className="flex-1" />
-        <button
-          type="button"
+        <SelectorActionButton
+          accent
           onClick={() => {
             setIsOpen(false);
             navigate("/skills");
           }}
-          className="flex items-center gap-1 px-3 py-2 sm:py-1.5 text-xs font-medium text-stone-500 dark:text-amber-400 hover:text-stone-700 dark:hover:text-amber-300 hover:bg-stone-100 dark:hover:bg-amber-500/10 active:bg-stone-200 dark:active:bg-amber-500/20 rounded-lg transition-colors"
         >
           <Plus size={14} />
           <span>{t("skillSelector.manage")}</span>
-        </button>
-      </div>
+        </SelectorActionButton>
+      </SelectorActionBar>
 
       {personaControlled && (
         <div className="border-b border-blue-200/70 bg-blue-50/80 px-4 py-3 text-xs leading-relaxed text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200 sm:px-5">
@@ -489,7 +460,7 @@ export function SkillSelector({
           {t("skillSelector.done")}
         </button>
       </div>
-    </div>
+    </SelectorModalShell>
   );
 
   // When controlled externally, only render the modal — no trigger button

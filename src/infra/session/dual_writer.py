@@ -158,6 +158,8 @@ class DualEventWriter:
         self._flush_event.set()  # 初始状态为已就绪
         self._flush_task: asyncio.Task[None] | None = None
         self._flush_task_waiting = False
+        self._mongo_buffer_dropped_total = 0
+        self._mongo_buffer_last_drop: dict[str, Any] | None = None
 
     @property
     def redis(self) -> RedisStorage:
@@ -233,6 +235,13 @@ class DualEventWriter:
                     keep_count = mongo_buffer_max // 2
                     dropped_count = buffer_size - keep_count
                     self._mongo_buffer = self._mongo_buffer[-keep_count:] if keep_count else []
+                    self._mongo_buffer_dropped_total += dropped_count
+                    self._mongo_buffer_last_drop = {
+                        "dropped_count": dropped_count,
+                        "buffer_size": buffer_size,
+                        "buffer_max": mongo_buffer_max,
+                        "timestamp": timestamp.isoformat(),
+                    }
                     logger.error(
                         f"MongoDB buffer exceeded {mongo_buffer_max}, dropped {dropped_count} oldest entries. "
                         f"This indicates MongoDB is slow or down. Check MongoDB health!"
@@ -259,6 +268,16 @@ class DualEventWriter:
                 await self.flush_mongo_buffer()
 
         return redis_success
+
+    def get_diagnostics(self) -> dict[str, Any]:
+        """Return lightweight writer diagnostics for health checks and tests."""
+        return {
+            "mongo_buffer_size": len(self._mongo_buffer),
+            "mongo_buffer_max": _get_mongo_buffer_max(),
+            "mongo_buffer_dropped_total": self._mongo_buffer_dropped_total,
+            "mongo_buffer_last_drop": self._mongo_buffer_last_drop,
+            "ttl_tracked_streams": len(self._ttl_set_keys),
+        }
 
     def _on_flush_task_done(self, task: asyncio.Task[None]) -> None:
         if self._flush_task is task:

@@ -73,6 +73,8 @@ spec:
             secretKeyRef:
               name: lambchat-secrets
               key: redis-password
+        - name: LAMBCHAT_DISTRIBUTED_MODE
+          value: "true"
         - name: SESSION_BACKEND
           value: "redis"
         - name: TASK_BACKEND

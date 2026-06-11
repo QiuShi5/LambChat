@@ -4,7 +4,9 @@ import asyncio
 from importlib import import_module
 from typing import Any
 
+from src.infra.distributed_validation import validate_distributed_runtime_settings
 from src.infra.logging import get_logger
+from src.kernel.config import settings
 
 from .arq_payloads import TaskArqPayloadStore
 from .concurrency import get_concurrency_limiter, get_registered_executor
@@ -13,6 +15,12 @@ from .manager import get_task_manager
 from .status import TaskStatus
 
 logger = get_logger(__name__)
+
+
+async def worker_startup(ctx: dict[str, Any]) -> None:
+    """Validate worker runtime configuration before accepting jobs."""
+    del ctx
+    validate_distributed_runtime_settings(settings)
 
 
 def _resolve_executor(executor_key: str) -> Any:
@@ -146,3 +154,4 @@ async def run_agent_task(ctx: dict[str, Any], run_id: str) -> None:
 
 class WorkerSettings:
     functions = [run_agent_task]
+    on_startup = worker_startup

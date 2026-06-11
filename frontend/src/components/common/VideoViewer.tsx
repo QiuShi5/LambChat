@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { X, Download } from "lucide-react";
 import { ViewerTopBarButton } from "./ViewerTopBarButton";
 import { downloadUrl } from "./viewerDownload";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface VideoViewerProps {
   src: string;
@@ -15,6 +16,7 @@ interface VideoViewerProps {
 export function VideoViewer({ src, isOpen, onClose, title }: VideoViewerProps) {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (isOpen && videoRef.current) {
@@ -30,14 +32,6 @@ export function VideoViewer({ src, isOpen, onClose, title }: VideoViewerProps) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen && videoRef.current) {

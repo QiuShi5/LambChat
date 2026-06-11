@@ -7,6 +7,7 @@ import { teamApi } from "../../services/api/team";
 import type { Team } from "../../types/team";
 import { TeamAvatar } from "./TeamAvatar";
 import { getTeamFallbackAvatar, getTeamFallbackTag } from "./teamAvatarUtils";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface TeamPickerModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function TeamPickerModal({
   const [teams, setTeams] = useState<Team[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -38,15 +40,6 @@ export function TeamPickerModal({
       .then((res) => setTeams(res.teams))
       .catch((err) => console.error("Failed to load teams:", err))
       .finally(() => setLoading(false));
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
   }, [isOpen]);
 
   useEffect(() => {

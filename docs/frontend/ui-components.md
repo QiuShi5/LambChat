@@ -157,6 +157,33 @@ Header-level commands in admin shells should use `Button` or `IconButton`
 directly through `PanelHeader.actions`; keep tab/navigation buttons local when
 their selected-state styling is part of the panel layout.
 
+## Selector Modal Helpers
+
+Selector modals have local shared wrappers in `frontend/src/components/selectors/shared`.
+They are intentionally selector-scoped rather than exported from `common`:
+
+```tsx
+import {
+  SelectorActionBar,
+  SelectorActionButton,
+  SelectorModalHeader,
+  SelectorModalPortal,
+  SelectorModalShell,
+} from "./shared";
+```
+
+Use these helpers for selector-style bottom sheets and desktop centered modals
+that need to match `SkillSelector`, `ToolSelector`, or `AgentModeSelector`.
+They preserve the existing selector container, header, drag-handle, close
+button, and action-row class strings. Keep feature-specific rows, filters, and
+footer buttons inside the owning selector unless at least two selectors share
+the same structure.
+
+Selector modals and common overlay/viewer surfaces should use
+`useBodyScrollLock(open)` instead of hand-written
+`document.body.style.overflow` effects. The hook preserves the previous body
+overflow value and restores it on close or unmount.
+
 ## Migration Rules
 
 New generic frontend controls should use these primitives instead of adding new ad hoc class combinations.

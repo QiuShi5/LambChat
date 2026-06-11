@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ShieldCheck, Mail, ExternalLink, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "../../hooks/useSettings";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface ContactAdminDialogProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export function ContactAdminDialog({
   const { t } = useTranslation();
   const { getSettingValue } = useSettings();
   const closeRef = useRef<HTMLButtonElement>(null);
+  useBodyScrollLock(isOpen);
 
   const adminEmail = getSettingValue("ADMIN_CONTACT_EMAIL") as string | null;
   const adminUrl = getSettingValue("ADMIN_CONTACT_URL") as string | null;
@@ -25,13 +27,7 @@ export function ContactAdminDialog({
   useEffect(() => {
     if (isOpen) {
       closeRef.current?.focus();
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isOpen]);
 
   useEffect(() => {

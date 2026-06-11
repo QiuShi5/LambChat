@@ -26,6 +26,7 @@ import type {
 } from "../../types";
 import { sessionApi } from "../../services/api/session";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import {
   shouldLoadRunsForShareType,
   shouldShowExistingSharesSkeleton,
@@ -65,6 +66,7 @@ export function ShareDialog({
     onClose,
     enabled: isOpen,
   });
+  useBodyScrollLock(isOpen);
 
   const loadExistingShares = useCallback(async () => {
     setIsLoading(true);
@@ -213,18 +215,6 @@ export function ShareDialog({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

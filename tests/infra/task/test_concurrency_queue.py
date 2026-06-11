@@ -266,7 +266,10 @@ async def test_remove_from_queue_rewrites_kept_entries_in_chunks(
 
 
 @pytest.mark.asyncio
-async def test_locked_dequeue_dispatch_failure_releases_slot_without_reacquiring_lock() -> None:
+async def test_locked_dequeue_dispatch_failure_releases_slot_without_reacquiring_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("src.kernel.config.settings.TASK_BACKEND", "local")
     entry = json.dumps(
         {
             "run_id": "run-1",
@@ -488,3 +491,80 @@ async def test_dequeue_offloads_queue_entry_json_parse(
 
     assert calls == [json.loads]
     assert limiter.dispatched == ["queued-run"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_queued_task_uses_arq_backend_without_local_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arq_calls: list[dict[str, Any]] = []
+    local_submit_calls: list[dict[str, Any]] = []
+
+    class _FakeTaskManager:
+        _executor = object()
+        _lock = None
+
+        async def submit_arq(self, **kwargs):
+            arq_calls.append(kwargs)
+            return kwargs["run_id"], kwargs.get("trace_id") or ""
+
+        async def submit(self, **kwargs):
+            local_submit_calls.append(kwargs)
+            return kwargs["run_id"], kwargs.get("trace_id") or ""
+
+    async def _fake_executor(*args, **kwargs):
+        del args, kwargs
+        if False:
+            yield None
+
+    created_tasks: list[Any] = []
+
+    def _fail_create_task(coro):
+        created_tasks.append(coro)
+        raise AssertionError("arq queued dispatch must not create a local asyncio task")
+
+    limiter = UserConcurrencyLimiter()
+    limiter._redis = _DispatchRedis("{}")
+    queue_data = {
+        "run_id": "queued-run",
+        "session_id": "session-1",
+        "user_id": "user-1",
+        "task_context": {
+            "executor_key": "agent_stream",
+            "agent_id": "default",
+            "message": "hello",
+            "display_message": "hello visible",
+            "disabled_tools": ["shell"],
+            "agent_options": {"model": "test-model"},
+            "attachments": [{"name": "a.txt"}],
+            "trace_id": "trace-1",
+            "user_message_written": True,
+            "disabled_skills": ["skill-a"],
+            "enabled_skills": ["skill-b"],
+            "persona_system_prompt": "persona",
+            "disabled_mcp_tools": ["mcp.tool"],
+            "team_id": "team-1",
+            "active_goal": {"objective": "ship it"},
+            "recommendation_input": "hello",
+        },
+    }
+
+    monkeypatch.setattr("src.kernel.config.settings.TASK_BACKEND", "arq")
+    monkeypatch.setattr("src.infra.task.manager.get_task_manager", lambda: _FakeTaskManager())
+    monkeypatch.setattr(concurrency, "get_registered_executor", lambda key: _fake_executor)
+    monkeypatch.setattr(concurrency.asyncio, "create_task", _fail_create_task)
+
+    await limiter._dispatch_queued_task("user-1", "queued-run", "session-1", queue_data)
+
+    assert local_submit_calls == []
+    assert created_tasks == []
+    assert len(arq_calls) == 1
+    call = arq_calls[0]
+    assert call["session_id"] == "session-1"
+    assert call["run_id"] == "queued-run"
+    assert call["executor_key"] == "agent_stream"
+    assert call["trace_id"] == "trace-1"
+    assert call["user_message_written"] is True
+    assert call["display_message"] == "hello visible"
+    assert call["recommendation_input"] == "hello"
+    assert call["active_goal"] == {"objective": "ship it"}

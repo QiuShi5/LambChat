@@ -1,15 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, X } from "lucide-react";
+import { Bot } from "lucide-react";
 import i18n from "../../i18n";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { AgentIcon } from "../agent/AgentIcon";
 import {
   resolveAgentDescription,
   resolveAgentDisplayName,
 } from "../agent/agentCatalog";
 import type { AgentCatalogLabels } from "../../types";
-import { SelectorModalPortal } from "./SelectorModal";
+import {
+  SelectorModalHeader,
+  SelectorModalPortal,
+  SelectorModalShell,
+} from "./shared";
 
 interface AgentModeSelectorProps {
   agents: {
@@ -42,18 +47,9 @@ export function AgentModeSelector({
     ? resolveAgentDisplayName(current, i18n.language, t)
     : "";
   const sheetRef = useSwipeToClose({ onClose: () => setOpen(false) });
+  useBodyScrollLock(open);
 
   const handleClose = useCallback(() => setOpen(false), [setOpen]);
-
-  // Prevent background scroll when modal is open, restore previous value on close
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [open]);
 
   // Close on Escape
   useEffect(() => {
@@ -68,41 +64,20 @@ export function AgentModeSelector({
   if (agents.length <= 1 || !onSelectAgent) return null;
 
   const ModalContent = () => (
-    <div
-      ref={sheetRef as React.Ref<HTMLDivElement>}
-      className="sm:rounded-2xl rounded-t-2xl shadow-2xl w-full sm:w-[40%] sm:min-w-[600px] min-h-[40vh] sm:max-h-[80vh] max-h-[85vh] max-h-[85dvh] flex flex-col overflow-hidden"
-      style={{ background: "var(--theme-bg-card)" }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b relative"
-        style={{ borderColor: "var(--theme-border)" }}
-      >
-        <div className="absolute left-1/2 -translate-x-1/2 top-2 w-10 h-1 rounded-full bg-stone-300 dark:bg-stone-600 sm:hidden" />
-        <div className="flex items-center gap-3 mt-2 sm:mt-0">
-          <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-stone-100 to-stone-200 dark:from-amber-500/20 dark:to-orange-500/20 flex items-center justify-center">
-            <Bot
-              size={16}
-              className="text-stone-500 dark:text-amber-400 sm:w-[18px] sm:h-[18px]"
-            />
-          </div>
-          <div>
-            <h2 className="text-sm sm:text-base font-semibold text-stone-900 dark:text-stone-100 font-serif">
-              {t("agent.selectMode", "选择模式")}
-            </h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              {t("agent.selectModeDesc", "切换智能体模式")}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleClose}
-          className="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 active:bg-stone-200 dark:active:bg-stone-600 transition-colors"
-        >
-          <X size={18} className="text-stone-400 dark:text-stone-500" />
-        </button>
-      </div>
+    <SelectorModalShell ref={sheetRef as React.Ref<HTMLDivElement>}>
+      <SelectorModalHeader
+        className="relative"
+        icon={
+          <Bot
+            size={16}
+            className="text-stone-500 dark:text-amber-400 sm:w-[18px] sm:h-[18px]"
+          />
+        }
+        title={t("agent.selectMode", "选择模式")}
+        subtitle={t("agent.selectModeDesc", "切换智能体模式")}
+        subtitleClassName="text-xs text-stone-500 dark:text-stone-400"
+        onClose={handleClose}
+      />
 
       {/* Agent list */}
       <div className="flex-1 overflow-y-auto py-2 sm:py-4 px-4 space-y-1.5">
@@ -186,7 +161,7 @@ export function AgentModeSelector({
           {t("common.done", "完成")}
         </button>
       </div>
-    </div>
+    </SelectorModalShell>
   );
 
   // When controlled externally, only render the modal — no trigger button

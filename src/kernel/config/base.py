@@ -7,7 +7,7 @@ import secrets
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field, PrivateAttr, field_validator
 from pydantic_settings import BaseSettings
 
 from src.infra.logging import get_logger
@@ -339,6 +339,9 @@ class Settings(BaseSettings):
     IMAGE_GENERATION_MODEL: str = "gpt-image-2"
     IMAGE_GENERATION_TIMEOUT: int = 120
 
+    _jwt_secret_key_generated: bool = PrivateAttr(False)
+    _mcp_encryption_salt_generated: bool = PrivateAttr(False)
+
     model_config = {
         "env_file": str(PROJECT_ROOT / ".env"),
         "env_file_encoding": "utf-8",
@@ -351,6 +354,7 @@ class Settings(BaseSettings):
         # Generate random JWT_SECRET_KEY if not set or using placeholder
         if not self.JWT_SECRET_KEY or self.JWT_SECRET_KEY == "your-secret-key-change-in-production":
             self.JWT_SECRET_KEY = secrets.token_urlsafe(32)
+            self._jwt_secret_key_generated = True
             logger.warning(
                 "JWT_SECRET_KEY not set or using placeholder value. "
                 f"Generated random secret key: {self.JWT_SECRET_KEY[:8]}..."
@@ -368,6 +372,7 @@ class Settings(BaseSettings):
         # Generate random MCP_ENCRYPTION_SALT if not set
         if not self.MCP_ENCRYPTION_SALT:
             self.MCP_ENCRYPTION_SALT = secrets.token_urlsafe(16)
+            self._mcp_encryption_salt_generated = True
             logger.info("MCP_ENCRYPTION_SALT not set, generated random salt")
         # Expand short MCP_ENCRYPTION_SALT to meet minimum length requirement
         elif len(self.MCP_ENCRYPTION_SALT) < MCP_ENCRYPTION_SALT_MIN_LENGTH:

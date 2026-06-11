@@ -4,6 +4,7 @@ import { ThumbsUp, ThumbsDown, X, Send } from "lucide-react";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { useSwipeToClose } from "../../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import type { RatingValue } from "../../../types/feedback";
 
 interface FeedbackDialogProps {
@@ -30,6 +31,7 @@ export function FeedbackDialog({
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const swipeRef = useSwipeToClose({ onClose, enabled: isOpen });
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {
@@ -50,17 +52,6 @@ export function FeedbackDialog({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose, onSubmit]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

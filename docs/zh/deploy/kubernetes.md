@@ -21,7 +21,7 @@ K8s 清单（`k8s/lambchat.yaml`）创建以下资源：
 | 资源 | 名称 | 说明 |
 |------|------|------|
 | 命名空间 | `lambchat` | 所有资源的隔离命名空间 |
-| Deployment | `lambchat` | LambChat 应用 Pod |
+| Deployment | `lambchat` | LambChat API/Web Pod，每个 Pod 内嵌一个 arq worker |
 | Service | `lambchat` | 应用服务 |
 
 生产扩容时，请将 MongoDB 和 Redis 部署为托管服务或独立的高可用工作负载。
@@ -41,8 +41,12 @@ env:
     value: "mongodb://mongo.example.internal:27017"
   - name: REDIS_URL
     value: "redis://redis.example.internal:6379/0"
+  - name: LAMBCHAT_DISTRIBUTED_MODE
+    value: "true"
   - name: TASK_BACKEND
     value: "arq"
+  - name: ARQ_EMBEDDED_WORKER
+    value: "true"
   - name: S3_ENABLED
     value: "true"
   - name: ENABLE_LOCAL_FILESYSTEM_FALLBACK
@@ -99,7 +103,7 @@ spec:
 ## 扩缩容
 
 ```bash
-# 扩展应用副本数
+# 扩展对称 API/Web + 内嵌 arq worker Pod
 kubectl scale deployment lambchat --replicas=3 -n lambchat
 ```
 
@@ -109,6 +113,16 @@ kubectl scale deployment lambchat --replicas=3 -n lambchat
 - Redis：发布/订阅、WebSocket 路由、任务队列、分布式锁和缓存。
 - S3 兼容对象存储：上传文件和生成产物。
 - 稳定共享密钥，例如 `JWT_SECRET_KEY` 和 `MCP_ENCRYPTION_SALT`。
+
+多副本部署应设置 `LAMBCHAT_DISTRIBUTED_MODE=true`。在该模式下，如果 API 或
+worker 进程检测到随机生成的运行时密钥，或检测到本地上传存储配置，会在启动时
+直接失败，避免副本间状态不一致。
+
+默认清单使用对称应用 Pod：每个 `lambchat` Pod 同时处理 HTTP/WebSocket 请求，
+并运行一个内嵌 arq worker。arq job、payload、取消信号和并发槽位都通过
+Redis/MongoDB 协调，因此该拓扑支持分布式部署。如果你希望更强的资源隔离，可以
+在 API Deployment 中设置 `ARQ_EMBEDDED_WORKER=false`，并通过
+`arq src.infra.task.arq_worker.WorkerSettings` 单独运行 worker Pod。
 
 运行多个应用 Pod 时，不要使用本地上传存储，也不要开启
 `ENABLE_LOCAL_FILESYSTEM_FALLBACK=true`。

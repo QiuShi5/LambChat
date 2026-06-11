@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Trash2, FolderInput, X } from "lucide-react";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { LoadingSpinner } from "./LoadingSpinner";
 
 interface DeleteProjectDialogProps {
@@ -21,17 +22,12 @@ export function DeleteProjectDialog({
 }: DeleteProjectDialogProps) {
   const { t } = useTranslation();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (isOpen) {
       cancelRef.current?.focus();
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [isOpen]);
 
   useEffect(() => {

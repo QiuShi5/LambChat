@@ -24,6 +24,7 @@ import { ProfileToolsTab } from "./tabs/ProfileToolsTab";
 import { ProfileModelsTab } from "./tabs/ProfileModelsTab";
 import { ProfileTermsTab } from "./tabs/ProfileTermsTab";
 import { useSwipeToClose } from "../../hooks/useSwipeToClose";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 
 interface ProfileModalProps {
   showProfileModal: boolean;
@@ -68,6 +69,7 @@ export function ProfileModal({
     onClose: onCloseProfileModal,
     enabled: showProfileModal,
   });
+  useBodyScrollLock(showProfileModal);
 
   // Auto-scroll to active tab on mobile
   useEffect(() => {
@@ -81,18 +83,6 @@ export function ProfileModal({
   // Reset tab when modal opens
   useEffect(() => {
     if (showProfileModal) setActiveTab("info");
-  }, [showProfileModal]);
-
-  // Body scroll lock
-  useEffect(() => {
-    if (showProfileModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [showProfileModal]);
 
   // ESC key to close

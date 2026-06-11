@@ -36,6 +36,13 @@ _CHECKPOINT_AFFECTED_SETTINGS = {
 }
 
 
+def _mark_runtime_secret_as_explicit(key: str) -> None:
+    if key == "JWT_SECRET_KEY":
+        settings._jwt_secret_key_generated = False
+    elif key == "MCP_ENCRYPTION_SALT":
+        settings._mcp_encryption_salt_generated = False
+
+
 async def _reset_checkpoint_runtime_state(reason: str) -> None:
     try:
         from src.infra.storage.checkpoint import reset_checkpointer_runtime_state
@@ -84,6 +91,7 @@ async def initialize_settings() -> None:
                 # Only update if the field exists in Settings class
                 if hasattr(settings, item.key):
                     setattr(settings, item.key, item.value)
+                    _mark_runtime_secret_as_explicit(item.key)
                     loaded_count += 1
 
     logger.info(f"[Settings] Loaded {loaded_count} settings into cache")
@@ -129,6 +137,7 @@ async def refresh_settings(key: Optional[str] = None) -> None:
         ):
             _settings_cache[key] = setting.value
             setattr(settings, key, setting.value)
+            _mark_runtime_secret_as_explicit(key)
             # Clear LLM model cache if this setting affects it
             if key in llm_affected_settings:
                 from src.infra.llm.client import LLMClient
@@ -160,6 +169,7 @@ async def refresh_settings(key: Optional[str] = None) -> None:
                 ):
                     _settings_cache[item.key] = item.value
                     setattr(settings, item.key, item.value)
+                    _mark_runtime_secret_as_explicit(item.key)
                     if item.key in llm_affected_settings:
                         any_llm_setting_changed = True
                     if item.key in memory_affected_settings:

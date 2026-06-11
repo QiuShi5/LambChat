@@ -96,3 +96,9 @@ POSTGRES_PASSWORD=your_pg_password
 POSTGRES_DB=langgraph
 CHECKPOINT_BACKEND=postgres
 ```
+
+For multi-replica production deployments, `ARQ_EMBEDDED_WORKER=true` is a valid
+symmetric-node topology: each API pod also runs one arq worker and coordinates
+jobs through Redis. If you need stricter resource isolation, set
+`ARQ_EMBEDDED_WORKER=false` on API pods and run dedicated arq worker pods with
+`arq src.infra.task.arq_worker.WorkerSettings`.

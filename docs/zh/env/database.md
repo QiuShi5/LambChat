@@ -96,3 +96,8 @@ POSTGRES_PASSWORD=your_pg_password
 POSTGRES_DB=langgraph
 CHECKPOINT_BACKEND=postgres
 ```
+
+多副本生产部署中，`ARQ_EMBEDDED_WORKER=true` 是有效的对称节点拓扑：每个
+API Pod 同时运行一个 arq worker，并通过 Redis 协调 job。如果你需要更强的资源
+隔离，可以在 API Pod 设置 `ARQ_EMBEDDED_WORKER=false`，并通过
+`arq src.infra.task.arq_worker.WorkerSettings` 运行专用 arq worker Pod。

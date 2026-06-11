@@ -397,6 +397,42 @@ async def test_flush_mongo_buffer_offloads_bulk_operation_building(
 
 
 @pytest.mark.asyncio
+async def test_mongo_buffer_overflow_updates_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(dual_writer, "_get_mongo_buffer_max", lambda: 4)
+
+    writer = dual_writer.DualEventWriter()
+    writer._redis = _FakeRedis()
+    writer._flush_event.clear()
+    writer._mongo_buffer = [
+        (
+            f"trace-{index}",
+            "message:chunk",
+            {"content": str(index)},
+            "session-1",
+            "run-1",
+            datetime(2026, 1, 1),
+        )
+        for index in range(4)
+    ]
+
+    await writer.write_event(
+        session_id="session-1",
+        event_type="message:chunk",
+        data={"content": "new"},
+        trace_id="trace-new",
+        run_id="run-1",
+    )
+
+    diagnostics = writer.get_diagnostics()
+
+    assert diagnostics["mongo_buffer_dropped_total"] == 2
+    assert diagnostics["mongo_buffer_last_drop"]["dropped_count"] == 2
+    assert diagnostics["mongo_buffer_size"] == 3
+
+
+@pytest.mark.asyncio
 async def test_close_dual_writer_flushes_and_releases_singleton() -> None:
     writer = dual_writer.DualEventWriter()
     flush_calls = 0
