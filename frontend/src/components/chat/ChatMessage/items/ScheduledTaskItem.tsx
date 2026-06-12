@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { clsx } from "clsx";
 import {
   CalendarClock,
@@ -7,6 +7,9 @@ import {
   MessageSquare,
   Zap,
   AlertCircle,
+  Ban,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
@@ -41,9 +44,10 @@ function TriggerBadge({
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const styles: Record<string, string> = {
-    date: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
-    interval: "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300",
-    cron: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300",
+    date: "bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-theme-text-secondary ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_16%,var(--theme-border))]",
+    interval:
+      "bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-theme-text-secondary ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_16%,var(--theme-border))]",
+    cron: "bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-theme-text-secondary ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_16%,var(--theme-border))]",
   };
   return (
     <span
@@ -81,8 +85,8 @@ function StatusBadge({
       className={clsx(
         "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium",
         isActive
-          ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-          : "bg-theme-bg-subtle text-theme-text-tertiary",
+          ? "bg-[color-mix(in_srgb,#10b981_10%,var(--theme-bg-card))] text-emerald-700 dark:text-emerald-300 ring-1 ring-inset ring-[color-mix(in_srgb,#10b981_20%,transparent)]"
+          : "bg-theme-bg-subtle text-theme-text-tertiary ring-1 ring-inset ring-theme-border",
       )}
     >
       <span
@@ -133,25 +137,64 @@ function formatSchedule(
   return "";
 }
 
-function parseResult(result: string | Record<string, unknown> | undefined): {
+interface ParsedResult {
   task: Record<string, unknown> | null;
   preview: Record<string, unknown> | null;
   message: string;
   tasks: Array<Record<string, unknown>>;
   isList: boolean;
-} {
-  if (!result)
-    return { task: null, preview: null, message: "", tasks: [], isList: false };
+  /** Populated when the result is a rejection response like {success:false, reason:"rejected"} */
+  rejection: {
+    reason: string;
+    message: string;
+    preview: Record<string, unknown> | null;
+  } | null;
+}
+
+function parseResult(
+  result: string | Record<string, unknown> | undefined,
+): ParsedResult {
+  const empty: ParsedResult = {
+    task: null,
+    preview: null,
+    message: "",
+    tasks: [],
+    isList: false,
+    rejection: null,
+  };
+  if (!result) return empty;
 
   const text = extractText(result);
-  if (!text)
-    return { task: null, preview: null, message: "", tasks: [], isList: false };
+  if (!text) return empty;
 
   try {
     const obj = JSON.parse(text);
 
-    // create/update/delete returns { task, preview, message }
     if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      // ── Rejection shape: {success:false, action:"not_created", reason, preview, message} ──
+      if (
+        obj.success === false &&
+        typeof obj.reason === "string" &&
+        !obj.task
+      ) {
+        return {
+          task: null,
+          preview: null,
+          message: "",
+          tasks: [],
+          isList: false,
+          rejection: {
+            reason: obj.reason,
+            message: String(obj.message || ""),
+            preview:
+              obj.preview && typeof obj.preview === "object"
+                ? (obj.preview as Record<string, unknown>)
+                : null,
+          },
+        };
+      }
+
+      // create/update/delete returns { task, preview, message }
       if (obj.task && typeof obj.task === "object") {
         return {
           task: obj.task as Record<string, unknown>,
@@ -159,6 +202,7 @@ function parseResult(result: string | Record<string, unknown> | undefined): {
           message: String(obj.message || ""),
           tasks: [],
           isList: false,
+          rejection: null,
         };
       }
       // list returns an array or { tasks: [...] }
@@ -169,6 +213,7 @@ function parseResult(result: string | Record<string, unknown> | undefined): {
           message: "",
           tasks: obj,
           isList: true,
+          rejection: null,
         };
       }
       if (Array.isArray(obj.tasks)) {
@@ -178,6 +223,7 @@ function parseResult(result: string | Record<string, unknown> | undefined): {
           message: "",
           tasks: obj.tasks,
           isList: true,
+          rejection: null,
         };
       }
       // single task from get/detail
@@ -188,6 +234,7 @@ function parseResult(result: string | Record<string, unknown> | undefined): {
           message: "",
           tasks: [],
           isList: false,
+          rejection: null,
         };
       }
     }
@@ -195,7 +242,137 @@ function parseResult(result: string | Record<string, unknown> | undefined): {
     // not JSON
   }
 
-  return { task: null, preview: null, message: text, tasks: [], isList: false };
+  return { ...empty, message: text };
+}
+
+// ── Rejection card (inline, themed for scheduled tasks) ──────────────
+
+function RejectionCard({
+  rejection,
+  t,
+  compact,
+}: {
+  rejection: NonNullable<ParsedResult["rejection"]>;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  compact: boolean;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+  const taskName =
+    rejection.preview && typeof rejection.preview.name === "string"
+      ? (rejection.preview.name as string)
+      : "";
+  const description =
+    rejection.preview && typeof rejection.preview.description === "string"
+      ? (rejection.preview.description as string)
+      : "";
+  const schedule =
+    rejection.preview && typeof rejection.preview.schedule === "string"
+      ? (rejection.preview.schedule as string)
+      : "";
+  const triggerType =
+    rejection.preview && typeof rejection.preview.trigger_type === "string"
+      ? (rejection.preview.trigger_type as string)
+      : "";
+  const summary = rejection.message || t("scheduledTask.creationRejected");
+
+  if (compact) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-[color-mix(in_srgb,var(--theme-primary)_10%,var(--theme-border))] bg-[color-mix(in_srgb,var(--theme-bg-card)_72%,transparent)] px-2.5 py-2">
+        <Ban size={12} className="shrink-0 mt-0.5 text-theme-text-tertiary" />
+        <span className="text-[11px] text-theme-text-secondary truncate min-w-0">
+          {summary.length > 80 ? summary.slice(0, 77) + "…" : summary}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative rounded-xl border border-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))] overflow-hidden bg-theme-bg-card shadow-[0_12px_28px_-24px_color-mix(in_srgb,var(--theme-primary)_45%,transparent)]">
+      {/* Top accent bar */}
+      <div className="h-0.5 bg-gradient-to-r from-[var(--theme-primary)] via-[color-mix(in_srgb,var(--theme-primary)_38%,transparent)] to-transparent" />
+
+      <div className="p-3 space-y-2">
+        {/* Header row */}
+        <div className="flex items-start gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))]">
+            <Ban size={15} className="text-theme-text-tertiary" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            {taskName && (
+              <p className="text-sm font-semibold text-theme-text truncate">
+                {taskName}
+              </p>
+            )}
+            <p className="text-xs text-theme-text-secondary">{summary}</p>
+          </div>
+        </div>
+
+        {/* Metadata badges */}
+        {(schedule || triggerType) && (
+          <div className="flex flex-wrap gap-1.5 pl-[2.75rem]">
+            {triggerType && <TriggerBadge type={triggerType} t={t} />}
+            {schedule && (
+              <span className="px-2 py-0.5 rounded-md bg-theme-bg-subtle text-theme-text-tertiary text-xs font-mono leading-relaxed">
+                {schedule}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Description (collapsed) */}
+        {description && !showDetails && (
+          <p className="text-[11px] text-theme-text-tertiary line-clamp-2 pl-[2.75rem]">
+            {description}
+          </p>
+        )}
+
+        {/* Expanded details */}
+        {showDetails && (
+          <div className="space-y-2 pt-2 mt-2 border-t border-theme-border pl-[2.75rem]">
+            {description && (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-theme-text-tertiary mb-0.5">
+                  {t("chat.message.description")}
+                </p>
+                <p className="text-xs text-theme-text-secondary whitespace-pre-wrap break-words">
+                  {description}
+                </p>
+              </div>
+            )}
+            {rejection.preview && (
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-theme-text-tertiary mb-0.5">
+                  {t("chat.message.details")}
+                </p>
+                <pre className="text-[11px] text-theme-text-tertiary overflow-y-auto whitespace-pre-wrap break-words max-h-48 min-w-0 p-2.5 rounded-lg bg-theme-bg border border-theme-border">
+                  {JSON.stringify(rejection.preview, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Expand toggle */}
+        {(description || rejection.preview) && (
+          <div className="pl-[2.75rem]">
+            <button
+              onClick={() => setShowDetails((v) => !v)}
+              className="flex items-center gap-0.5 text-[11px] text-theme-text-tertiary transition-colors hover:text-theme-text-secondary"
+            >
+              {showDetails ? (
+                <ChevronUp size={11} />
+              ) : (
+                <ChevronDown size={11} />
+              )}
+              {showDetails
+                ? t("chat.message.collapse")
+                : t("chat.message.expandAll")}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── component ──────────────────────────────────────────────────────────
@@ -237,8 +414,14 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
   const resultMessage = parsed.message;
   const isList = parsed.isList;
   const tasks = parsed.tasks;
+  const rejection = parsed.rejection;
 
-  const displayName = String(task?.name || taskName || "");
+  // When rejected, extract name from the rejection preview for the pill label
+  const rejectionTaskName = rejection?.preview?.name
+    ? String(rejection.preview.name)
+    : "";
+
+  const displayName = String(task?.name || taskName || rejectionTaskName || "");
   const taskId = String(task?.id || args.task_id || "");
   const trigger = String(
     task?.trigger_type || triggerType || preview?.trigger_type || "",
@@ -271,20 +454,22 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
 
   const detailContent = canExpand && (
     <div className="p-4 sm:p-5 space-y-3">
+      {/* Rejection card */}
+      {rejection && (
+        <RejectionCard rejection={rejection} t={t} compact={false} />
+      )}
+
       {/* Task card (create/update/delete) */}
       {displayName && !isList && (
         <div
           className={clsx(
             "relative flex items-center gap-3 rounded-xl p-3",
-            "bg-theme-bg border border-theme-border",
-            "hover:border-amber-200 dark:hover:border-amber-800/50 transition-colors",
+            "bg-[color-mix(in_srgb,var(--theme-bg-card)_74%,var(--theme-bg)_26%)] border border-[color-mix(in_srgb,var(--theme-primary)_12%,var(--theme-border))]",
+            "hover:border-[color-mix(in_srgb,var(--theme-primary)_26%,var(--theme-border))] transition-colors shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
           )}
         >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-amber-100/70 dark:bg-amber-900/20">
-            <CalendarClock
-              size={18}
-              className="text-amber-600 dark:text-amber-400"
-            />
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-[color-mix(in_srgb,var(--theme-primary)_9%,var(--theme-bg-card))] ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_16%,var(--theme-border))]">
+            <CalendarClock size={18} className="text-[var(--theme-primary)]" />
           </div>
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="text-sm text-theme-text font-semibold truncate">
@@ -332,12 +517,12 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
 
       {/* Effect description */}
       {effect && !isList && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-sky-50/80 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30">
+        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-[color-mix(in_srgb,var(--theme-primary)_6%,var(--theme-bg-card))] border border-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))]">
           <Zap
             size={12}
-            className="shrink-0 text-sky-500 dark:text-sky-400 mt-0.5"
+            className="shrink-0 text-[var(--theme-primary)] mt-0.5"
           />
-          <span className="text-xs text-sky-700 dark:text-sky-300 leading-relaxed">
+          <span className="text-xs text-theme-text-secondary leading-relaxed">
             {effect}
           </span>
         </div>
@@ -379,12 +564,12 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
                   className={clsx(
                     "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors",
                     "bg-theme-bg border border-theme-border",
-                    "hover:border-amber-200 dark:hover:border-amber-800/50",
+                    "hover:border-[color-mix(in_srgb,var(--theme-primary)_24%,var(--theme-border))]",
                   )}
                 >
                   <CalendarClock
                     size={14}
-                    className="shrink-0 text-amber-500 dark:text-amber-400"
+                    className="shrink-0 text-[var(--theme-primary)]"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-theme-text font-medium truncate">
@@ -426,11 +611,16 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
 
   const compactContent = canExpand && (
     <ToolInlineDetails>
-      {displayName && !isList && (
+      {/* Compact rejection */}
+      {rejection && (
+        <RejectionCard rejection={rejection} t={t} compact={true} />
+      )}
+
+      {!rejection && displayName && !isList && (
         <ToolArgsBlock size="compact">
           <CalendarClock
             size={12}
-            className="shrink-0 text-amber-500 dark:text-amber-400"
+            className="shrink-0 text-[var(--theme-primary)]"
           />
           <span className="truncate text-theme-text font-medium">
             {displayName}
@@ -441,7 +631,7 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
 
       <div className="flex flex-wrap gap-1">
         {trigger && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100/60 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-[10px] font-medium">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-theme-text-secondary ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))] text-[10px] font-medium">
             <Clock size={8} className="opacity-70" />
             {t(`scheduledTask.${trigger}`)}
           </span>
@@ -499,11 +689,11 @@ const ScheduledTaskItem = memo(function ScheduledTaskItem({
             return (
               <div
                 key={i}
-                className="flex items-center gap-2 px-2 py-1 rounded-md bg-theme-bg border border-theme-border hover:border-amber-200 dark:hover:border-amber-800/50 transition-colors"
+                className="flex items-center gap-2 px-2 py-1 rounded-md bg-theme-bg border border-theme-border hover:border-[color-mix(in_srgb,var(--theme-primary)_24%,var(--theme-border))] transition-colors"
               >
                 <CalendarClock
                   size={10}
-                  className="shrink-0 text-amber-500 dark:text-amber-400"
+                  className="shrink-0 text-[var(--theme-primary)]"
                 />
                 <span className="text-[10px] text-theme-text truncate flex-1">
                   {tkName}

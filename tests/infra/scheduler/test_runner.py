@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import types
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -448,6 +450,143 @@ async def test_execute_agent_hides_injected_timestamp_from_display(
         "scheduled_task_run_id": "run_1",
         "hidden_from_conversation_list": True,
     }
+
+
+@pytest.mark.asyncio
+async def test_execute_agent_resolves_persona_id_for_non_team_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _make_task(
+        agent_id="fast",
+        input_payload={
+            "message": "Write the brief",
+            "persona_preset_id": "persona-1",
+        },
+    )
+    submitted: dict[str, Any] = {}
+
+    class _FakeTaskManager:
+        async def submit(self, **kwargs: Any) -> tuple[str, str]:
+            submitted.update(kwargs)
+            return "run_1", "trace_1"
+
+        async def get_run_status(self, session_id: str, run_id: str) -> TaskStatus:
+            return TaskStatus.COMPLETED
+
+    class _FakeSessionManager:
+        async def update_session_metadata(
+            self,
+            session_id: str,
+            metadata: dict[str, Any],
+        ) -> None:
+            submitted["updated_metadata"] = metadata
+
+    async def _fake_resolve_persona_request(request: Any, user: Any) -> None:
+        assert request.persona_preset_id == "persona-1"
+        assert user.sub == "user_1"
+        request.persona_system_prompt = "You are the writer."
+        request.enabled_skills = ["writing"]
+
+    fake_manager_module = types.ModuleType("src.infra.task.manager")
+    fake_manager_module.get_task_manager = lambda: _FakeTaskManager()
+    monkeypatch.setattr("src.kernel.config.settings.TASK_BACKEND", "local")
+    monkeypatch.setitem(sys.modules, "src.infra.task.manager", fake_manager_module)
+    monkeypatch.setattr(
+        "src.infra.task.concurrency.get_registered_executor",
+        lambda key: (lambda *args, **kwargs: None) if key == "agent_stream" else None,
+    )
+    monkeypatch.setattr(
+        "src.infra.session.manager.SessionManager",
+        lambda: _FakeSessionManager(),
+    )
+    monkeypatch.setattr(
+        "src.infra.scheduler.runner._resolve_task_owner",
+        AsyncMock(return_value=type("User", (), {"sub": "user_1", "permissions": []})()),
+    )
+    monkeypatch.setattr(
+        "src.api.routes.chat.resolve_persona_request",
+        _fake_resolve_persona_request,
+    )
+
+    await ScheduledTaskRunner()._execute_agent(
+        task,
+        run_id="run_1",
+        session_id="session_1",
+    )
+
+    assert submitted["persona_system_prompt"] == "You are the writer."
+    assert submitted["enabled_skills"] == ["writing"]
+    assert submitted["team_id"] is None
+    assert submitted["session_metadata"]["persona_preset_id"] == "persona-1"
+    assert submitted["updated_metadata"]["persona_preset_id"] == "persona-1"
+    assert task.input_payload == {
+        "message": "Write the brief",
+        "persona_preset_id": "persona-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_execute_agent_passes_team_id_for_team_agent_without_persona(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _make_task(
+        agent_id="team",
+        input_payload={
+            "message": "Plan the launch",
+            "team_id": "team-1",
+            "persona_preset_id": "persona-ignored",
+        },
+    )
+    submitted: dict[str, Any] = {}
+
+    class _FakeTaskManager:
+        async def submit(self, **kwargs: Any) -> tuple[str, str]:
+            submitted.update(kwargs)
+            return "run_1", "trace_1"
+
+        async def get_run_status(self, session_id: str, run_id: str) -> TaskStatus:
+            return TaskStatus.COMPLETED
+
+    class _FakeSessionManager:
+        async def update_session_metadata(
+            self,
+            session_id: str,
+            metadata: dict[str, Any],
+        ) -> None:
+            submitted["updated_metadata"] = metadata
+
+    async def _unexpected_resolve_persona_request(request: Any, user: Any) -> None:
+        raise AssertionError("team scheduled tasks should not resolve persona presets")
+
+    fake_manager_module = types.ModuleType("src.infra.task.manager")
+    fake_manager_module.get_task_manager = lambda: _FakeTaskManager()
+    monkeypatch.setattr("src.kernel.config.settings.TASK_BACKEND", "local")
+    monkeypatch.setitem(sys.modules, "src.infra.task.manager", fake_manager_module)
+    monkeypatch.setattr(
+        "src.infra.task.concurrency.get_registered_executor",
+        lambda key: (lambda *args, **kwargs: None) if key == "agent_stream" else None,
+    )
+    monkeypatch.setattr(
+        "src.infra.session.manager.SessionManager",
+        lambda: _FakeSessionManager(),
+    )
+    monkeypatch.setattr(
+        "src.api.routes.chat.resolve_persona_request",
+        _unexpected_resolve_persona_request,
+    )
+
+    await ScheduledTaskRunner()._execute_agent(
+        task,
+        run_id="run_1",
+        session_id="session_1",
+    )
+
+    assert submitted["team_id"] == "team-1"
+    assert submitted["persona_system_prompt"] is None
+    assert submitted["enabled_skills"] is None
+    assert submitted["session_metadata"]["team_id"] == "team-1"
+    assert "persona_preset_id" not in submitted["session_metadata"]
+    assert submitted["updated_metadata"]["team_id"] == "team-1"
 
 
 @pytest.mark.asyncio

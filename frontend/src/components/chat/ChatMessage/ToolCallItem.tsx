@@ -63,6 +63,8 @@ export { EnvVarItem } from "./items/EnvVarItem";
 export { PersonaItem } from "./items/PersonaItem";
 export { TeamItem } from "./items/TeamItem";
 export { SandboxMcpItem } from "./items/SandboxMcpItem";
+export { MemoryRecallItem } from "./items/MemoryRecallItem";
+export { MemoryStoreItem } from "./items/MemoryStoreItem";
 
 // Collapsible Tool Call Item (compact design)
 export function ToolCallItem({

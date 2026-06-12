@@ -14,8 +14,10 @@ from langchain_core.tools import BaseTool, InjectedToolArg
 
 from src.api.routes.human import create_approval, wait_for_response
 from src.infra.logging import get_logger
+from src.infra.persona_preset.manager import PersonaPresetManager
 from src.infra.role.storage import RoleStorage
 from src.infra.scheduler.service import ScheduledTaskService
+from src.infra.team.manager import TeamManager
 from src.infra.tool.backend_utils import get_user_id_from_runtime
 from src.infra.user.storage import UserStorage
 from src.infra.utils.datetime import parse_iso, to_iso, utc_now
@@ -90,6 +92,8 @@ async def _get_current_session_defaults() -> tuple[
     dict[str, Any],
     str | None,
     ChannelDeliveryConfig | None,
+    str | None,
+    str | None,
 ]:
     """Return agent/model defaults from the conversation that invoked the tool."""
     from src.infra.logging.context import TraceContext
@@ -97,17 +101,17 @@ async def _get_current_session_defaults() -> tuple[
 
     ctx = TraceContext.get_request_context()
     if not ctx.session_id:
-        return None, {}, None, None
+        return None, {}, None, None, None, None
 
     try:
         session = await SessionManager().get_session(ctx.session_id)
     except Exception as e:
         logger.warning("[ScheduledTask] Failed to load source session defaults: %s", e)
-        return None, {}, None, None
+        return None, {}, None, None, None, None
 
     metadata = session.metadata if session else {}
     if not isinstance(metadata, dict):
-        return None, {}, None, None
+        return None, {}, None, None, None, None
 
     agent_id = metadata.get("agent_id")
     raw_options = metadata.get("agent_options")
@@ -116,11 +120,15 @@ async def _get_current_session_defaults() -> tuple[
     )
     user_timezone = metadata.get("user_timezone")
     channel_delivery = _coerce_channel_delivery(metadata.get("channel_delivery"))
+    persona_preset_id = metadata.get("persona_preset_id")
+    team_id = metadata.get("team_id")
     return (
         agent_id if isinstance(agent_id, str) and agent_id else None,
         agent_options,
         user_timezone if isinstance(user_timezone, str) and user_timezone else None,
         channel_delivery,
+        persona_preset_id if isinstance(persona_preset_id, str) and persona_preset_id else None,
+        team_id if isinstance(team_id, str) and team_id else None,
     )
 
 
@@ -223,6 +231,84 @@ def _format_approval_message(preview: dict[str, Any]) -> str:
     )
 
 
+def _is_persona_admin(user: TokenPayload | None) -> bool:
+    return bool(user and "persona_preset:admin" in set(user.permissions or []))
+
+
+def _choose_named_match(items: list[Any], query: str) -> Any | None:
+    """Prefer exact name match, otherwise use the search result ranking."""
+    clean_query = query.strip().casefold()
+    if not clean_query or not items:
+        return None
+    for item in items:
+        name = getattr(item, "name", "")
+        if isinstance(name, str) and name.strip().casefold() == clean_query:
+            return item
+    return items[0]
+
+
+async def _resolve_persona_preset_id_from_query(
+    *,
+    user_id: str,
+    user: TokenPayload | None,
+    query: str | None,
+) -> tuple[str | None, dict[str, Any] | None, str | None]:
+    if not query or not query.strip():
+        return None, None, None
+    try:
+        presets = await PersonaPresetManager().list_presets(
+            user_id=user_id,
+            is_admin=_is_persona_admin(user),
+            q=query.strip(),
+            limit=10,
+        )
+    except Exception as e:
+        return None, None, f"Failed to search persona presets: {e}"
+
+    match = _choose_named_match(presets, query)
+    if match is None:
+        return None, None, f"No persona preset matched '{query}'."
+    return (
+        match.id,
+        {
+            "id": match.id,
+            "name": match.name,
+            "query": query,
+        },
+        None,
+    )
+
+
+async def _resolve_team_id_from_query(
+    *,
+    user_id: str,
+    query: str | None,
+) -> tuple[str | None, dict[str, Any] | None, str | None]:
+    if not query or not query.strip():
+        return None, None, None
+    try:
+        response = await TeamManager().list_teams(
+            owner_user_id=user_id,
+            q=query.strip(),
+            limit=10,
+        )
+    except Exception as e:
+        return None, None, f"Failed to search teams: {e}"
+
+    match = _choose_named_match(response.teams, query)
+    if match is None:
+        return None, None, f"No team matched '{query}'."
+    return (
+        match.id,
+        {
+            "id": match.id,
+            "name": match.name,
+            "query": query,
+        },
+        None,
+    )
+
+
 async def _send_scheduled_task_approval_event(
     *,
     approval_id: str,
@@ -271,6 +357,10 @@ async def _confirm_scheduled_task_creation(
         fields=[],
         session_id=ctx.session_id or None,
         user_id=user_id,
+        metadata={
+            "approval_type": "scheduled_task_create",
+            "preview": preview,
+        },
     )
     await _send_scheduled_task_approval_event(
         approval_id=approval.id,
@@ -362,6 +452,27 @@ async def scheduled_task_create(
     agent_id: Annotated[
         str | None,
         "Agent ID to execute. If omitted, use the current conversation's agent.",
+    ] = None,
+    persona_preset_id: Annotated[
+        str | None,
+        "Persona preset ID for non-team agents. Ignored when the effective agent is 'team'.",
+    ] = None,
+    team_id: Annotated[
+        str | None,
+        "Team ID for the team agent. Ignored unless the effective agent is 'team'.",
+    ] = None,
+    role_query: Annotated[
+        str | None,
+        "Natural-language role/persona search text in the user's language. Use this when "
+        "the user names a role but you do not know persona_preset_id. For Chinese users, "
+        "search with Chinese role words such as '写作', '研究员', or '数据分析'. Ignored when "
+        "persona_preset_id is provided or when the effective agent is 'team'.",
+    ] = None,
+    team_query: Annotated[
+        str | None,
+        "Natural-language team search text in the user's language. Use this when the user "
+        "names a team but you do not know team_id. Providing this selects the team agent "
+        "unless agent_id='team' was already explicit.",
     ] = None,
     model_id: Annotated[
         str | None,
@@ -463,13 +574,69 @@ async def scheduled_task_create(
         session_agent_options,
         session_user_timezone,
         session_channel_delivery,
+        session_persona_preset_id,
+        session_team_id,
     ) = await _get_current_session_defaults()
-    effective_agent_id = agent_id or session_agent_id or "fast"
+    user = await _resolve_user(user_id)
+    if team_query:
+        effective_agent_id = "team"
+    elif role_query:
+        effective_agent_id = (
+            agent_id
+            if agent_id and agent_id != "team"
+            else session_agent_id
+            if session_agent_id and session_agent_id != "team"
+            else "fast"
+        )
+    elif agent_id == "team" or (team_id and (not agent_id or session_agent_id == "team")):
+        effective_agent_id = "team"
+    elif persona_preset_id:
+        effective_agent_id = (
+            agent_id
+            if agent_id and agent_id != "team"
+            else session_agent_id
+            if session_agent_id and session_agent_id != "team"
+            else "fast"
+        )
+    else:
+        effective_agent_id = agent_id or session_agent_id or "fast"
     effective_agent_options = dict(session_agent_options)
     if model_id:
         effective_agent_options["model_id"] = model_id
     if model:
         effective_agent_options["model"] = model
+    effective_persona_preset_id = None
+    effective_team_id = None
+    resolved_role_match = None
+    resolved_team_match = None
+    if effective_agent_id == "team":
+        effective_team_id = team_id
+        if not effective_team_id:
+            (
+                effective_team_id,
+                resolved_team_match,
+                resolve_error,
+            ) = await _resolve_team_id_from_query(user_id=user_id, query=team_query)
+            if resolve_error:
+                return _json({"error": resolve_error, "code": "team_not_found"})
+        if not effective_team_id:
+            effective_team_id = session_team_id
+    else:
+        effective_persona_preset_id = persona_preset_id
+        if not effective_persona_preset_id:
+            (
+                effective_persona_preset_id,
+                resolved_role_match,
+                resolve_error,
+            ) = await _resolve_persona_preset_id_from_query(
+                user_id=user_id,
+                user=user,
+                query=role_query,
+            )
+            if resolve_error:
+                return _json({"error": resolve_error, "code": "persona_preset_not_found"})
+        if not effective_persona_preset_id:
+            effective_persona_preset_id = session_persona_preset_id
 
     effective_run_on_start = False if trigger_enum == TriggerType.DATE else run_on_start
     preview = _build_task_preview(
@@ -482,6 +649,10 @@ async def scheduled_task_create(
         timeout_seconds=timeout_seconds,
         run_on_start=effective_run_on_start,
     )
+    if resolved_role_match:
+        preview["resolved_persona_preset"] = resolved_role_match
+    if resolved_team_match:
+        preview["resolved_team"] = resolved_team_match
     confirmation = await _confirm_scheduled_task_creation(preview=preview, user_id=user_id)
     if not confirmation["approved"]:
         return _json(
@@ -500,21 +671,24 @@ async def scheduled_task_create(
 
     ctx = TraceContext.get_request_context()
     try:
+        input_payload = {
+            "message": message,
+            **({"agent_options": effective_agent_options} if effective_agent_options else {}),
+            **({"user_timezone": session_user_timezone} if session_user_timezone else {}),
+            **(
+                {"persona_preset_id": effective_persona_preset_id}
+                if effective_persona_preset_id
+                else {}
+            ),
+            **({"team_id": effective_team_id} if effective_team_id else {}),
+        }
         task = await service.create_task(
             request=ScheduledTaskCreate(
                 name=name,
                 agent_id=effective_agent_id,
                 trigger_type=trigger_enum,
                 trigger_config=trigger_config,
-                input_payload={
-                    "message": message,
-                    **(
-                        {"agent_options": effective_agent_options}
-                        if effective_agent_options
-                        else {}
-                    ),
-                    **({"user_timezone": session_user_timezone} if session_user_timezone else {}),
-                },
+                input_payload=input_payload,
                 description=description,
                 enabled=True,
                 timeout_seconds=timeout_seconds,

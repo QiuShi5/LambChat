@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import { CalendarClock, Pencil, Plus, Save, Timer } from "lucide-react";
+import {
+  CalendarClock,
+  Pencil,
+  Plus,
+  Save,
+  Timer,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import {
   Button,
   Input,
@@ -18,9 +26,15 @@ import type {
 } from "../../../types/scheduledTask";
 import type { AgentInfo } from "../../../types/agent";
 import type { AvailableModel } from "../../../contexts/SettingsContext";
+import type { PersonaPreset } from "../../../types/personaPreset";
+import type { Team } from "../../../types/team";
+import { personaPresetApi } from "../../../services/api/personaPreset";
+import { teamApi } from "../../../services/api/team";
 import {
   buildScheduledTaskInputPayload,
   getAgentOptionsFromScheduledTaskPayload,
+  getScheduledTaskPersonaPresetId,
+  getScheduledTaskTeamId,
 } from "../scheduledTaskPayload";
 import { toDateTimeLocalValue } from "./utils";
 
@@ -67,6 +81,14 @@ export function TaskFormModal({
   const [agentId, setAgentId] = useState(
     task?.agent_id ?? defaultAgentId ?? "",
   );
+  const [personaPresetId, setPersonaPresetId] = useState(
+    getScheduledTaskPersonaPresetId(task?.input_payload),
+  );
+  const [teamId, setTeamId] = useState(
+    getScheduledTaskTeamId(task?.input_payload),
+  );
+  const [personaPresets, setPersonaPresets] = useState<PersonaPreset[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [modelId, setModelId] = useState(initialModelId);
   const [modelValue, setModelValue] = useState(initialModelValue);
   const [triggerType, setTriggerType] = useState<TriggerType>(
@@ -127,6 +149,30 @@ export function TaskFormModal({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const isTeamAgent = agentId === "team";
+
+  useEffect(() => {
+    let cancelled = false;
+    personaPresetApi
+      .list({ limit: 100 })
+      .then((response) => {
+        if (!cancelled) setPersonaPresets(response.presets);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonaPresets([]);
+      });
+    teamApi
+      .list({ limit: 100 })
+      .then((response) => {
+        if (!cancelled) setTeams(response.teams);
+      })
+      .catch(() => {
+        if (!cancelled) setTeams([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -179,9 +225,12 @@ export function TaskFormModal({
     setIsSaving(true);
     try {
       const nextPayload = buildScheduledTaskInputPayload(payload, {
+        agentId,
         modelId,
         modelValue,
         availableModels,
+        personaPresetId,
+        teamId,
       });
       await onSave({
         name: name.trim(),
@@ -201,6 +250,16 @@ export function TaskFormModal({
   };
 
   const inputClass = "scheduled-task-input";
+  const PersonaOrTeamIcon = isTeamAgent ? UsersRound : UserRound;
+  const personaOrTeamIconLabel = isTeamAgent
+    ? t("scheduledTask.team", "团队")
+    : t("scheduledTask.persona", "角色");
+  const renderPersonaOrTeamOption = (label: string) => (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <PersonaOrTeamIcon size={14} className="shrink-0 opacity-70" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
 
   return (
     <EditorSidebar
@@ -259,7 +318,14 @@ export function TaskFormModal({
             </label>
             <Select
               value={agentId}
-              onChange={(v) => setAgentId(v)}
+              onChange={(v) => {
+                setAgentId(v);
+                if (v === "team") {
+                  setPersonaPresetId("");
+                } else {
+                  setTeamId("");
+                }
+              }}
               triggerClassName={inputClass}
               options={[
                 { value: "", label: t("scheduledTask.agentPlaceholder") },
@@ -268,6 +334,46 @@ export function TaskFormModal({
                   label: t(agent.name),
                 })),
               ]}
+            />
+          </div>
+
+          {/* Persona / team selector */}
+          <div className="scheduled-task-form-field">
+            <label className="scheduled-task-label inline-flex items-center gap-1.5">
+              <PersonaOrTeamIcon size={14} className="shrink-0 opacity-75" />
+              <span>{personaOrTeamIconLabel}</span>
+            </label>
+            <Select
+              value={isTeamAgent ? teamId : personaPresetId}
+              onChange={isTeamAgent ? setTeamId : setPersonaPresetId}
+              triggerClassName={inputClass}
+              options={
+                isTeamAgent
+                  ? [
+                      {
+                        value: "",
+                        label: renderPersonaOrTeamOption(
+                          t("scheduledTask.teamPlaceholder", "不指定团队"),
+                        ),
+                      },
+                      ...teams.map((team) => ({
+                        value: team.id,
+                        label: renderPersonaOrTeamOption(team.name),
+                      })),
+                    ]
+                  : [
+                      {
+                        value: "",
+                        label: renderPersonaOrTeamOption(
+                          t("scheduledTask.personaPlaceholder", "不指定角色"),
+                        ),
+                      },
+                      ...personaPresets.map((preset) => ({
+                        value: preset.id,
+                        label: renderPersonaOrTeamOption(preset.name),
+                      })),
+                    ]
+              }
             />
           </div>
 

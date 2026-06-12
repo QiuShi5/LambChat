@@ -135,6 +135,7 @@ export interface UseAgentOptions {
     fields?: FormField[];
     expires_at?: string | null;
     timeout?: number;
+    metadata?: Record<string, unknown>;
   }) => void;
   onClearApprovals?: () => void;
   getEnabledTools?: () => string[];

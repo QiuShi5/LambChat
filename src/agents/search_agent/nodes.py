@@ -16,8 +16,10 @@ from langchain_core.runnables import RunnableConfig
 from src.agents.core.base import get_presenter
 from src.agents.core.node_utils import (
     build_human_message,
+    build_nested_graph_configurable,
     emit_token_usage,
     inline_image_attachments_as_data_urls,
+    isolated_nested_graph_run,
     resolve_fallback_model,
     resolve_model_image_url_to_base64,
     resolve_model_supports_vision,
@@ -298,20 +300,21 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
         skills=None,  # 禁用 SkillsMiddleware，使用 build_skills_prompt 代替
         subagents=custom_subagents,
         middleware=user_middleware,
-    ).with_config({"recursion_limit": settings.SESSION_MAX_RUNS_PER_SESSION})
+    )
     graph_compile_time = time.time() - graph_compile_start
     logger.debug(f"[Agent] Graph compile: {graph_compile_time * 1000:.3f}ms")
 
     inner_config: RunnableConfig = {
-        "configurable": {
-            "thread_id": state.get("session_id", str(uuid.uuid4())),
-            "backend": backend,
-            "context": context,  # 传递 context 以便工具访问 user_id
-            "disabled_skills": configurable.get("disabled_skills"),
-            "enabled_skills": configurable.get("enabled_skills"),
-            "base_url": configurable.get("base_url", ""),  # 传递 base_url 给工具使用
-            "presenter": presenter,  # 传递 presenter 给工具调用
-        },
+        "configurable": build_nested_graph_configurable(
+            thread_id=state.get("session_id", str(uuid.uuid4())),
+            checkpointer=inner_checkpointer,
+            backend=backend,
+            context=context,  # 传递 context 以便工具访问 user_id
+            disabled_skills=configurable.get("disabled_skills"),
+            enabled_skills=configurable.get("enabled_skills"),
+            base_url=configurable.get("base_url", ""),  # 传递 base_url 给工具使用
+            presenter=presenter,  # 传递 presenter 给工具调用
+        ),
         "recursion_limit": config.get("recursion_limit", settings.SESSION_MAX_RUNS_PER_SESSION),
     }
 
@@ -345,12 +348,13 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     logger.info("[SearchAgent] Starting astream_events")
     # 流式处理事件（不重试，直接调用）
     try:
-        async for event in inner_graph.astream_events(  # type: ignore[call-overload]
-            build_goal_input(new_message, active_goal, rubric_middleware=rubric_middleware),
-            inner_config,
-            version="v2",
-        ):
-            await event_processor.process_event(event)
+        async with isolated_nested_graph_run():
+            async for event in inner_graph.astream_events(  # type: ignore[call-overload]
+                build_goal_input(new_message, active_goal, rubric_middleware=rubric_middleware),
+                inner_config,
+                version="v2",
+            ):
+                await event_processor.process_event(event)
     finally:
         await event_processor.flush()
         await emit_token_usage(
@@ -360,6 +364,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
             model_id=model_id,
             model=selected_model,
         )
+    logger.info("[SearchAgent] astream_events completed")
 
     if settings.ENABLE_MEMORY and context.user_id:
         from src.infra.memory.tools import schedule_auto_memory_capture
@@ -382,11 +387,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     output_text = event_processor.output_text
     event_processor.clear()
 
-    return {
-        "output": output_text,
-        # 历史消息由内层 checkpointer 持久化；推荐问题启动时直接读取已有 state。
-        "messages": [],
-    }
+    return {"output": output_text}
 
 
 async def _create_backend_and_prompt(

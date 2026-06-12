@@ -165,6 +165,7 @@ class PendingApproval(BaseModel):
     created_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     extensions: int = 0
+    metadata: Optional[dict] = None  # structured data for specialized rendering
 
 
 class ApprovalResponse(BaseModel):

@@ -33,8 +33,16 @@ import type {
 } from "../../../types/scheduledTask";
 import type { AgentInfo } from "../../../types/agent";
 import type { AvailableModel } from "../../../contexts/SettingsContext";
+import type { PersonaPreset } from "../../../types/personaPreset";
+import type { Team } from "../../../types/team";
+import { personaPresetApi } from "../../../services/api/personaPreset";
+import { teamApi } from "../../../services/api/team";
 import { formatDateTimeShort } from "../../../utils/datetime";
-import { getAgentOptionsFromScheduledTaskPayload } from "../scheduledTaskPayload";
+import {
+  getAgentOptionsFromScheduledTaskPayload,
+  getScheduledTaskPersonaPresetId,
+  getScheduledTaskTeamId,
+} from "../scheduledTaskPayload";
 import { notifyScheduledTaskMutation } from "../../../stores/scheduledTaskMutationStore";
 import { RunStatusBadge, StatusBadgeForTask as StatusBadge } from "./Badges";
 import { ConfirmDialog } from "../../common/ConfirmDialog";
@@ -76,6 +84,8 @@ export function ScheduledTaskPanel({
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>(providedAgents || []);
+  const [personaPresets, setPersonaPresets] = useState<PersonaPreset[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [apiDefaultAgentId, setApiDefaultAgentId] = useState("");
   const defaults = readScheduledTaskDefaults();
   const effectiveAvailableModels =
@@ -109,6 +119,29 @@ export function ScheduledTaskPanel({
       })
       .catch(() => {});
   }, [providedAgents]);
+
+  useEffect(() => {
+    let cancelled = false;
+    personaPresetApi
+      .list({ limit: 100 })
+      .then((response) => {
+        if (!cancelled) setPersonaPresets(response.presets);
+      })
+      .catch(() => {
+        if (!cancelled) setPersonaPresets([]);
+      });
+    teamApi
+      .list({ limit: 100 })
+      .then((response) => {
+        if (!cancelled) setTeams(response.teams);
+      })
+      .catch(() => {
+        if (!cancelled) setTeams([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetch tasks
   const fetchTasks = useCallback(async () => {
@@ -323,6 +356,20 @@ export function ScheduledTaskPanel({
     return model?.label || modelValue || modelId;
   };
 
+  const formatTaskContext = (task: ScheduledTask): string | null => {
+    if (task.agent_id === "team") {
+      const teamId = getScheduledTaskTeamId(task.input_payload);
+      if (!teamId) return null;
+      return teams.find((team) => team.id === teamId)?.name || teamId;
+    }
+    const personaPresetId = getScheduledTaskPersonaPresetId(task.input_payload);
+    if (!personaPresetId) return null;
+    return (
+      personaPresets.find((preset) => preset.id === personaPresetId)?.name ||
+      personaPresetId
+    );
+  };
+
   // Show skeleton during initial data loading — consistent with other panels
   if (isLoading && tasks.length === 0 && !selectedTaskId) {
     return <ScheduledTaskPanelSkeleton />;
@@ -386,6 +433,7 @@ export function ScheduledTaskPanel({
                     agents.find((a) => a.id === task.agent_id)?.name ??
                     task.agent_id;
                   const modelName = formatTaskModel(task);
+                  const contextName = formatTaskContext(task);
 
                   return (
                     <div
@@ -428,6 +476,14 @@ export function ScheduledTaskPanel({
                               <Cpu size={12} />
                               <span className="scheduled-task-meta__text">
                                 {modelName}
+                              </span>
+                            </span>
+                          )}
+                          {contextName && (
+                            <span className="scheduled-task-meta__item">
+                              <Bot size={12} />
+                              <span className="scheduled-task-meta__text">
+                                {contextName}
                               </span>
                             </span>
                           )}

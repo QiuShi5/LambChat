@@ -21,6 +21,8 @@ import {
   PersonaItem,
   TeamItem,
   SandboxMcpItem,
+  MemoryRecallItem,
+  MemoryStoreItem,
 } from "./ToolCallItem";
 import { ThinkingBlock, SubagentBlock, SandboxItem } from "./SubagentBlocks";
 import { TodoBlock } from "./TodoBlock";
@@ -323,6 +325,33 @@ export function MessagePartRenderer({
     ) {
       return (
         <SandboxMcpItem
+          toolName={part.name}
+          args={part.args}
+          result={part.result}
+          success={part.success}
+          isPending={part.isPending}
+          cancelled={part.cancelled}
+          startedAt={part.startedAt}
+          completedAt={part.completedAt}
+        />
+      );
+    }
+    if (part.name === "memory_recall") {
+      return (
+        <MemoryRecallItem
+          args={part.args}
+          result={part.result}
+          success={part.success}
+          isPending={part.isPending}
+          cancelled={part.cancelled}
+          startedAt={part.startedAt}
+          completedAt={part.completedAt}
+        />
+      );
+    }
+    if (part.name === "memory_retain" || part.name === "memory_delete") {
+      return (
+        <MemoryStoreItem
           toolName={part.name}
           args={part.args}
           result={part.result}

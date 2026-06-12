@@ -11,6 +11,61 @@ import { ToolDurationFooter } from "./ToolDurationFooter";
 import { nameToGradient } from "../../../common/cardUtils";
 import { MarkdownContent } from "../MarkdownContent";
 import { DetailSection } from "./DetailSection";
+import {
+  isPersonaImageAvatar,
+  isEmojiAvatar,
+  getEmojiAvatarUrl,
+} from "../../../persona/personaAvatar";
+import { getFullUrl } from "../../../../services/api";
+
+// ── Tiny avatar renderer for tool-result cards ──
+function ToolAvatarImg({
+  src,
+  className,
+}: {
+  src: string;
+  className?: string;
+}) {
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      onError={(e) => {
+        (e.target as HTMLImageElement).style.display = "none";
+      }}
+    />
+  );
+}
+
+/** Render an avatar value as <img> if it's a URL/emoji, otherwise render fallback. */
+function RenderAvatar({
+  avatar,
+  sizeClass,
+  fallback,
+}: {
+  avatar: string;
+  sizeClass?: string;
+  fallback: React.ReactNode;
+}) {
+  if (isEmojiAvatar(avatar)) {
+    return (
+      <ToolAvatarImg
+        src={getEmojiAvatarUrl(avatar)}
+        className={clsx("object-cover", sizeClass)}
+      />
+    );
+  }
+  if (isPersonaImageAvatar(avatar)) {
+    return (
+      <ToolAvatarImg
+        src={getFullUrl(avatar) ?? avatar}
+        className={clsx("object-cover", sizeClass)}
+      />
+    );
+  }
+  return <>{fallback}</>;
+}
 
 // ── PersonaItem ──────────────────────────────────────────────────────
 
@@ -85,122 +140,186 @@ const PersonaItem = memo(function PersonaItem({
     <div className="p-4 sm:p-5 space-y-4">
       {/* Hero card */}
       {displayName && (
-        <div className="rounded-2xl overflow-hidden border border-theme-border shadow-sm">
+        <div
+          className={clsx(
+            "rounded-2xl overflow-hidden relative",
+            gradient && "shadow-md",
+          )}
+          style={
+            gradient
+              ? {
+                  boxShadow: `0 2px 16px -4px ${gradient[0]}30, 0 1px 3px rgb(0 0 0 / 0.06)`,
+                }
+              : undefined
+          }
+        >
+          {/* Gradient border ring */}
           {gradient && (
             <div
-              className="h-20 sm:h-24 relative"
+              className="absolute inset-0 rounded-2xl p-px"
               style={{
-                background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+                background: `linear-gradient(135deg, ${gradient[0]}40, ${gradient[1]}20, ${gradient[2]}40)`,
               }}
             >
-              {/* Subtle shimmer pattern */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/5" />
-              <div className="absolute bottom-0 inset-x-0 h-6 bg-gradient-to-t from-black/8 to-transparent" />
+              <div className="w-full h-full rounded-[calc(1rem-1px)] bg-theme-bg-card" />
             </div>
           )}
-          <div
-            className={clsx(
-              "relative px-4 sm:px-5 pt-4 pb-4",
-              "bg-theme-bg-card",
-              !gradient && "pt-5",
+
+          <div className="relative z-10 rounded-2xl overflow-hidden">
+            {gradient && (
+              <div className="h-20 sm:h-24 relative overflow-hidden">
+                {/* Base gradient */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+                  }}
+                />
+                {/* Decorative mesh pattern */}
+                <div
+                  className="absolute inset-0 opacity-30"
+                  style={{
+                    backgroundImage: `radial-gradient(circle at 20% 80%, ${gradient[0]}60 0%, transparent 50%), radial-gradient(circle at 80% 20%, ${gradient[2]}60 0%, transparent 50%)`,
+                  }}
+                />
+                {/* Shimmer sweep */}
+                <div
+                  className="absolute inset-0 animate-[shimmer_3s_ease-in-out_infinite]"
+                  style={{
+                    background: `linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 55%, transparent 60%)`,
+                    backgroundSize: "200% 100%",
+                  }}
+                />
+                {/* Bottom fade into card */}
+                <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-theme-bg-card to-transparent" />
+              </div>
             )}
-          >
-            {/* Avatar + Name row */}
             <div
               className={clsx(
-                "flex items-start gap-3.5",
-                gradient ? "-mt-8 sm:-mt-10" : "",
+                "relative px-4 sm:px-5 pt-4 pb-4",
+                "bg-theme-bg-card",
+                !gradient && "pt-5",
               )}
             >
+              {/* Avatar + Name row */}
               <div
                 className={clsx(
-                  "rounded-2xl flex items-center justify-center text-2xl sm:text-3xl leading-none shrink-0",
-                  "ring-[3px] ring-theme-bg-card shadow-lg shadow-black/8",
-                  "bg-violet-100 dark:bg-violet-900/30",
-                  gradient ? "w-14 h-14 sm:w-16 sm:h-16" : "w-11 h-11",
+                  "flex items-start gap-3.5",
+                  gradient ? "-mt-9 sm:-mt-12" : "",
                 )}
               >
-                {avatar || (
-                  <UserRound
-                    size={gradient ? 28 : 22}
-                    className="text-violet-500 dark:text-violet-400"
+                <div
+                  className={clsx(
+                    "rounded-2xl flex items-center justify-center text-2xl sm:text-3xl leading-none shrink-0 overflow-hidden relative",
+                    gradient ? "w-14 h-14 sm:w-16 sm:h-16" : "w-11 h-11",
+                  )}
+                  style={
+                    gradient
+                      ? {
+                          boxShadow: `0 4px 14px -3px ${gradient[0]}40, 0 2px 6px -1px rgb(0 0 0 / 0.1)`,
+                        }
+                      : undefined
+                  }
+                >
+                  {/* Gradient ring effect */}
+                  {gradient && (
+                    <div
+                      className="absolute inset-0 rounded-2xl p-[2px]"
+                      style={{
+                        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]}, ${gradient[2]})`,
+                      }}
+                    >
+                      <div className="w-full h-full rounded-[calc(1rem-2px)] bg-theme-bg-card" />
+                    </div>
+                  )}
+                  <div
+                    className={clsx(
+                      "relative z-10 w-full h-full rounded-2xl flex items-center justify-center overflow-hidden",
+                      "bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))]",
+                    )}
+                  >
+                    <RenderAvatar
+                      avatar={avatar}
+                      sizeClass="w-full h-full"
+                      fallback={
+                        <UserRound
+                          size={gradient ? 28 : 22}
+                          className="text-[var(--theme-primary)]"
+                        />
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-bold text-theme-text truncate tracking-tight">
+                      {displayName}
+                    </h3>
+                    {statusVal && statusVal !== "published" && (
+                      <span
+                        className={clsx(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase",
+                          statusVal === "draft"
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 ring-1 ring-amber-200/50 dark:ring-amber-800/30"
+                            : statusVal === "archived"
+                              ? "bg-stone-100 dark:bg-stone-700/40 text-stone-500 dark:text-stone-400 ring-1 ring-stone-200/50 dark:ring-stone-600/30"
+                              : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/50 dark:ring-emerald-800/30",
+                        )}
+                      >
+                        {statusVal}
+                      </span>
+                    )}
+                  </div>
+                  {description && (
+                    <p className="text-xs sm:text-[13px] text-theme-text-secondary/80 mt-1 leading-relaxed line-clamp-2">
+                      {description}
+                    </p>
+                  )}
+                </div>
+                {presetId && (
+                  <ToolHoverCopyButton
+                    text={presetId}
+                    position="args"
+                    copyButtonClassName="!bg-theme-bg/80 !rounded-lg !border !border-theme-border !mt-0.5"
                   />
                 )}
               </div>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base sm:text-lg font-bold text-theme-text truncate">
-                    {displayName}
-                  </h3>
-                  {statusVal && statusVal !== "published" && (
-                    <span
-                      className={clsx(
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase",
-                        statusVal === "draft"
-                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 ring-1 ring-amber-200/50 dark:ring-amber-800/30"
-                          : statusVal === "archived"
-                            ? "bg-stone-100 dark:bg-stone-700/40 text-stone-500 dark:text-stone-400 ring-1 ring-stone-200/50 dark:ring-stone-600/30"
-                            : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/50 dark:ring-emerald-800/30",
-                      )}
-                    >
-                      {statusVal}
-                    </span>
+
+              {/* Tags + Skills */}
+              {(tags.length > 0 || skillNames.length > 0) && (
+                <div className="mt-4 space-y-2.5">
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map((tag, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 bg-theme-bg text-theme-text-secondary ring-1 ring-theme-border hover:ring-theme-border-hover"
+                        >
+                          <Tag size={9} className="opacity-40" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {skillNames.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {skillNames.map((skill, i) => (
+                        <span
+                          key={i}
+                          className={clsx(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium",
+                            "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/50 dark:ring-emerald-700/30",
+                          )}
+                        >
+                          <Zap size={9} className="opacity-50" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {description && (
-                  <p className="text-xs sm:text-sm text-theme-text-tertiary mt-1 leading-relaxed line-clamp-2">
-                    {description}
-                  </p>
-                )}
-              </div>
-              {presetId && (
-                <ToolHoverCopyButton
-                  text={presetId}
-                  position="args"
-                  copyButtonClassName="!bg-theme-bg/80 !rounded-lg !border !border-theme-border !mt-0.5"
-                />
               )}
             </div>
-
-            {/* Tags + Skills */}
-            {(tags.length > 0 || skillNames.length > 0) && (
-              <div className="mt-4 space-y-2.5">
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {tags.map((tag, i) => (
-                      <span
-                        key={i}
-                        className={clsx(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
-                          "bg-violet-100/70 dark:bg-violet-900/25 text-violet-700 dark:text-violet-300",
-                          "ring-1 ring-violet-200/40 dark:ring-violet-800/30",
-                        )}
-                      >
-                        <Tag size={10} className="opacity-40" />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {skillNames.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {skillNames.map((skill, i) => (
-                      <span
-                        key={i}
-                        className={clsx(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
-                          "bg-emerald-100/70 dark:bg-emerald-900/25 text-emerald-700 dark:text-emerald-300",
-                          "ring-1 ring-emerald-200/40 dark:ring-emerald-800/30",
-                        )}
-                      >
-                        <Zap size={10} className="opacity-40" />
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -259,16 +378,16 @@ const PersonaItem = memo(function PersonaItem({
                   className={clsx(
                     "flex items-center gap-3 px-3.5 py-2.5 rounded-xl",
                     "bg-theme-bg border border-theme-border",
-                    "hover:border-violet-200 dark:hover:border-violet-800/50",
-                    "hover:bg-violet-50/50 dark:hover:bg-violet-950/20",
+                    "hover:border-[color-mix(in_srgb,var(--theme-primary)_24%,var(--theme-border))]",
+                    "hover:bg-[color-mix(in_srgb,var(--theme-primary)_5%,var(--theme-bg-card))]",
                     "transition-all duration-200",
                   )}
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0 bg-violet-100/60 dark:bg-violet-900/20">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0 bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))]">
                     {sp.icon || (
                       <MessageSquare
                         size={14}
-                        className="text-violet-400 dark:text-violet-500"
+                        className="text-[var(--theme-primary)]"
                       />
                     )}
                   </div>
@@ -328,23 +447,25 @@ const PersonaItem = memo(function PersonaItem({
                 className={clsx(
                   "flex items-center gap-2 rounded-lg px-2.5 py-2",
                   "bg-theme-bg border border-theme-border",
-                  "hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors",
+                  "hover:border-[color-mix(in_srgb,var(--theme-primary)_24%,var(--theme-border))] transition-colors",
                 )}
               >
                 <div
                   className={clsx(
                     "w-6 h-6 rounded-md flex items-center justify-center text-sm leading-none shrink-0 overflow-hidden",
-                    "bg-violet-100/60 dark:bg-violet-900/20",
+                    "bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))]",
                   )}
                 >
-                  {avatar ? (
-                    <span className="text-xs">{avatar}</span>
-                  ) : (
-                    <UserRound
-                      size={12}
-                      className="text-violet-500 dark:text-violet-400"
-                    />
-                  )}
+                  <RenderAvatar
+                    avatar={avatar}
+                    sizeClass="w-full h-full"
+                    fallback={
+                      <UserRound
+                        size={12}
+                        className="text-[var(--theme-primary)]"
+                      />
+                    }
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-theme-text font-medium truncate">
@@ -368,7 +489,7 @@ const PersonaItem = memo(function PersonaItem({
                 {tags.slice(0, 8).map((tag, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-violet-100/60 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 text-[10px]"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[color-mix(in_srgb,var(--theme-primary)_8%,var(--theme-bg-card))] text-theme-text-secondary ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))] text-[10px]"
                   >
                     <Tag size={7} className="opacity-50" />
                     {tag}

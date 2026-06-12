@@ -43,6 +43,7 @@ interface ProcessHistoryOptions {
       message: string;
       type: string;
       fields?: FormField[];
+      metadata?: Record<string, unknown>;
     }) => void;
   };
   activeSubagentStack: SubagentStackItem[];
@@ -125,6 +126,7 @@ function processHistoryEvent(
         message?: string;
         type?: string;
         fields?: FormField[];
+        metadata?: Record<string, unknown>;
       }>(buildApiUrl(`/human/${approvalData.id}`))
         .then((data) => data ?? null)
         .then((approval) => {
@@ -134,6 +136,7 @@ function processHistoryEvent(
               message: approval.message || "",
               type: approval.type || "form",
               fields: approval.fields,
+              metadata: approval.metadata,
             });
           }
         })

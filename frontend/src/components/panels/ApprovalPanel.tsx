@@ -13,6 +13,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import type { PendingApproval, FormField } from "../../types";
+import { ScheduledTaskApprovalContent } from "./ScheduledTaskApprovalContent";
 import { Checkbox } from "../common/Checkbox";
 import { Input, Select, Textarea } from "../common";
 import { authFetch } from "../../services/api/fetch";
@@ -493,9 +494,25 @@ export function ApprovalPanel({
               className="prose prose-stone dark:prose-invert max-w-none text-sm leading-relaxed prose-p:my-0.5 prose-headings:my-1"
               style={{ color: "var(--theme-text)" }}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                {currentApproval.message}
-              </ReactMarkdown>
+              {currentApproval.metadata?.approval_type ===
+                "scheduled_task_create" && currentApproval.metadata.preview ? (
+                <ScheduledTaskApprovalContent
+                  preview={
+                    currentApproval.metadata.preview as {
+                      name: string;
+                      agent_id: string;
+                      schedule: string;
+                      run_on_start: boolean;
+                      timeout_seconds: number;
+                      message: string;
+                    }
+                  }
+                />
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                  {currentApproval.message}
+                </ReactMarkdown>
+              )}
             </div>
           </div>
 

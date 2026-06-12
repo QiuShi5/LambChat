@@ -8,10 +8,15 @@ from __future__ import annotations
 
 import base64
 import ipaddress
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from tempfile import SpooledTemporaryFile
+from typing import Any
 from urllib.parse import quote, unquote, urlsplit
 
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables.config import var_child_runnable_config
+from langgraph.constants import CONFIG_KEY_CHECKPOINTER
 
 from src.infra.agent import AgentEventProcessor
 from src.infra.async_utils import run_blocking_io
@@ -21,6 +26,31 @@ logger = get_logger(__name__)
 IMAGE_DATA_URL_INLINE_MAX_BYTES = 2 * 1024 * 1024
 IMAGE_DATA_URL_SPOOL_MAX_MEMORY_BYTES = 256 * 1024
 IMAGE_DATA_URL_ENCODE_CHUNK_BYTES = 192 * 1024
+
+
+def build_nested_graph_configurable(
+    *,
+    thread_id: str,
+    checkpointer: Any,
+    **values: Any,
+) -> dict[str, Any]:
+    """Build config for a graph invoked manually inside another LangGraph node."""
+    return {
+        "thread_id": thread_id,
+        CONFIG_KEY_CHECKPOINTER: checkpointer,
+        "checkpoint_ns": "",
+        **values,
+    }
+
+
+@asynccontextmanager
+async def isolated_nested_graph_run() -> AsyncIterator[None]:
+    """Run a manually nested graph without inheriting the parent graph task config."""
+    token = var_child_runnable_config.set(None)
+    try:
+        yield
+    finally:
+        var_child_runnable_config.reset(token)
 
 
 async def resolve_fallback_model(

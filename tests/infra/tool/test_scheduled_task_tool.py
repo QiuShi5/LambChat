@@ -145,6 +145,10 @@ def test_create_tool_has_trigger_params() -> None:
     assert "cron_day_of_week" in fields
     assert "cron_day" in fields
     assert "cron_month" in fields
+    assert "persona_preset_id" in fields
+    assert "team_id" in fields
+    assert "role_query" in fields
+    assert "team_query" in fields
 
 
 def test_list_tool_can_fetch_single_task_details() -> None:
@@ -375,7 +379,7 @@ async def test_create_task_inherits_source_session_timezone(
     monkeypatch.setattr(
         scheduled_task_tool,
         "_get_current_session_defaults",
-        AsyncMock(return_value=("search", {}, "Asia/Shanghai", None)),
+        AsyncMock(return_value=("search", {}, "Asia/Shanghai", None, None, None)),
     )
     monkeypatch.setattr(
         scheduled_task_tool,
@@ -400,6 +404,244 @@ async def test_create_task_inherits_source_session_timezone(
     assert request.input_payload == {
         "message": "Send a morning brief",
         "user_timezone": "Asia/Shanghai",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_task_inherits_source_session_persona_or_team_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task()
+    create_mock = AsyncMock(return_value=task)
+    _auto_approve(monkeypatch)
+
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "_get_current_session_defaults",
+        AsyncMock(return_value=("search", {}, None, None, "persona-1", "team-ignored")),
+    )
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "ScheduledTaskService",
+        _fake_service_cls(create_task=create_mock),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Inherited Persona Task",
+            message="Write with inherited persona",
+            trigger_type="cron",
+            cron_hour="8",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "search"
+    assert request.input_payload == {
+        "message": "Write with inherited persona",
+        "persona_preset_id": "persona-1",
+    }
+
+    create_mock.reset_mock()
+    create_mock.return_value = task
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "_get_current_session_defaults",
+        AsyncMock(return_value=("team", {}, None, None, "persona-ignored", "team-1")),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Inherited Team Task",
+            message="Write with inherited team",
+            trigger_type="cron",
+            cron_hour="8",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "team"
+    assert request.input_payload == {
+        "message": "Write with inherited team",
+        "team_id": "team-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_non_team_task_stores_only_persona_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task(agent_id="fast")
+    create_mock = AsyncMock(return_value=task)
+    _auto_approve(monkeypatch)
+
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "ScheduledTaskService",
+        _fake_service_cls(create_task=create_mock),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Persona Brief",
+            message="Write a brief",
+            trigger_type="cron",
+            cron_hour="9",
+            agent_id="fast",
+            persona_preset_id="persona-1",
+            team_id="team-ignored",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "fast"
+    assert request.input_payload == {
+        "message": "Write a brief",
+        "persona_preset_id": "persona-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_team_task_stores_only_team_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task(agent_id="team")
+    create_mock = AsyncMock(return_value=task)
+    _auto_approve(monkeypatch)
+
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "ScheduledTaskService",
+        _fake_service_cls(create_task=create_mock),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Team Launch Plan",
+            message="Plan launch",
+            trigger_type="cron",
+            cron_hour="9",
+            agent_id="team",
+            persona_preset_id="persona-ignored",
+            team_id="team-1",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "team"
+    assert request.input_payload == {
+        "message": "Plan launch",
+        "team_id": "team-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_task_searches_persona_by_role_query_and_uses_non_team_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task(agent_id="fast")
+    create_mock = AsyncMock(return_value=task)
+    _auto_approve(monkeypatch)
+
+    class _FakePersonaManager:
+        async def list_presets(self, **kwargs):
+            assert kwargs["user_id"] == "user-1"
+            assert kwargs["q"] == "写作"
+            return [SimpleNamespace(id="persona-writer", name="写作助手")]
+
+    monkeypatch.setattr(scheduled_task_tool, "_resolve_user", AsyncMock(return_value=None))
+    monkeypatch.setattr(scheduled_task_tool, "PersonaPresetManager", lambda: _FakePersonaManager())
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "ScheduledTaskService",
+        _fake_service_cls(create_task=create_mock),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Writer Brief",
+            message="Write a brief",
+            trigger_type="cron",
+            cron_hour="9",
+            agent_id="team",
+            role_query="写作",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    assert result["preview"]["resolved_persona_preset"] == {
+        "id": "persona-writer",
+        "name": "写作助手",
+        "query": "写作",
+    }
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "fast"
+    assert request.input_payload == {
+        "message": "Write a brief",
+        "persona_preset_id": "persona-writer",
+    }
+
+
+@pytest.mark.asyncio
+async def test_create_task_searches_team_by_query_and_uses_team_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = _task(agent_id="team")
+    create_mock = AsyncMock(return_value=task)
+    _auto_approve(monkeypatch)
+
+    class _FakeTeamManager:
+        async def list_teams(self, **kwargs):
+            assert kwargs["owner_user_id"] == "user-1"
+            assert kwargs["q"] == "研究团队"
+            return SimpleNamespace(teams=[SimpleNamespace(id="team-research", name="研究团队")])
+
+    monkeypatch.setattr(scheduled_task_tool, "_resolve_user", AsyncMock(return_value=None))
+    monkeypatch.setattr(scheduled_task_tool, "TeamManager", lambda: _FakeTeamManager())
+    monkeypatch.setattr(
+        scheduled_task_tool,
+        "ScheduledTaskService",
+        _fake_service_cls(create_task=create_mock),
+    )
+
+    result = json.loads(
+        await _call_tool(
+            scheduled_task_tool.scheduled_task_create,
+            name="Research Team Task",
+            message="Research market",
+            trigger_type="cron",
+            cron_hour="9",
+            agent_id="fast",
+            team_query="研究团队",
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    assert result["preview"]["resolved_team"] == {
+        "id": "team-research",
+        "name": "研究团队",
+        "query": "研究团队",
+    }
+    request = create_mock.call_args.kwargs.get("request") or create_mock.call_args[0][0]
+    assert request.agent_id == "team"
+    assert request.input_payload == {
+        "message": "Research market",
+        "team_id": "team-research",
     }
 
 
@@ -498,6 +740,8 @@ async def test_create_confirmation_shows_preview_and_waits(monkeypatch: pytest.M
     assert approval_kwargs["fields"] == []
     assert approval_kwargs["session_id"] == "session-1"
     assert approval_kwargs["user_id"] == "user-1"
+    assert approval_kwargs["metadata"]["approval_type"] == "scheduled_task_create"
+    assert approval_kwargs["metadata"]["preview"]["name"] == "Daily Report"
     assert "No task has been created yet" in approval_kwargs["message"]
     assert "Generate daily report" in approval_kwargs["message"]
     assert "The task will also run immediately after creation" in approval_kwargs["message"]

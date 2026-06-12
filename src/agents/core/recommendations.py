@@ -451,7 +451,7 @@ async def _parse_questions(raw_text: str) -> list[str]:
             else []
         )
     else:
-        questions = [line.strip(" -0123456789.、") for line in text.splitlines() if line.strip()]
+        questions = []
 
     return questions[:3]
 

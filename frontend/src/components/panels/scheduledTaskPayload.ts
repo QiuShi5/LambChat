@@ -23,16 +23,36 @@ export function withoutScheduledTaskModelOptions(
   return next;
 }
 
+export function getScheduledTaskPersonaPresetId(
+  payload: Record<string, unknown> | undefined,
+): string {
+  const value = payload?.persona_preset_id;
+  return typeof value === "string" ? value : "";
+}
+
+export function getScheduledTaskTeamId(
+  payload: Record<string, unknown> | undefined,
+): string {
+  const value = payload?.team_id;
+  return typeof value === "string" ? value : "";
+}
+
 export function buildScheduledTaskInputPayload(
   payload: Record<string, unknown>,
   {
+    agentId,
     modelId,
     modelValue,
     availableModels,
+    personaPresetId = "",
+    teamId = "",
   }: {
+    agentId: string;
     modelId: string;
     modelValue: string;
     availableModels: AvailableModel[] | null;
+    personaPresetId?: string;
+    teamId?: string;
   },
 ): Record<string, unknown> {
   const selectedModel = availableModels?.find((model) => model.id === modelId);
@@ -47,8 +67,15 @@ export function buildScheduledTaskInputPayload(
   };
   const nextPayload = { ...payload };
   delete nextPayload.agent_options;
+  delete nextPayload.persona_preset_id;
+  delete nextPayload.team_id;
   if (Object.keys(nextAgentOptions).length > 0) {
     nextPayload.agent_options = nextAgentOptions;
+  }
+  if (agentId === "team") {
+    if (teamId) nextPayload.team_id = teamId;
+  } else if (personaPresetId) {
+    nextPayload.persona_preset_id = personaPresetId;
   }
   return nextPayload;
 }

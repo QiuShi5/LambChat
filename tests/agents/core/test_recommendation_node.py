@@ -120,6 +120,15 @@ class _QuestionOnlyModel:
         return _QuestionOnlyResponse()
 
 
+class _MalformedJsonResponse:
+    content = '["我该怎么开始？",\n"能帮我重新设计一下吗？",'
+
+
+class _MalformedJsonModel:
+    async def ainvoke(self, prompt: str):
+        return _MalformedJsonResponse()
+
+
 async def test_generate_recommend_questions_uses_session_title_model(monkeypatch) -> None:
     calls = []
     model = _FakeModel()
@@ -266,6 +275,23 @@ async def test_generate_recommend_questions_accepts_user_perspective_question_ou
 
     assert questions == ["这个需要改哪些测试？", "能帮我直接修复吗？", "改完后怎么验证？"]
     assert all(question.endswith(("?", "？")) for question in questions)
+
+
+async def test_generate_recommend_questions_falls_back_when_model_returns_malformed_json(
+    monkeypatch,
+) -> None:
+    async def fake_get_model(**kwargs):
+        return _MalformedJsonModel()
+
+    monkeypatch.setattr("src.infra.llm.client.LLMClient.get_model", fake_get_model)
+
+    questions = await generate_recommend_questions("如何生成推荐追问？")
+
+    assert questions == [
+        "接下来我该重点关注什么？",
+        "能展开说说如何生成推荐追问吗？",
+        "有没有更具体的例子？",
+    ]
 
 
 async def test_generate_recommend_questions_offloads_json_parsing(monkeypatch) -> None:

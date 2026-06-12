@@ -177,6 +177,43 @@ async def test_internal_scheduled_task_tools_follow_role_permissions(
 
 
 @pytest.mark.asyncio
+async def test_internal_scheduled_task_create_tool_info_includes_role_team_targeting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import internal_registry
+    from src.infra.tool.scheduled_task_tool import get_scheduled_task_tools
+
+    class _FakeRoleStorage:
+        async def get_by_name(self, name: str):
+            assert name == "writer"
+            return SimpleNamespace(
+                permissions=["scheduled_task:write"],
+            )
+
+    async def _empty_policies():
+        return {}
+
+    monkeypatch.setattr(internal_registry, "RoleStorage", lambda: _FakeRoleStorage(), raising=False)
+    monkeypatch.setattr(internal_registry, "get_internal_tool_policies", _empty_policies)
+    monkeypatch.setattr(internal_registry, "build_internal_tools", get_scheduled_task_tools)
+
+    infos = await internal_registry.get_internal_tool_infos(
+        user_id="user-1",
+        user_roles=["writer"],
+        is_admin=False,
+    )
+
+    create_info = next(info for info in infos if info.name == "scheduled_task_create")
+    params = {param["name"]: param for param in create_info.parameters}
+
+    for name in ("persona_preset_id", "team_id", "role_query", "team_query"):
+        assert name in params
+        assert params[name]["description"]
+        assert params[name]["required"] is False
+    assert "runtime" not in params
+
+
+@pytest.mark.asyncio
 async def test_internal_scheduled_task_tools_require_permissions_even_for_admin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

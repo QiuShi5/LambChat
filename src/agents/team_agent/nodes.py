@@ -15,8 +15,10 @@ from langchain_core.runnables import RunnableConfig
 from src.agents.core.base import get_presenter
 from src.agents.core.node_utils import (
     build_human_message,
+    build_nested_graph_configurable,
     emit_token_usage,
     inline_image_attachments_as_data_urls,
+    isolated_nested_graph_run,
     resolve_fallback_model,
     resolve_model_image_url_to_base64,
     resolve_model_supports_vision,
@@ -536,20 +538,21 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         skills=None,
         subagents=custom_subagents,
         middleware=user_middleware,
-    ).with_config({"recursion_limit": settings.SESSION_MAX_RUNS_PER_SESSION})
+    )
     graph_compile_time = time.time() - graph_compile_start
     logger.debug(f"[TeamAgent] Graph compile: {graph_compile_time * 1000:.3f}ms")
 
     inner_config: RunnableConfig = {
-        "configurable": {
-            "thread_id": state.get("session_id", str(uuid.uuid4())),
-            "backend": backend,
-            "context": context,
-            "disabled_skills": configurable.get("disabled_skills"),
-            "enabled_skills": runtime_enabled_skills,
-            "base_url": configurable.get("base_url", ""),
-            "presenter": presenter,
-        },
+        "configurable": build_nested_graph_configurable(
+            thread_id=state.get("session_id", str(uuid.uuid4())),
+            checkpointer=inner_checkpointer,
+            backend=backend,
+            context=context,
+            disabled_skills=configurable.get("disabled_skills"),
+            enabled_skills=runtime_enabled_skills,
+            base_url=configurable.get("base_url", ""),
+            presenter=presenter,
+        ),
         "recursion_limit": config.get("recursion_limit", settings.SESSION_MAX_RUNS_PER_SESSION),
     }
 
@@ -584,12 +587,13 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     logger.info("[TeamAgent] Starting astream_events")
     try:
-        async for event in inner_graph.astream_events(  # type: ignore[call-overload]
-            build_goal_input(new_message, active_goal, rubric_middleware=rubric_middleware),
-            inner_config,
-            version="v2",
-        ):
-            await event_processor.process_event(event)
+        async with isolated_nested_graph_run():
+            async for event in inner_graph.astream_events(  # type: ignore[call-overload]
+                build_goal_input(new_message, active_goal, rubric_middleware=rubric_middleware),
+                inner_config,
+                version="v2",
+            ):
+                await event_processor.process_event(event)
     finally:
         await event_processor.flush()
         await emit_token_usage(
@@ -625,8 +629,4 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     output_text = event_processor.output_text
     event_processor.clear()
 
-    return {
-        "output": output_text,
-        # 历史消息由内层 checkpointer 持久化；推荐问题启动时直接读取已有 state。
-        "messages": [],
-    }
+    return {"output": output_text}

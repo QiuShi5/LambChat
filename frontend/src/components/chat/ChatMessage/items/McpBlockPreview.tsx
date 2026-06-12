@@ -5,6 +5,7 @@ import {
   FileText,
   Image as ImageIcon,
   File,
+  Ban,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -432,6 +433,16 @@ export function ToolResultContent({
     );
   }
 
+  // Approval / tool rejection response — show human-friendly summary instead of raw JSON
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    (result as Record<string, unknown>).success === false &&
+    typeof (result as Record<string, unknown>).reason === "string"
+  ) {
+    return <RejectionResult data={result as Record<string, unknown>} />;
+  }
+
   // Plain object or JSON-parseable string — render as JSON
   if (typeof result === "object" && result !== null) {
     return <JsonFallback data={result} hideCopyButton={hideCopyButton} />;
@@ -508,6 +519,133 @@ function JsonFallback({
           {expanded ? t("chat.message.collapse") : t("chat.message.expandAll")}
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Human-friendly renderer for approval / tool rejection responses.
+ * Matches objects like:
+ *   { success: false, action: "not_created", reason: "rejected", message: "...", preview: {...} }
+ */
+function RejectionResult({ data }: { data: Record<string, unknown> }) {
+  const { t } = useTranslation();
+  const [showDetails, setShowDetails] = useState(false);
+
+  const message =
+    (typeof data.message === "string" && data.message) || undefined;
+  const preview = data.preview as Record<string, unknown> | undefined;
+  const taskName =
+    preview && typeof preview.name === "string" ? preview.name : undefined;
+  const description =
+    preview && typeof preview.description === "string"
+      ? preview.description
+      : undefined;
+  const schedule =
+    preview && typeof preview.schedule === "string"
+      ? preview.schedule
+      : undefined;
+
+  // Summary line for the card
+  const summary = message || t("chat.message.rejected");
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start gap-2 rounded-xl border border-[color-mix(in_srgb,var(--theme-primary)_14%,var(--theme-border))] bg-theme-bg-card px-3 py-2.5 shadow-[0_12px_28px_-24px_color-mix(in_srgb,var(--theme-primary)_45%,transparent)]">
+        <Ban size={14} className="shrink-0 mt-0.5 text-theme-text-tertiary" />
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Task name (if available) */}
+          {taskName && (
+            <p
+              className="text-sm font-medium truncate"
+              style={{ color: "var(--theme-text)" }}
+            >
+              {taskName}
+            </p>
+          )}
+
+          {/* Summary / reason */}
+          <p
+            className="text-xs"
+            style={{ color: "var(--theme-text-secondary)" }}
+          >
+            {summary}
+          </p>
+
+          {/* Schedule info (compact, one line) */}
+          {schedule && (
+            <p
+              className="text-[11px] font-mono truncate"
+              style={{ color: "var(--theme-text-tertiary)" }}
+            >
+              {schedule}
+            </p>
+          )}
+
+          {/* Description (truncated) */}
+          {description && !showDetails && (
+            <p
+              className="text-[11px] line-clamp-2"
+              style={{ color: "var(--theme-text-tertiary)" }}
+            >
+              {description}
+            </p>
+          )}
+
+          {/* Expanded details */}
+          {showDetails && (
+            <div className="space-y-2 pt-2 border-t border-theme-border">
+              {description && (
+                <div>
+                  <p
+                    className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
+                    {t("chat.message.description")}
+                  </p>
+                  <p
+                    className="text-xs whitespace-pre-wrap break-words"
+                    style={{ color: "var(--theme-text-secondary)" }}
+                  >
+                    {description}
+                  </p>
+                </div>
+              )}
+              {preview && (
+                <div>
+                  <p
+                    className="text-[10px] font-medium uppercase tracking-wider mb-0.5"
+                    style={{ color: "var(--theme-text-tertiary)" }}
+                  >
+                    {t("chat.message.details")}
+                  </p>
+                  <pre className="text-[11px] text-theme-text-tertiary overflow-y-auto whitespace-pre-wrap break-words max-h-48 min-w-0 rounded-lg border border-theme-border bg-theme-bg p-2.5">
+                    {JSON.stringify(preview, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Expand/collapse toggle */}
+          {(description || preview) && (
+            <button
+              onClick={() => setShowDetails((v) => !v)}
+              className="flex items-center gap-0.5 text-[11px] transition-colors hover:text-theme-text-secondary"
+              style={{ color: "var(--theme-text-tertiary)" }}
+            >
+              {showDetails ? (
+                <ChevronUp size={11} />
+              ) : (
+                <ChevronDown size={11} />
+              )}
+              {showDetails
+                ? t("chat.message.collapse")
+                : t("chat.message.expandAll")}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -203,6 +203,7 @@ export function ChatAppContent({
         fields: approval.fields || [],
         status: "pending",
         session_id: sessionId,
+        metadata: approval.metadata,
       });
     },
     onClearApprovals: () => {

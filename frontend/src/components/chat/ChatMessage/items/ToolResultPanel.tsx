@@ -86,8 +86,8 @@ const statusConfig: Record<
     icon: null,
   },
   loading: {
-    bg: "bg-amber-100/80 dark:bg-amber-900/30",
-    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-[color-mix(in_srgb,var(--theme-primary)_8%,transparent)]",
+    color: "text-[var(--theme-primary)]",
     icon: null,
   },
   success: {
@@ -101,8 +101,8 @@ const statusConfig: Record<
     icon: <XCircle size={16} />,
   },
   cancelled: {
-    bg: "bg-amber-100/80 dark:bg-amber-900/30",
-    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-[color-mix(in_srgb,var(--theme-primary)_8%,transparent)]",
+    color: "text-[var(--theme-primary)]",
     icon: <Ban size={16} />,
   },
 };
@@ -387,12 +387,10 @@ export function ToolResultPanel({
                   <LoadingSpinner
                     size="sm"
                     className="shrink-0"
-                    color={cfg.color || "text-blue-600 dark:text-blue-400"}
+                    color={cfg.color || "text-[var(--theme-primary)]"}
                   />
                 ) : (
-                  <span
-                    className={cfg.color || "text-blue-600 dark:text-blue-400"}
-                  >
+                  <span className={cfg.color || "text-[var(--theme-primary)]"}>
                     {cfg.icon || icon}
                   </span>
                 )}
@@ -400,21 +398,55 @@ export function ToolResultPanel({
 
               {/* Title */}
               {title && (
-                <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                   <h3
                     className="min-w-0 max-w-[40%] truncate font-medium text-sm text-theme-text"
                     title={title}
                   >
                     {title}
                   </h3>
-                  {subtitle && (
-                    <span
-                      className="inline-flex h-5 min-w-0 max-w-[45vw] sm:max-w-[min(28rem,45%)] items-center justify-start overflow-hidden rounded-full bg-theme-bg-subtle px-1 text-[10px] font-semibold leading-none text-theme-text-secondary"
-                      title={subtitle}
-                    >
-                      <span className="block min-w-0 truncate">{subtitle}</span>
-                    </span>
-                  )}
+                  {subtitle &&
+                    (() => {
+                      const segments = subtitle.split(/\s+/).filter(Boolean);
+                      const isTagList =
+                        segments.length > 1 &&
+                        segments.every((s) => s.length <= 20);
+                      if (!isTagList) {
+                        return (
+                          <span
+                            className="inline-flex h-5 min-w-0 max-w-[45vw] sm:max-w-[min(28rem,45%)] items-center overflow-hidden rounded-full bg-theme-bg-subtle ring-1 ring-inset ring-theme-border px-2.5 text-[10px] font-medium leading-none text-theme-text-secondary"
+                            title={subtitle}
+                          >
+                            <span className="block min-w-0 truncate">
+                              {subtitle}
+                            </span>
+                          </span>
+                        );
+                      }
+                      const maxVisible = 4;
+                      const visible = segments.slice(0, maxVisible);
+                      const overflow = segments.length - maxVisible;
+                      return (
+                        <div className="inline-flex items-center gap-1 min-w-0 max-w-[45vw] sm:max-w-[min(28rem,45%)] overflow-hidden">
+                          {visible.map((tag, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center shrink-0 max-w-full rounded-full bg-[color-mix(in_srgb,var(--theme-primary)_6%,transparent)] ring-1 ring-inset ring-[color-mix(in_srgb,var(--theme-primary)_12%,transparent)] px-2 h-5 text-[10px] font-medium leading-none text-theme-text-secondary"
+                              title={tag}
+                            >
+                              <span className="block min-w-0 truncate">
+                                {tag}
+                              </span>
+                            </span>
+                          ))}
+                          {overflow > 0 && (
+                            <span className="shrink-0 text-[10px] font-medium text-theme-text-tertiary tabular-nums">
+                              +{overflow}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                 </div>
               )}
 

@@ -516,6 +516,7 @@ async function handleApprovalRequired(
         type?: string;
         fields?: FormField[];
         expires_at?: string | null;
+        metadata?: Record<string, unknown>;
       }>(buildApiUrl(`/human/${data.id}`));
       if (!approval) return;
       if (approval && approval.status === "pending") {
@@ -528,6 +529,7 @@ async function handleApprovalRequired(
           timeout: (data as Record<string, unknown>).timeout as
             | number
             | undefined,
+          metadata: approval.metadata,
         });
       }
     } catch (err) {

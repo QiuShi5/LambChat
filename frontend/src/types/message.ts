@@ -232,6 +232,7 @@ export interface PendingApproval {
   session_id?: string | null;
   expires_at?: string | null;
   timeout?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StreamEvent {

@@ -106,6 +106,7 @@ async def create_approval(
     fields: Optional[List[dict]] = None,
     session_id: Optional[str] = None,
     user_id: Optional[str] = None,
+    metadata: Optional[dict] = None,
 ) -> PendingApproval:
     """
     创建审批请求 (供 Agent 调用)
@@ -130,6 +131,7 @@ async def create_approval(
         session_id=session_id,
         user_id=user_id,
         created_at=utc_now(),
+        metadata=metadata,
     )
 
     # 存储到 MongoDB

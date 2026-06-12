@@ -315,12 +315,44 @@ class ScheduledTaskRunner:
         else:
             agent_options = None
 
+        persona_preset_id = task.input_payload.get("persona_preset_id")
+        persona_preset_id = (
+            persona_preset_id if isinstance(persona_preset_id, str) and persona_preset_id else None
+        )
+        team_id = task.input_payload.get("team_id")
+        team_id = team_id if isinstance(team_id, str) and team_id else None
+        if task.agent_id != "team":
+            team_id = None
+        else:
+            persona_preset_id = None
+
+        persona_system_prompt: str | None = None
+        enabled_skills: list[str] | None = None
+        if persona_preset_id:
+            from src.api.routes.chat import resolve_persona_request
+            from src.kernel.schemas.agent import AgentRequest
+
+            user = await _resolve_task_owner(task.owner_id)
+            if user is None:
+                raise RuntimeError(f"Scheduled task owner '{task.owner_id}' not found")
+            persona_request = AgentRequest(
+                message=display_message,
+                persona_preset_id=persona_preset_id,
+            )
+            await resolve_persona_request(persona_request, user)
+            persona_system_prompt = persona_request.persona_system_prompt
+            enabled_skills = persona_request.enabled_skills
+
         session_metadata = {
             "source": "scheduled_task",
             "scheduled_task_id": task.id,
             "scheduled_task_run_id": run_id,
             "hidden_from_conversation_list": True,
         }
+        if persona_preset_id:
+            session_metadata["persona_preset_id"] = persona_preset_id
+        if team_id:
+            session_metadata["team_id"] = team_id
 
         if use_arq_backend:
             _, trace_id = await task_manager.submit_arq(
@@ -333,6 +365,9 @@ class ScheduledTaskRunner:
                 disabled_tools=task.input_payload.get("disabled_tools"),
                 agent_options=agent_options,
                 project_id=None,
+                enabled_skills=enabled_skills,
+                persona_system_prompt=persona_system_prompt,
+                team_id=team_id,
                 session_name=f"{task.name}",
                 display_message=display_message,
                 recommendation_input=display_message,
@@ -356,6 +391,9 @@ class ScheduledTaskRunner:
                 disabled_tools=task.input_payload.get("disabled_tools"),
                 agent_options=agent_options,
                 project_id=None,
+                enabled_skills=enabled_skills,
+                persona_system_prompt=persona_system_prompt,
+                team_id=team_id,
                 session_name=f"{task.name}",
                 display_message=display_message,
                 recommendation_input=display_message,

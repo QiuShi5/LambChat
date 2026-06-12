@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildScheduledTaskInputPayload } from "../scheduledTaskPayload.ts";
+import {
+  buildScheduledTaskInputPayload,
+  getScheduledTaskPersonaPresetId,
+  getScheduledTaskTeamId,
+} from "../scheduledTaskPayload.ts";
 
 test("clearing the model removes stale scheduled task agent options", () => {
   assert.deepEqual(
@@ -15,6 +19,7 @@ test("clearing the model removes stale scheduled task agent options", () => {
         },
       },
       {
+        agentId: "fast",
         modelId: "",
         modelValue: "",
         availableModels: null,
@@ -37,6 +42,7 @@ test("clearing the model preserves non-model agent options", () => {
         },
       },
       {
+        agentId: "fast",
         modelId: "",
         modelValue: "",
         availableModels: null,
@@ -49,4 +55,60 @@ test("clearing the model preserves non-model agent options", () => {
       },
     },
   );
+});
+
+test("non-team scheduled tasks store only persona id", () => {
+  assert.deepEqual(
+    buildScheduledTaskInputPayload(
+      {
+        message: "run",
+        team_id: "team-old",
+      },
+      {
+        agentId: "fast",
+        modelId: "",
+        modelValue: "",
+        availableModels: null,
+        personaPresetId: "persona-1",
+        teamId: "team-1",
+      },
+    ),
+    {
+      message: "run",
+      persona_preset_id: "persona-1",
+    },
+  );
+});
+
+test("team scheduled tasks store only team id", () => {
+  assert.deepEqual(
+    buildScheduledTaskInputPayload(
+      {
+        message: "run",
+        persona_preset_id: "persona-old",
+      },
+      {
+        agentId: "team",
+        modelId: "",
+        modelValue: "",
+        availableModels: null,
+        personaPresetId: "persona-1",
+        teamId: "team-1",
+      },
+    ),
+    {
+      message: "run",
+      team_id: "team-1",
+    },
+  );
+});
+
+test("scheduled task payload id readers ignore wrong types", () => {
+  assert.equal(
+    getScheduledTaskPersonaPresetId({ persona_preset_id: "persona-1" }),
+    "persona-1",
+  );
+  assert.equal(getScheduledTaskPersonaPresetId({ persona_preset_id: 1 }), "");
+  assert.equal(getScheduledTaskTeamId({ team_id: "team-1" }), "team-1");
+  assert.equal(getScheduledTaskTeamId({ team_id: null }), "");
 });
