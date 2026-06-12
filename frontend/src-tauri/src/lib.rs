@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use tauri::Manager;
 
 /// On version upgrade, clean webview data so the user starts fresh.
 fn clean_on_version_upgrade(app_handle: &tauri::AppHandle) {
