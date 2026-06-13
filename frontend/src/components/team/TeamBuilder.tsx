@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Bot,
   Camera,
   ChevronDown,
   Cpu,
@@ -26,8 +27,10 @@ import type { PersonaPreset } from "../../types";
 import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
+import { agentApi } from "../../services/api/agent";
 import { modelApi } from "../../services/api/model";
 import type { ModelOption } from "../../services/api/model";
+import type { AgentInfo } from "../../types/agent";
 import { personaPresetApi } from "../../services/api/personaPreset";
 import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import { uploadApi } from "../../services/api";
@@ -119,6 +122,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     const [fallbackModels, setFallbackModels] = useState<ModelOption[] | null>(
       null,
     );
+    const [availableAgents, setAvailableAgents] = useState<AgentInfo[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
 
     const [teamName, setTeamName] = useState("");
@@ -192,6 +196,25 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     }, [settingsContext?.availableModels]);
 
     useEffect(() => {
+      let cancelled = false;
+      agentApi
+        .list()
+        .then((res) => {
+          if (!cancelled) {
+            setAvailableAgents(
+              (res.agents ?? []).filter((agent) => agent.id !== "team"),
+            );
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setAvailableAgents([]);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []);
+
+    useEffect(() => {
       if (!rolePickerOpen) return;
       const handleClick = (e: MouseEvent) => {
         if (
@@ -236,6 +259,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
         const newMember: TeamMember = {
           member_id: generateMemberId(),
           persona_preset_id: preset.id,
+          agent_id: null,
           model_id: null,
           role_name: preset.name,
           role_avatar: preset.avatar,
@@ -293,6 +317,19 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       [],
     );
 
+    const handleAgentChange = useCallback(
+      (memberId: string, agentId: string | null) => {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.member_id === memberId
+              ? { ...m, agent_id: agentId || null }
+              : m,
+          ),
+        );
+      },
+      [],
+    );
+
     const handleSave = async () => {
       if (!teamName.trim()) return;
       setSaving(true);
@@ -308,6 +345,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           members: members.map((m, idx) => ({
             member_id: m.member_id,
             persona_preset_id: m.persona_preset_id,
+            agent_id: m.agent_id ?? null,
             model_id: m.model_id ?? null,
             role_name: m.role_name,
             role_avatar: m.role_avatar ?? null,
@@ -712,6 +750,10 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                   {t("team.configured", { count: configuredMemberCount })}
                 </span>
                 <span className="tmb-stat">
+                  <Bot size={11} />
+                  {t("team.memberModes", "成员模式")}
+                </span>
+                <span className="tmb-stat">
                   <Cpu size={11} />
                   {t("team.memberModels", "成员模型")}
                 </span>
@@ -811,6 +853,10 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                     availableModels={availableModels ?? []}
                     onModelChange={(modelId) =>
                       handleModelChange(member.member_id, modelId)
+                    }
+                    availableAgents={availableAgents}
+                    onAgentChange={(agentId) =>
+                      handleAgentChange(member.member_id, agentId)
                     }
                   />
                 ))}

@@ -178,6 +178,8 @@ async def create_agent_team(
         "Members chosen by the LLM after calling search_persona_presets. Each item is an "
         "object with: persona_preset_id (required, must be an id returned by "
         "search_persona_presets or the preset.id returned by save_persona_preset), "
+        "agent_id (optional agent mode id for this member, such as 'fast' or 'search'; "
+        "omit or null to follow the team's default member mode; do not use 'team'), "
         "model_id (optional model configuration id for this member; omit or null to "
         "follow the conversation model), "
         "role_name (required, concise display name for this team such as 'Market Research "
@@ -277,6 +279,7 @@ async def create_agent_team(
             TeamMemberCreate(
                 member_id=item.get("member_id") or f"m-{index}",
                 persona_preset_id=item["persona_preset_id"],
+                agent_id=item.get("agent_id"),
                 model_id=item.get("model_id"),
                 role_name=item.get("role_name") or "",
                 role_avatar=item.get("role_avatar"),

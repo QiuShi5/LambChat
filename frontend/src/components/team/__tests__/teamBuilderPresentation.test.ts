@@ -177,7 +177,12 @@ test("team avatar image containers constrain absolute avatar images", () => {
   assertCssDeclaration(".team-toolbar-avatar", "height", "1\\.125rem");
 });
 
-test("team member card exposes collapsible member model selector", () => {
+test("team member card exposes collapsible member mode and model selectors", () => {
+  assert.match(memberCardSource, /availableAgents/);
+  assert.match(memberCardSource, /onAgentChange/);
+  assert.match(memberCardSource, /followTeamMode/);
+  assert.match(memberCardSource, /value=\{member\.agent_id \?\? ""\}/);
+  assert.match(memberCardSource, /onAgentChange\?\.\(e\.target\.value \|\| null\)/);
   assert.match(memberCardSource, /availableModels/);
   assert.match(memberCardSource, /onModelChange/);
   assert.match(memberCardSource, /team-member-card__model/);

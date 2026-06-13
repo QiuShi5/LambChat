@@ -23,6 +23,7 @@ class TeamMemberCreate(BaseModel):
 
     member_id: Optional[str] = Field(None, min_length=1)
     persona_preset_id: str = Field(..., min_length=1)
+    agent_id: Optional[str] = Field(None, min_length=1)
     model_id: Optional[str] = Field(None, min_length=1)
     role_name: str = Field(default="", max_length=80)
     role_avatar: Optional[str] = None
@@ -36,6 +37,7 @@ class TeamMemberUpdate(BaseModel):
     """Request body for updating a team member."""
 
     persona_preset_id: Optional[str] = Field(None, min_length=1)
+    agent_id: Optional[str] = Field(None, min_length=1)
     model_id: Optional[str] = Field(None, min_length=1)
     role_name: Optional[str] = Field(None, max_length=80)
     role_avatar: Optional[str] = None
@@ -50,6 +52,7 @@ class TeamMemberResponse(BaseModel):
 
     member_id: str
     persona_preset_id: str
+    agent_id: Optional[str] = None
     model_id: Optional[str] = None
     role_name: str = ""
     role_avatar: Optional[str] = None

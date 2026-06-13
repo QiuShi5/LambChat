@@ -52,6 +52,20 @@ def test_team_member_schema_accepts_null_and_string_model_id() -> None:
     assert override.members[0].model_id == "model-member"
 
 
+def test_team_member_schema_accepts_null_and_string_agent_id() -> None:
+    no_override = TeamCreate(
+        name="Default Mode Team",
+        members=[{"persona_preset_id": "preset-1", "agent_id": None}],
+    )
+    override = TeamCreate(
+        name="Override Mode Team",
+        members=[{"persona_preset_id": "preset-1", "agent_id": "search"}],
+    )
+
+    assert no_override.members[0].agent_id is None
+    assert override.members[0].agent_id == "search"
+
+
 def _team(team_id: str = "team-1") -> TeamResponse:
     return TeamResponse(
         id=team_id,

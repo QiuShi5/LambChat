@@ -33,6 +33,9 @@ from src.agents.core.subagent_prompts import (
 from src.agents.core.thinking import build_thinking_config
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
 from src.agents.search_agent.prompt import (
+    DEFAULT_SYSTEM_PROMPT as SEARCH_DEFAULT_SYSTEM_PROMPT,
+)
+from src.agents.search_agent.prompt import (
     SANDBOX_RUNTIME_SECTION as SEARCH_SANDBOX_RUNTIME_SECTION,
 )
 from src.agents.search_agent.prompt import (
@@ -179,6 +182,82 @@ async def resolve_team_member_model_config(
 
 def _safe_member_model_config_dict(model: ModelConfig) -> dict[str, Any]:
     return model.model_copy(update={"api_key": None}).model_dump(mode="json")
+
+
+async def resolve_team_member_agent_id(
+    member_agent_id: str | None,
+    *,
+    user_id: str | None = None,
+) -> str | None:
+    """Resolve and validate a team member agent mode override for runtime use."""
+    if not member_agent_id:
+        return None
+
+    if member_agent_id == "team":
+        raise ValueError("team_member_agent_unavailable")
+
+    from src.agents.core.base import AgentFactory
+
+    registered_agent_ids = {agent["id"] for agent in AgentFactory.list_agents()}
+    if member_agent_id not in registered_agent_ids:
+        raise ValueError("team_member_agent_unavailable")
+
+    role_ids: list[str] = []
+    role_agent_map: dict[str, list[str] | None] = {}
+    try:
+        if user_id:
+            from src.infra.agent.config_storage import get_agent_config_storage
+            from src.infra.role.manager import get_role_manager
+            from src.infra.user.storage import UserStorage
+
+            user = await UserStorage().get_by_id(user_id)
+            if not user:
+                raise ValueError("team_member_agent_not_allowed")
+
+            storage = get_agent_config_storage()
+            role_manager = get_role_manager()
+            for role_name in user.roles or []:
+                role = await role_manager.get_role_by_name(role_name)
+                if not role:
+                    continue
+                role_ids.append(role.id)
+                role_agent_map[role.id] = await storage.get_role_agents(role.id)
+
+        allowed_agents = await AgentFactory.get_filtered_agents(
+            user_roles=role_ids,
+            role_agent_map=role_agent_map,
+        )
+        allowed_agent_ids = {agent["id"] for agent in allowed_agents}
+        if member_agent_id not in allowed_agent_ids:
+            raise ValueError("team_member_agent_not_allowed")
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.warning(
+            "[TeamAgent] Failed to validate member agent access %s: %s",
+            member_agent_id,
+            e,
+        )
+        raise ValueError("team_member_agent_unavailable") from e
+
+    return member_agent_id
+
+
+def _build_member_agent_mode_sections(
+    agent_id: str | None,
+    *,
+    sandbox_active: bool,
+) -> list[str]:
+    """Return mode-specific prompt sections for a team member subagent."""
+    if not agent_id:
+        return []
+    if agent_id == "fast":
+        return [FAST_SYSTEM_PROMPT]
+    if agent_id == "search":
+        return [
+            SEARCH_SANDBOX_SYSTEM_PROMPT if sandbox_active else SEARCH_DEFAULT_SYSTEM_PROMPT
+        ]
+    return []
 
 
 async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any]:
@@ -464,6 +543,10 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             for member in team.active_members:
                 subagent_type = build_team_member_subagent_type(member)
                 role_name = member.role_name or subagent_type
+                member_agent_id = await resolve_team_member_agent_id(
+                    member.agent_id,
+                    user_id=context.user_id,
+                )
                 member_model_config = await resolve_team_member_model_config(
                     member.model_id,
                     user_id=context.user_id,
@@ -505,6 +588,10 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 role_prompt_sections = [
                     s
                     for s in (
+                        *_build_member_agent_mode_sections(
+                            member_agent_id,
+                            sandbox_active=bool(sandbox_backend),
+                        ),
                         role_section,
                         role_skill_prompts.get(member.member_id, skills_prompt),
                         memory_guide,
@@ -525,6 +612,13 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                     and (member.role_instructions or "").strip() in role_section,
                     any("## Skills System" in s for s in role_prompt_sections),
                 )
+                if member_agent_id:
+                    logger.info(
+                        "[TeamAgent] Role subagent agent mode override: type=%s role=%s agent_id=%s",
+                        subagent_type,
+                        role_name,
+                        member_agent_id,
+                    )
 
                 subagent_config: dict[str, Any] = {
                     "name": subagent_type,
@@ -551,6 +645,8 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             )
         except ValueError as e:
             if str(e) in {
+                "team_member_agent_unavailable",
+                "team_member_agent_not_allowed",
                 "team_member_model_unavailable",
                 "team_member_model_not_allowed",
             }:

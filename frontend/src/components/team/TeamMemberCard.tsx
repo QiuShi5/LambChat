@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Cpu, Star, Trash2 } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, Cpu, Star, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TeamMember } from "../../types/team";
 import type { ModelOption } from "../../services/api/model";
+import type { AgentInfo } from "../../types/agent";
 import {
   PersonaAvatarIcon,
   PersonaAvatarImage,
@@ -22,6 +23,8 @@ interface TeamMemberCardProps {
   onInstructionsChange: (text: string) => void;
   availableModels?: ModelOption[];
   onModelChange?: (modelId: string | null) => void;
+  availableAgents?: AgentInfo[];
+  onAgentChange?: (agentId: string | null) => void;
 }
 
 export function TeamMemberCard({
@@ -33,6 +36,8 @@ export function TeamMemberCard({
   onInstructionsChange,
   availableModels = [],
   onModelChange,
+  availableAgents = [],
+  onAgentChange,
 }: TeamMemberCardProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(!!member.role_instructions);
@@ -42,6 +47,12 @@ export function TeamMemberCard({
   const modelLabel = member.model_id
     ? selectedModel?.label || selectedModel?.value || member.model_id
     : t("team.followSessionModel", "跟随会话模型");
+  const selectedAgent = member.agent_id
+    ? availableAgents.find((agent) => agent.id === member.agent_id)
+    : null;
+  const agentLabel = member.agent_id
+    ? selectedAgent?.name || member.agent_id
+    : t("team.followTeamMode", "跟随团队模式");
 
   return (
     <div
@@ -91,6 +102,13 @@ export function TeamMemberCard({
                 ))}
               </span>
             )}
+            <span
+              className="team-member-card__model"
+              title={agentLabel}
+            >
+              <Bot size={11} />
+              <span>{agentLabel}</span>
+            </span>
             <span
               className="team-member-card__model"
               title={modelLabel}
@@ -147,6 +165,25 @@ export function TeamMemberCard({
         {/* Collapsible instructions */}
         {expanded && (
           <div className="list-item-card__instructions">
+            <label className="ppe-label">
+              <Bot size={13} className="ppe-label-icon" />
+              {t("team.memberMode", "成员模式")}
+            </label>
+            <select
+              value={member.agent_id ?? ""}
+              onChange={(e) => onAgentChange?.(e.target.value || null)}
+              className="ppe-input"
+              disabled={!onAgentChange}
+            >
+              <option value="">
+                {t("team.followTeamMode", "跟随团队模式")}
+              </option>
+              {availableAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name || agent.id}
+                </option>
+              ))}
+            </select>
             <label className="ppe-label">
               <Cpu size={13} className="ppe-label-icon" />
               {t("team.memberModel", "成员模型")}
