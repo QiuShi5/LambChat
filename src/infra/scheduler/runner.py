@@ -328,6 +328,7 @@ class ScheduledTaskRunner:
 
         persona_system_prompt: str | None = None
         enabled_skills: list[str] | None = None
+        persona_snapshot: dict | None = None
         if persona_preset_id:
             from src.api.routes.chat import resolve_persona_request
             from src.kernel.schemas.agent import AgentRequest
@@ -342,6 +343,8 @@ class ScheduledTaskRunner:
             await resolve_persona_request(persona_request, user)
             persona_system_prompt = persona_request.persona_system_prompt
             enabled_skills = persona_request.enabled_skills
+            if persona_request.persona_snapshot:
+                persona_snapshot = persona_request.persona_snapshot.model_dump()
 
         session_metadata = {
             "source": "scheduled_task",
@@ -351,6 +354,11 @@ class ScheduledTaskRunner:
         }
         if persona_preset_id:
             session_metadata["persona_preset_id"] = persona_preset_id
+        if persona_snapshot:
+            session_metadata["persona_preset_name"] = persona_snapshot["name"]
+            session_metadata["persona_snapshot"] = persona_snapshot
+            if persona_snapshot.get("avatar"):
+                session_metadata["persona_avatar"] = persona_snapshot["avatar"]
         if team_id:
             session_metadata["team_id"] = team_id
 

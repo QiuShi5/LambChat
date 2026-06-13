@@ -10,6 +10,7 @@ import { useApprovals } from "../../../hooks/useApprovals";
 import { useAuth } from "../../../hooks/useAuth";
 import { useTools } from "../../../hooks/useTools";
 import { useSkills } from "../../../hooks/useSkills";
+import { personaPresetApi } from "../../../services/api";
 import { usePersonaPresets } from "../../../hooks/usePersonaPresets";
 import { useProjectManager } from "../../../hooks/useProjectManager";
 import { appNotificationService } from "../../../services/notifications/appNotificationService";
@@ -705,6 +706,22 @@ export function ChatAppContent({
       }
 
       restoreSessionConfig(config);
+
+      // Fetch latest persona snapshot by ID (API-first for normal views;
+      // shared page uses its own SharedPage component and is unaffected).
+      // The snapshot in metadata serves as a fallback until the API responds.
+      if (config.persona_preset_id) {
+        personaPresetApi
+          .use(config.persona_preset_id)
+          .then((snapshot) => {
+            if (snapshot) {
+              setPersonaPreset(config.persona_preset_id!, snapshot);
+            }
+          })
+          .catch(() => {
+            /* preset may have been deleted — keep metadata snapshot */
+          });
+      }
 
       if (config.team_id) {
         selectTeam(config.team_id);
