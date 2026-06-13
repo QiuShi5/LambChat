@@ -550,7 +550,7 @@ async def test_team_member_agent_mode_override_injects_search_prompt(
     section_middleware = next(
         item for item in subagent["middleware"] if isinstance(item, dict) and "sections" in item
     )
-    assert any("/skills/ is virtual storage" in section for section in section_middleware["sections"])
+    assert any("virtual storage, not a real filesystem" in section for section in section_middleware["sections"])
 
 
 @pytest.mark.asyncio
@@ -634,6 +634,7 @@ async def test_team_agent_node_reads_existing_state_messages_for_recommendations
     fake_graph = _FakeDeepAgent()
     fake_graph.state_messages = ["history message"]
     _patch_common(monkeypatch, team_nodes, fake_graph)
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", False)
     monkeypatch.setattr(team_nodes.settings, "ENABLE_RECOMMEND_QUESTIONS", True)
     import src.agents.core.recommendations as recommendations
 
@@ -661,7 +662,7 @@ async def test_team_agent_node_reads_existing_state_messages_for_recommendations
     await asyncio.sleep(0)
 
     assert fake_graph.aget_state_calls == 1
-    assert result["messages"] == []
+    assert result == {"output": ""}
 
 
 def test_team_agent_declares_sandbox_support() -> None:

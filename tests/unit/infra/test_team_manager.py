@@ -142,9 +142,24 @@ async def test_create_team_delegates_tags_to_storage(manager, mock_storage):
 
 
 @pytest.mark.asyncio
-async def test_create_team_preserves_member_model_id(manager, mock_storage):
+async def test_create_team_preserves_member_model_id(manager, mock_storage, monkeypatch):
     created = _make_team(name="Model Team")
     mock_storage.create_team = AsyncMock(return_value=created)
+    model = ModelConfig(
+        id="model-member",
+        value="openai/member",
+        label="Member",
+        enabled=True,
+    )
+
+    class _ModelStorage:
+        async def get(self, model_id):
+            assert model_id == "model-member"
+            return model
+
+    import src.infra.agent.model_storage as model_storage
+
+    monkeypatch.setattr(model_storage, "get_model_storage", lambda: _ModelStorage())
 
     data = TeamCreate(
         name="Model Team",
