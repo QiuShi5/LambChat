@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Star, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Cpu, Star, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TeamMember } from "../../types/team";
+import type { ModelOption } from "../../services/api/model";
 import {
   PersonaAvatarIcon,
   PersonaAvatarImage,
@@ -19,6 +20,8 @@ interface TeamMemberCardProps {
   onSetDefault: () => void;
   onToggleEnabled: () => void;
   onInstructionsChange: (text: string) => void;
+  availableModels?: ModelOption[];
+  onModelChange?: (modelId: string | null) => void;
 }
 
 export function TeamMemberCard({
@@ -28,9 +31,17 @@ export function TeamMemberCard({
   onSetDefault,
   onToggleEnabled,
   onInstructionsChange,
+  availableModels = [],
+  onModelChange,
 }: TeamMemberCardProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(!!member.role_instructions);
+  const selectedModel = member.model_id
+    ? availableModels.find((model) => model.id === member.model_id)
+    : null;
+  const modelLabel = member.model_id
+    ? selectedModel?.label || selectedModel?.value || member.model_id
+    : t("team.followSessionModel", "跟随会话模型");
 
   return (
     <div
@@ -80,6 +91,13 @@ export function TeamMemberCard({
                 ))}
               </span>
             )}
+            <span
+              className="team-member-card__model"
+              title={modelLabel}
+            >
+              <Cpu size={11} />
+              <span>{modelLabel}</span>
+            </span>
           </div>
 
           {/* Inline actions */}
@@ -129,6 +147,25 @@ export function TeamMemberCard({
         {/* Collapsible instructions */}
         {expanded && (
           <div className="list-item-card__instructions">
+            <label className="ppe-label">
+              <Cpu size={13} className="ppe-label-icon" />
+              {t("team.memberModel", "成员模型")}
+            </label>
+            <select
+              value={member.model_id ?? ""}
+              onChange={(e) => onModelChange?.(e.target.value || null)}
+              className="ppe-input"
+              disabled={!onModelChange}
+            >
+              <option value="">
+                {t("team.followSessionModel", "跟随会话模型")}
+              </option>
+              {availableModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label || model.value}
+                </option>
+              ))}
+            </select>
             <textarea
               value={member.role_instructions}
               onChange={(e) => onInstructionsChange(e.target.value)}

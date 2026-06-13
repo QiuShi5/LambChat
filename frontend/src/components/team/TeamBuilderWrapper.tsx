@@ -116,6 +116,10 @@ function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
                   ? record.member_id
                   : undefined,
               persona_preset_id: personaPresetId,
+              model_id:
+                typeof record.model_id === "string" && record.model_id
+                  ? record.model_id
+                  : null,
               role_name:
                 typeof record.role_name === "string"
                   ? record.role_name

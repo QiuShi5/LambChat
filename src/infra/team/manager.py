@@ -14,6 +14,7 @@ from src.kernel.schemas.team import (
     TeamResponse,
     TeamUpdate,
 )
+from src.kernel.schemas.user import TokenPayload
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class TeamManager:
                     member = TeamMemberResponse(
                         member_id=member.member_id,
                         persona_preset_id=member.persona_preset_id,
+                        model_id=member.model_id,
                         role_name=preset.get("name", member.role_name),
                         role_avatar=preset.get("avatar", member.role_avatar),
                         role_tags=preset.get("tags", member.role_tags),
@@ -57,6 +59,49 @@ class TeamManager:
             hydrated_members.append(member)
         return team.model_copy(update={"members": hydrated_members})
 
+    async def _validate_member_model_access(
+        self,
+        members: list,
+        *,
+        user: TokenPayload | None = None,
+    ) -> None:
+        """Validate optional per-member model overrides before persistence."""
+        model_ids: list[str] = []
+        seen: set[str] = set()
+        for member in members:
+            model_id = getattr(member, "model_id", None)
+            if not model_id or model_id in seen:
+                continue
+            seen.add(model_id)
+            model_ids.append(model_id)
+
+        if not model_ids:
+            return
+
+        from src.infra.agent.model_storage import get_model_storage
+
+        storage = get_model_storage()
+        models = {}
+        for model_id in model_ids:
+            model = await storage.get(model_id)
+            if not model or not model.enabled:
+                raise ValueError("team_member_model_unavailable")
+            models[model_id] = model
+
+        if user is None:
+            return
+
+        from src.infra.agent.model_access import resolve_user_allowed_model_ids
+
+        allowed_model_ids = await resolve_user_allowed_model_ids(user)
+        if allowed_model_ids is None:
+            return
+
+        allowed = set(allowed_model_ids)
+        for model_id, model in models.items():
+            if model_id not in allowed and model.value not in allowed:
+                raise ValueError("team_member_model_not_allowed")
+
     # ── CRUD ──
 
     async def create_team(
@@ -64,8 +109,10 @@ class TeamManager:
         team_data: TeamCreate,
         *,
         owner_user_id: str,
+        user: TokenPayload | None = None,
     ) -> TeamResponse:
         """Create a new team."""
+        await self._validate_member_model_access(team_data.members, user=user)
         members_data = [m.model_dump(mode="json") for m in team_data.members]
         team = await self.storage.create_team(
             owner_user_id=owner_user_id,
@@ -143,8 +190,11 @@ class TeamManager:
         team_data: TeamUpdate,
         *,
         owner_user_id: str,
+        user: TokenPayload | None = None,
     ) -> TeamResponse:
         """Update a team."""
+        if team_data.members is not None:
+            await self._validate_member_model_access(team_data.members, user=user)
         update = team_data.model_dump(mode="json", exclude_unset=True)
         # Convert member models to dicts for storage
         if "members" in update and update["members"] is not None:

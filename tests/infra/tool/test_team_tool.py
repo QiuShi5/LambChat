@@ -222,6 +222,7 @@ async def test_create_agent_team_saves_llm_supplied_team(monkeypatch: pytest.Mon
     assert body.default_member_id == "m-research"
     assert body.team_instructions == "Research first, then synthesize."
     assert body.tags == ["analysis"]
+    assert manager.create_team.await_args.kwargs["user"].permissions == ["chat:write"]
 
 
 @pytest.mark.asyncio
@@ -270,6 +271,61 @@ async def test_create_agent_team_updates_existing_team_when_team_id_is_supplied(
     body = manager.update_team.await_args.args[1]
     assert body.name == "Updated Team"
     assert body.members[0].role_name == "Reviewer"
+    assert manager.update_team.await_args.kwargs["user"].permissions == ["team:write"]
+
+
+@pytest.mark.asyncio
+async def test_create_agent_team_passes_member_model_id_to_manager(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from src.infra.tool import team_tool
+
+    created = TeamResponse(
+        id="team-1",
+        owner_user_id="user-1",
+        name="Model Team",
+        members=[
+            TeamMemberResponse(
+                member_id="m-research",
+                persona_preset_id="preset-research",
+                model_id="model-member",
+                role_name="Market Research Lead",
+                enabled=True,
+            )
+        ],
+        visibility=TeamVisibility.PRIVATE,
+    )
+    manager = MagicMock()
+    manager.create_team = AsyncMock(return_value=created)
+    user = SimpleNamespace(
+        sub="user-1",
+        username="tester",
+        roles=["user"],
+        permissions=["chat:write"],
+    )
+    monkeypatch.setattr(team_tool, "TeamManager", lambda: manager)
+    monkeypatch.setattr(team_tool, "_resolve_user", AsyncMock(return_value=user))
+
+    result = json.loads(
+        await team_tool.create_agent_team.coroutine(
+            name="Model Team",
+            avatar="model",
+            members=[
+                {
+                    "member_id": "m-research",
+                    "persona_preset_id": "preset-research",
+                    "model_id": "model-member",
+                    "role_name": "Market Research Lead",
+                }
+            ],
+            runtime=_Runtime("user-1"),
+        )
+    )
+
+    assert result["success"] is True
+    body = manager.create_team.await_args.args[0]
+    assert body.members[0].model_id == "model-member"
+    assert manager.create_team.await_args.kwargs["user"] is user
 
 
 @pytest.mark.asyncio

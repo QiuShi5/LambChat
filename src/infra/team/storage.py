@@ -92,6 +92,7 @@ class TeamStorage:
         return {
             "member_id": member.get("member_id") or f"m-{uuid.uuid4().hex[:12]}",
             "persona_preset_id": member.get("persona_preset_id", ""),
+            "model_id": member.get("model_id"),
             "role_name": member.get("role_name", ""),
             "role_avatar": member.get("role_avatar"),
             "role_tags": member.get("role_tags", []),
@@ -156,6 +157,7 @@ class TeamStorage:
                 TeamMemberResponse(
                     member_id=m.get("member_id", ""),
                     persona_preset_id=m.get("persona_preset_id", ""),
+                    model_id=m.get("model_id"),
                     role_name=m.get("role_name", ""),
                     role_avatar=m.get("role_avatar"),
                     role_tags=m.get("role_tags", []),
@@ -507,6 +509,7 @@ class TeamStorage:
             members_data.append(
                 {
                     "persona_preset_id": m.persona_preset_id,
+                    "model_id": m.model_id,
                     "role_name": m.role_name,
                     "role_avatar": m.role_avatar,
                     "role_tags": m.role_tags,

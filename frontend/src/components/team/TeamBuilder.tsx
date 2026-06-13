@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import {
   Camera,
   ChevronDown,
+  Cpu,
   Loader2,
   MessageSquareText,
   Plus,
@@ -25,6 +26,8 @@ import type { PersonaPreset } from "../../types";
 import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
+import { modelApi } from "../../services/api/model";
+import type { ModelOption } from "../../services/api/model";
 import { personaPresetApi } from "../../services/api/personaPreset";
 import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import { uploadApi } from "../../services/api";
@@ -45,6 +48,7 @@ import {
   starterPromptsToDraftRows,
   type StarterPromptDraftRow,
 } from "../persona/personaPresetEditor";
+import { useOptionalSettingsContext } from "../../contexts/SettingsContext";
 
 export interface TeamBuilderHandle {
   handleSave: () => void;
@@ -109,8 +113,12 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     ref,
   ) {
     const { t } = useTranslation();
+    const settingsContext = useOptionalSettingsContext();
     const [presets, setPresets] = useState<PersonaPreset[]>([]);
     const [presetsLoading, setPresetsLoading] = useState(true);
+    const [fallbackModels, setFallbackModels] = useState<ModelOption[] | null>(
+      null,
+    );
     const [searchQuery, setSearchQuery] = useState("");
 
     const [teamName, setTeamName] = useState("");
@@ -132,6 +140,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     const [isDeleting, setIsDeleting] = useState(false);
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const rolePickerRef = useRef<HTMLDivElement>(null);
+    const availableModels = settingsContext?.availableModels ?? fallbackModels;
 
     useImperativeHandle(ref, () => ({
       handleSave,
@@ -162,6 +171,25 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           setPresetsLoading(false);
         });
     }, []);
+
+    useEffect(() => {
+      if (settingsContext?.availableModels) {
+        setFallbackModels(null);
+        return;
+      }
+      let cancelled = false;
+      modelApi
+        .listAvailable()
+        .then((res) => {
+          if (!cancelled) setFallbackModels(res.models ?? []);
+        })
+        .catch(() => {
+          if (!cancelled) setFallbackModels([]);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [settingsContext?.availableModels]);
 
     useEffect(() => {
       if (!rolePickerOpen) return;
@@ -208,6 +236,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
         const newMember: TeamMember = {
           member_id: generateMemberId(),
           persona_preset_id: preset.id,
+          model_id: null,
           role_name: preset.name,
           role_avatar: preset.avatar,
           role_tags: preset.tags,
@@ -251,6 +280,19 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       );
     }, []);
 
+    const handleModelChange = useCallback(
+      (memberId: string, modelId: string | null) => {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.member_id === memberId
+              ? { ...m, model_id: modelId || null }
+              : m,
+          ),
+        );
+      },
+      [],
+    );
+
     const handleSave = async () => {
       if (!teamName.trim()) return;
       setSaving(true);
@@ -266,6 +308,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           members: members.map((m, idx) => ({
             member_id: m.member_id,
             persona_preset_id: m.persona_preset_id,
+            model_id: m.model_id ?? null,
             role_name: m.role_name,
             role_avatar: m.role_avatar ?? null,
             role_tags: m.role_tags,
@@ -668,6 +711,10 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                   <span className="tmb-stat__dot" />
                   {t("team.configured", { count: configuredMemberCount })}
                 </span>
+                <span className="tmb-stat">
+                  <Cpu size={11} />
+                  {t("team.memberModels", "成员模型")}
+                </span>
               </div>
             </div>
 
@@ -760,6 +807,10 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                     }
                     onInstructionsChange={(text) =>
                       handleInstructionsChange(member.member_id, text)
+                    }
+                    availableModels={availableModels ?? []}
+                    onModelChange={(modelId) =>
+                      handleModelChange(member.member_id, modelId)
                     }
                   />
                 ))}
