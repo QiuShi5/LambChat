@@ -1,6 +1,9 @@
 import { useState, useCallback } from "react";
 import { getFullUrl } from "../../../services/api/config";
 
+/** Tracks URLs that have already loaded — skip skeleton for cached images */
+const loadedImages = new Set<string>();
+
 interface ImageWithSkeletonProps {
   /** Image source URL (will be resolved via getFullUrl if relative) */
   src?: string;
@@ -18,6 +21,12 @@ interface ImageWithSkeletonProps {
   wrapperClassName?: string;
   /** img element style overrides */
   style?: React.CSSProperties;
+  /** Custom error fallback (e.g. avatar initial letter). Defaults to generic placeholder. */
+  errorFallback?: React.ReactNode;
+  /** Optional callback when image loads successfully */
+  onLoad?: () => void;
+  /** Optional callback when image fails to load */
+  onError?: () => void;
 }
 
 /**
@@ -39,17 +48,26 @@ export function ImageWithSkeleton({
   aspectRatio = "16 / 10",
   wrapperClassName,
   style,
+  errorFallback,
+  onLoad: onExternalLoad,
+  onError: onExternalError,
 }: ImageWithSkeletonProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const resolvedSrc = skipUrlResolve ? src : getFullUrl(src);
+  const [isLoaded, setIsLoaded] = useState(() =>
+    loadedImages.has(resolvedSrc ?? ""),
+  );
   const [hasError, setHasError] = useState(false);
 
-  const resolvedSrc = skipUrlResolve ? src : getFullUrl(src);
-
-  const handleLoad = useCallback(() => setIsLoaded(true), []);
+  const handleLoad = useCallback(() => {
+    setIsLoaded(true);
+    if (resolvedSrc) loadedImages.add(resolvedSrc);
+    onExternalLoad?.();
+  }, [onExternalLoad, resolvedSrc]);
   const handleError = useCallback(() => {
     setIsLoaded(true);
     setHasError(true);
-  }, []);
+    onExternalError?.();
+  }, [onExternalError]);
 
   if (!resolvedSrc) return null;
 
@@ -61,11 +79,13 @@ export function ImageWithSkeleton({
           <div className="absolute inset-0 skeleton-line rounded-[inherit]" />
         )}
         {hasError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-[inherit]">
-            <span className="text-xs text-stone-400 truncate px-1">
-              {alt || "…"}
-            </span>
-          </div>
+          errorFallback ?? (
+            <div className="absolute inset-0 flex items-center justify-center bg-stone-100 dark:bg-stone-800 rounded-[inherit]">
+              <span className="text-xs text-stone-400 truncate px-1">
+                {alt || "…"}
+              </span>
+            </div>
+          )
         ) : (
           <img
             src={resolvedSrc}
@@ -130,18 +150,19 @@ export function ImageWithSkeleton({
       )}
 
       {/* Error state */}
-      {hasError && (
-        <div
-          className="flex items-center justify-center rounded-lg text-xs text-stone-400"
-          style={{
-            aspectRatio,
-            backgroundColor: "var(--theme-bg-card, #f5f5f4)",
-            border: "1px solid var(--theme-border, #e7e5e4)",
-          }}
-        >
-          <span>{alt || "Image failed to load"}</span>
-        </div>
-      )}
+      {hasError &&
+        (errorFallback ?? (
+          <div
+            className="flex items-center justify-center rounded-lg text-xs text-stone-400"
+            style={{
+              aspectRatio,
+              backgroundColor: "var(--theme-bg-card, #f5f5f4)",
+              border: "1px solid var(--theme-border, #e7e5e4)",
+            }}
+          >
+            <span>{alt || "Image failed to load"}</span>
+          </div>
+        ))}
     </div>
   );
 }

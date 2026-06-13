@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { getModelIconUrl } from "./modelIcon";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 
 export const ModelIconImg = React.memo(function ModelIconImg({
   model,
@@ -33,7 +34,14 @@ export const ModelIconImg = React.memo(function ModelIconImg({
       className="flex items-center justify-center rounded-full bg-stone-50 dark:bg-stone-300/70 dark:ring-1 dark:ring-white/10"
       style={{ width: size, height: size }}
     >
-      <img src={url} alt={model} width={size * 0.7} height={size * 0.7} />
+      <ImageWithSkeleton
+        src={url}
+        alt={model}
+        skipUrlResolve
+        inline
+        className="rounded-full"
+        style={{ width: size * 0.7, height: size * 0.7 }}
+      />
     </div>
   );
 });

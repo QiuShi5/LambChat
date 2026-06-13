@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { ExternalLink, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LoadingSpinner, ImageViewer, VideoViewer } from "../../../common";
+import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import {
   getFileExtension,
   getFileTypeInfo,
@@ -24,7 +25,7 @@ import { useSessionImageGallery } from "../sessionImageGallery";
 function MediaSkeleton({ aspectRatio = "16/9" }: { aspectRatio?: string }) {
   return (
     <div
-      className="w-full bg-theme-bg-subtle animate-pulse flex items-center justify-center"
+      className="w-full bg-theme-bg-subtle animate-pulse flex items-center justify-center rounded-lg"
       style={{ aspectRatio }}
     >
       <svg
@@ -356,11 +357,12 @@ export function FileRevealItem({
                 </div>
               )}
               {isImage ? (
-                <img
+                <ImageWithSkeleton
                   src={parsed.s3Url}
                   alt={fileName}
-                  className="absolute inset-0 w-full h-full object-cover z-[1]"
-                  loading="lazy"
+                  skipUrlResolve
+                  inline
+                  className="absolute inset-0 w-full h-full object-cover z-[1] rounded-lg"
                   onLoad={() => setMediaLoaded(true)}
                   onError={() => setMediaLoaded(true)}
                 />

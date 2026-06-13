@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { STATS } from "../data";
 import { SectionHeading } from "./SectionHeading";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 interface ArchitectureSectionProps {
   onOpenViewer: (src: string, alt: string) => void;
@@ -34,14 +35,12 @@ export function ArchitectureSection({
               )
             }
           >
-            <img
+            <ImageWithSkeleton
               src="/images/best-practice/architecture.webp"
               alt={t("landing.architecture")}
-              width={1200}
-              height={680}
+              skipUrlResolve
+              inline
               className="w-full transition-all duration-700"
-              loading="lazy"
-              decoding="async"
             />
           </div>
         </div>

@@ -54,13 +54,13 @@
   }
 }
 
-/* Refined skeleton lines — subtle, low-contrast shimmer */
+/* Skeleton lines — visible shimmer */
 .skeleton-line {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--theme-bg) 92%, var(--theme-border)) 0%,
-    color-mix(in srgb, var(--theme-bg) 82%, var(--theme-border)) 50%,
-    color-mix(in srgb, var(--theme-bg) 92%, var(--theme-border)) 100%
+    color-mix(in srgb, var(--theme-bg) 85%, #c8c3bd) 0%,
+    color-mix(in srgb, var(--theme-bg) 70%, #c8c3bd) 50%,
+    color-mix(in srgb, var(--theme-bg) 85%, #c8c3bd) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 2.4s ease-in-out infinite;
@@ -69,9 +69,9 @@
 .dark .skeleton-line {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--theme-bg) 90%, var(--theme-border)) 0%,
-    color-mix(in srgb, var(--theme-bg) 78%, var(--theme-border)) 50%,
-    color-mix(in srgb, var(--theme-bg) 90%, var(--theme-border)) 100%
+    color-mix(in srgb, var(--theme-bg) 80%, #57534e) 0%,
+    color-mix(in srgb, var(--theme-bg) 60%, #57534e) 50%,
+    color-mix(in srgb, var(--theme-bg) 80%, #57534e) 100%
   );
   background-size: 200% 100%;
 }

@@ -3,6 +3,7 @@ import { Smile } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentIcon } from "./AgentIcon";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 
 const AGENT_ICON_EMOJIS: { emoji: string; labelKey: string }[] = [
   { emoji: "✨", labelKey: "personaPresets.emojiSparkles" },
@@ -78,15 +79,13 @@ export const AgentIconSelect = React.memo(function AgentIconSelect({
               title={t(item.labelKey)}
             >
               <span className="relative inline-flex size-5">
-                <span className="absolute inset-0 skeleton-line rounded-md" />
-                <img
+                <ImageWithSkeleton
                   src={getFluentEmojiCDN(item.emoji, { type: "anim" })}
                   alt={t(item.labelKey)}
-                  width={20}
-                  height={20}
-                  style={{ objectFit: "contain" }}
-                  className="relative z-[1]"
-                  loading="lazy"
+                  skipUrlResolve
+                  inline
+                  className="rounded-md"
+                  style={{ width: 20, height: 20, objectFit: "contain" }}
                 />
               </span>
             </button>

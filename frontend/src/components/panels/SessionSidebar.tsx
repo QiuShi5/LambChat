@@ -497,7 +497,7 @@ export const SessionSidebar = forwardRef<
         }}
       >
         <div
-          className={`h-full w-full flex flex-col bg-[var(--theme-bg-sidebar)] border-r border-stone-200/60 dark:border-stone-800/60 ${
+          className={`h-full w-full flex flex-col bg-[var(--theme-bg-sidebar)] border-r border-stone-300/70 dark:border-stone-800/60 ${
             isCollapsed ? "hidden" : ""
           }`}
         >

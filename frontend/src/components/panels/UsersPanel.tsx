@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import {
   Users,
   Plus,
@@ -45,42 +46,26 @@ interface UserAvatarProps {
 
 function UserAvatar({ user, size = "sm" }: UserAvatarProps) {
   const sizeClasses = size === "sm" ? "h-8 w-8 text-sm" : "h-10 w-10 text-base";
-  const [imgError, setImgError] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-
-  if (user.avatar_url && !imgError) {
-    return (
-      <span
-        className={`relative inline-flex rounded-full overflow-hidden ${sizeClasses}`}
-      >
-        {!imgLoaded && (
-          <span
-            className={`absolute inset-0 skeleton-line rounded-full ${sizeClasses}`}
-          />
-        )}
-        <img
-          src={getFullUrl(user.avatar_url) ?? user.avatar_url}
-          alt={user.username}
-          className={`rounded-full object-cover ${sizeClasses}`}
-          onLoad={() => setImgLoaded(true)}
-          onError={() => {
-            setImgLoaded(true);
-            setImgError(true);
-          }}
-          style={imgLoaded ? {} : { opacity: 0 }}
-        />
-      </span>
-    );
-  }
-
-  // Fallback to initial letter
   const initial = user.username.charAt(0).toUpperCase();
-  return (
+  const fallback = (
     <div
       className={`flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-medium ${sizeClasses}`}
     >
       {initial}
     </div>
+  );
+
+  if (!user.avatar_url) return fallback;
+
+  return (
+    <ImageWithSkeleton
+      src={getFullUrl(user.avatar_url) ?? user.avatar_url}
+      alt={user.username}
+      skipUrlResolve
+      inline
+      className={`rounded-full object-cover ${sizeClasses}`}
+      errorFallback={fallback}
+    />
   );
 }
 

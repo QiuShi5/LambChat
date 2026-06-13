@@ -25,6 +25,8 @@ import { getFullUrl } from "../../services/api";
 import { shareApi } from "../../services/api/share";
 import type { SharedContentResponse } from "../../types";
 import { ChatMessage } from "../chat/ChatMessage";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
+import { BrandLogo } from "../common/BrandLogo";
 import { RevealPreviewHost } from "../chat/ChatMessage/items/RevealPreviewHost";
 import { PersistentToolPanelHost } from "../chat/ChatMessage/items/persistentToolPanelState";
 import { AttachmentPreviewHost } from "../chat/AttachmentPreviewHost";
@@ -187,8 +189,6 @@ export function SharedPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<SharedContentResponse | null>(null);
-  const [imgError, setImgError] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(true);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -570,11 +570,7 @@ export function SharedPage() {
             to="/"
             className="flex items-center cursor-pointer group gap-1.5"
           >
-            <img
-              src="/images/lamb.webp"
-              alt=""
-              className="size-8 object-contain transition-transform duration-300 group-hover:scale-105"
-            />
+            <BrandLogo className="size-8 transition-transform duration-300 group-hover:scale-105" />
             <BrandWordmark
               decorative
               className="w-auto text-stone-900 dark:text-stone-100 h-8"
@@ -635,32 +631,22 @@ export function SharedPage() {
             <div className="mt-10 sm:mt-14 flex flex-col items-center gap-4 sm:gap-5">
               {/* Author */}
               <div className="flex items-center gap-3">
-                {data.owner.avatar_url && !imgError ? (
-                  <span className="relative inline-flex size-10 rounded-full overflow-hidden flex-shrink-0">
-                    {!imgLoaded && (
-                      <span className="absolute inset-0 skeleton-line rounded-full ring-2 ring-stone-100 dark:ring-stone-800" />
-                    )}
-                    <img
-                      src={
-                        getFullUrl(data.owner.avatar_url) ??
-                        data.owner.avatar_url
-                      }
-                      alt={data.owner.username}
-                      className="size-10 rounded-full object-cover grayscale-[20%] dark:grayscale-[10%] flex-shrink-0 ring-2 ring-stone-100 dark:ring-stone-800"
-                      onLoad={() => setImgLoaded(true)}
-                      onError={() => {
-                        setImgLoaded(true);
-                        setImgError(true);
-                      }}
-                      style={imgLoaded ? {} : { opacity: 0 }}
-                    />
-                  </span>
-                ) : (
-                  <img
-                    src="/images/lamb.webp"
-                    alt=""
-                    className="size-12 rounded-full flex-shrink-0 ring-2 ring-stone-100 dark:ring-stone-800 object-contain"
+                {data.owner.avatar_url ? (
+                  <ImageWithSkeleton
+                    src={
+                      getFullUrl(data.owner.avatar_url) ?? data.owner.avatar_url
+                    }
+                    alt={data.owner.username}
+                    skipUrlResolve
+                    inline
+                    className="size-10 rounded-full flex-shrink-0 ring-2 ring-stone-100 dark:ring-stone-800"
+                    style={{ objectFit: "cover", filter: "grayscale(20%)" }}
+                    errorFallback={
+                      <BrandLogo className="size-12 rounded-full flex-shrink-0 ring-2 ring-stone-100 dark:ring-stone-800" />
+                    }
                   />
+                ) : (
+                  <BrandLogo className="size-12 rounded-full flex-shrink-0 ring-2 ring-stone-100 dark:ring-stone-800" />
                 )}
                 <div className="space-y-1">
                   <div className="text-[13px] font-semibold text-stone-800 dark:text-stone-200">
@@ -731,9 +717,11 @@ export function SharedPage() {
                           | undefined,
                       );
                       return iconUrl ? (
-                        <img
+                        <ImageWithSkeleton
                           src={iconUrl}
                           alt=""
+                          skipUrlResolve
+                          inline
                           className={`w-3.5 h-3.5 ${mono ? "dark:invert" : ""}`}
                         />
                       ) : null;
@@ -851,11 +839,7 @@ export function SharedPage() {
                 to="/"
                 className="group flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-stone-900 dark:bg-stone-100 dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 active:scale-[0.97] transition-all duration-200 shadow-sm hover:shadow-md font-serif"
               >
-                <img
-                  src="/images/lamb.webp"
-                  alt=""
-                  className="size-6 object-contain"
-                />
+                <BrandLogo className="size-6" />
                 <BrandWordmark decorative className="h-5 w-auto" />
                 <svg
                   width="14"

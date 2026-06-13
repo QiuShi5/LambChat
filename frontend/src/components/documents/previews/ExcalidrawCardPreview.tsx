@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { buildUploadProxyUrl, getFullUrl } from "../../../services/api/config";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 /**
  * Renders a thumbnail preview of an excalidraw file on a file card.
@@ -63,12 +64,13 @@ export function ExcalidrawCardPreview({ url }: { url: string }) {
   if (!imgSrc) return null;
 
   return (
-    <img
+    <ImageWithSkeleton
       src={imgSrc}
       alt="Excalidraw diagram"
-      className="h-full w-full object-contain transition-transform duration-300 group-hover/card:scale-[1.02]"
-      loading="lazy"
-      draggable={false}
+      skipUrlResolve
+      inline
+      className="h-full w-full transition-transform duration-300 group-hover/card:scale-[1.02]"
+      style={{ objectFit: "contain" }}
     />
   );
 }

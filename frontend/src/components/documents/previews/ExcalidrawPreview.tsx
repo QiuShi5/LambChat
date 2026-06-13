@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 import { ViewerDropdownMenuItem } from "../../common";
 import { ViewerToolbar } from "../../common/ViewerToolbar";
 import { ViewerTopBarButton } from "../../common/ViewerTopBarButton";
@@ -160,15 +161,14 @@ const ExcalidrawPreview = memo(function ExcalidrawPreview({
       {/* Render SVG as clickable image — matches image card pattern */}
       <div className="flex items-center justify-center p-4 sm:p-8 bg-stone-50 dark:bg-stone-800/50 h-full overflow-auto">
         {svgBlobUrl ? (
-          <img
+          <ImageWithSkeleton
             src={svgBlobUrl}
             alt={t("documents.excalidrawDiagram", "Excalidraw diagram")}
-            className="rounded-lg shadow-lg object-contain cursor-pointer hover:opacity-90 transition-opacity max-w-full max-h-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFullscreen(true);
-            }}
-            draggable={false}
+            skipUrlResolve
+            inline
+            className="rounded-lg shadow-lg max-w-full max-h-full"
+            style={{ objectFit: "contain" }}
+            onClick={() => setIsFullscreen(true)}
           />
         ) : (
           <p className="text-stone-400 dark:text-stone-500">
@@ -202,6 +202,7 @@ export function ExcalidrawFullscreenViewer({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imgLoading, setImgLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const MIN_SCALE = 0.1;
@@ -468,6 +469,11 @@ export function ExcalidrawFullscreenViewer({
           }}
           onMouseDown={handleMouseDown}
         >
+          {!imgLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="skeleton-line w-48 h-32 rounded-lg" />
+            </div>
+          )}
           <img
             src={svgBlobUrl}
             alt={t("documents.excalidrawDiagram", "Excalidraw diagram")}
@@ -476,7 +482,9 @@ export function ExcalidrawFullscreenViewer({
               transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
               transition: isDragging ? "none" : "transform 0.1s ease-out",
               touchAction: "none",
+              opacity: imgLoading ? 0 : 1,
             }}
+            onLoad={() => setImgLoading(false)}
             draggable={false}
           />
         </div>

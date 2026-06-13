@@ -1,5 +1,6 @@
 import { memo, useEffect, useState, useRef } from "react";
 import { buildUploadProxyUrl, getFullUrl } from "../../services/api/config";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 
 // Types for Excalidraw
 interface ExcalidrawElement {
@@ -116,23 +117,19 @@ export const ExcalidrawThumbnail = memo(function ExcalidrawThumbnail({
 
   if (!svgBlobUrl) {
     return (
-      <div className="safe-area-viewport-padding absolute inset-0 flex items-center justify-center skeleton-line" />
+      <div className="safe-area-viewport-padding absolute inset-0 flex items-center justify-center skeleton-line rounded-lg" />
     );
   }
 
   return (
-    <img
+    <ImageWithSkeleton
       src={svgBlobUrl}
       alt={alt}
+      skipUrlResolve
+      inline
       className={["safe-area-viewport-padding", className]
         .filter(Boolean)
         .join(" ")}
-      draggable={false}
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-      }}
     />
   );
 });

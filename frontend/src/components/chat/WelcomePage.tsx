@@ -13,11 +13,13 @@ import type { ChatInputProps } from "./ChatInput";
 import type { ActiveGoalSpec } from "../../hooks/useAgent/types";
 import { ContactAdminDialog } from "../common/ContactAdminDialog";
 import { NotificationBanner } from "../notification/NotificationBanner";
+import { ImageWithSkeleton } from "./ChatMessage/ImageWithSkeleton";
 import {
   getSelectedPersonaStarterPrompts,
   getSelectedTeamStarterPrompts,
   getWelcomePersonaCards,
   getWelcomePersonaCardClass,
+  getWelcomePersonaSkeletonClass,
   getWelcomePersonaSkeletonCount,
   getWelcomeTeamCards,
   getWelcomeSuggestionsContainerClass,
@@ -72,11 +74,13 @@ function WelcomeIcon({
   label?: string;
 }) {
   return (
-    <img
+    <ImageWithSkeleton
       src={WELCOME_ICON_SRC}
       alt={label ?? ""}
+      skipUrlResolve
+      inline
       className={className}
-      aria-hidden={label ? undefined : true}
+      style={{ objectFit: "contain" }}
     />
   );
 }
@@ -365,7 +369,7 @@ export const WelcomePage = memo(function WelcomePage({
         <div className="sm:hidden relative mb-2">
           <WelcomeIcon
             label="LambChat"
-            className="welcome-icon relative size-12 object-contain"
+            className="welcome-icon relative size-12 object-contain rounded-full"
           />
         </div>
 
@@ -374,7 +378,7 @@ export const WelcomePage = memo(function WelcomePage({
           className="welcome-greeting max-w-full text-[1.5rem] sm:text-[1.875rem] md:text-[2rem] lg:text-[2.25rem] xl:text-[2.35rem] 2xl:text-[2.5rem] font-semibold tracking-[-0.02em] leading-[1.2] text-center font-serif"
           style={{ color: "var(--theme-text)" }}
         >
-          <WelcomeIcon className="welcome-icon hidden sm:inline-block size-12 xl:size-14 2xl:size-16 mr-4 align-text-bottom object-contain" />
+          <WelcomeIcon className="welcome-icon hidden sm:inline-block size-12 xl:size-14 2xl:size-16 mr-4 align-text-bottom object-contain rounded-full" />
           {greeting}
         </h1>
         {/* Subtle subtitle prompt */}
@@ -535,7 +539,7 @@ export const WelcomePage = memo(function WelcomePage({
               Array.from({ length: teamSkeletonCount }).map((_, i) => (
                 <div
                   key={`team-skeleton-${i}`}
-                  className="welcome-persona-card welcome-persona-skeleton relative snap-start rounded-2xl border p-2.5"
+                  className={getWelcomePersonaSkeletonClass()}
                   style={{
                     backgroundColor: "var(--theme-bg-card)",
                     borderColor: "var(--theme-border)",
@@ -624,7 +628,7 @@ export const WelcomePage = memo(function WelcomePage({
               Array.from({ length: personaSkeletonCount }).map((_, i) => (
                 <div
                   key={`persona-skeleton-${i}`}
-                  className="welcome-persona-card welcome-persona-skeleton relative snap-start rounded-2xl border p-2.5"
+                  className={getWelcomePersonaSkeletonClass()}
                   style={{
                     backgroundColor: "var(--theme-bg-card)",
                     borderColor: "var(--theme-border)",

@@ -13,6 +13,7 @@ import {
   shouldSurfaceTaskNotification,
 } from "./taskNotificationGuards";
 import { buildTaskNotificationCopy } from "./taskNotificationContent";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 import { isMobileDevice } from "../../../utils/mobile";
 
 interface UseWebSocketNotificationsOptions {
@@ -211,9 +212,11 @@ export function useWebSocketNotifications({
 
             <div className="flex items-center gap-3 text-left">
               <div className="flex shrink-0 items-center justify-center">
-                <img
+                <ImageWithSkeleton
                   src="/icons/icon.svg"
                   alt=""
+                  skipUrlResolve
+                  inline
                   className="size-8 rounded-lg"
                 />
               </div>

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { APP_NAME, GITHUB_URL } from "../../../constants";
 import { BrandWordmark } from "../../common/BrandWordmark";
+import { BrandLogo } from "../../common/BrandLogo";
 import { TECH_STACK } from "../data";
 import { NAV_ITEMS } from "../constants";
 import { GitHubIcon } from "./Icons";
@@ -25,11 +26,7 @@ export function Footer({ onScrollToSection }: FooterProps) {
           {/* Brand */}
           <div className="sm:col-span-5">
             <div className="flex items-center gap-2.5 mb-5">
-              <img
-                src="/images/lamb.webp"
-                alt=""
-                className="h-6 object-contain"
-              />
+              <BrandLogo className="h-6" />
               <BrandWordmark
                 decorative
                 className="h-6 w-auto text-stone-900 dark:text-stone-100"

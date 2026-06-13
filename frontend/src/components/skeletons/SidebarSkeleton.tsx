@@ -121,7 +121,7 @@ function SidebarExpandedSkeleton() {
           </div>
 
           {/* Separator */}
-          <div className="h-px bg-stone-200/60 dark:bg-stone-700/40 mx-2 my-1" />
+          <div className="h-px bg-stone-300/70 dark:bg-stone-700/40 mx-2 my-1" />
 
           {/* Section header — Scheduled Tasks */}
           <div className="mt-1 flex items-center justify-between px-[9px] h-9">
@@ -147,7 +147,7 @@ function SidebarExpandedSkeleton() {
           </div>
 
           {/* Separator */}
-          <div className="h-px bg-stone-200/60 dark:bg-stone-700/40 mx-2 my-1" />
+          <div className="h-px bg-stone-300/70 dark:bg-stone-700/40 mx-2 my-1" />
 
           {/* Section header — Chats */}
           <div className="mt-1 flex items-center justify-between px-[9px] h-9">
@@ -181,9 +181,9 @@ function SidebarExpandedSkeleton() {
       </div>
 
       {/* Bottom user area */}
-      <div className="shrink-0 px-2 py-1 border-t border-stone-200/60 dark:border-stone-800/60">
+      <div className="shrink-0 px-2 py-1 border-t border-stone-300/70 dark:border-stone-800/60">
         <div className="flex items-center gap-3 px-2 py-3 rounded-xl">
-          <div className="skeleton-line size-8 rounded-full shrink-0 ring-1 ring-stone-200 dark:ring-stone-700" />
+          <div className="skeleton-line size-8 rounded-full shrink-0 ring-1 ring-stone-300 dark:ring-stone-700" />
           <div className="flex-1 min-w-0">
             <div className="skeleton-line h-3.5 w-16 rounded-md" />
             <div className="skeleton-line h-2.5 w-12 rounded-md mt-1" />

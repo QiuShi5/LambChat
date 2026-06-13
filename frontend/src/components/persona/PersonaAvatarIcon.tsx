@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import {
   Code2,
   Database,
@@ -18,7 +18,6 @@ import {
 import { getFluentEmojiCDN } from "@lobehub/fluent-emoji";
 import { getCategoryIcon } from "../panels/MarketplacePanel/constants";
 import { getFullUrl } from "../../services/api";
-import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 
 const DEFAULT_AVATAR_EMOJI = "🤖";
 const DEFAULT_AVATAR_SRC = getFluentEmojiCDN(DEFAULT_AVATAR_EMOJI, {
@@ -90,39 +89,25 @@ export function PersonaAvatarImage({
   onLoad?: React.ReactEventHandler<HTMLImageElement>;
   onError?: React.ReactEventHandler<HTMLImageElement>;
 }) {
-  const [loaded, setLoaded] = useState(false);
-
-  const handleLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      setLoaded(true);
-      onLoad?.(e);
-    },
-    [onLoad],
-  );
-
-  const handleError = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      setLoaded(true);
-      onError?.(e);
-    },
-    [onError],
-  );
-
   if (!isPersonaImageAvatar(avatar)) return null;
   const resolvedAvatar = getFullUrl(avatar) ?? avatar;
   return (
-    <span className="relative inline-flex w-full h-full">
-      {!loaded && (
-        <span className="absolute inset-0 skeleton-line rounded-full" />
-      )}
-      <img
-        src={resolvedAvatar}
-        alt={alt}
-        className={className}
-        onLoad={handleLoad}
-        onError={handleError}
-        style={loaded ? {} : { opacity: 0 }}
-      />
-    </span>
+    <ImageWithSkeleton
+      src={resolvedAvatar}
+      alt={alt}
+      skipUrlResolve
+      inline
+      className={className}
+      onLoad={
+        onLoad
+          ? () => onLoad({} as React.SyntheticEvent<HTMLImageElement>)
+          : undefined
+      }
+      onError={
+        onError
+          ? () => onError({} as React.SyntheticEvent<HTMLImageElement>)
+          : undefined
+      }
+    />
   );
 }

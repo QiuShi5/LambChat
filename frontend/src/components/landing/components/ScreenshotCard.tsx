@@ -1,4 +1,5 @@
 import { ZoomIcon } from "./Icons";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 interface ScreenshotCardProps {
   src: string;
@@ -20,11 +21,12 @@ export function ScreenshotCard({
       onClick={onClick}
     >
       <div className="relative aspect-[4/3] bg-stone-50 dark:bg-stone-800/20 overflow-hidden">
-        <img
+        <ImageWithSkeleton
           src={src}
           alt={alt}
+          skipUrlResolve
+          inline
           className="w-full h-full object-cover object-top transition-all duration-700 ease-out group-hover:scale-[1.04]"
-          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         <div className="absolute inset-0 flex items-center justify-center">

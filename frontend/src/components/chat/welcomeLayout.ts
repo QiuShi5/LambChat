@@ -53,6 +53,10 @@ export function getWelcomePersonaCardClass(_index: number): string {
     .join(" ");
 }
 
+export function getWelcomePersonaSkeletonClass(): string {
+  return getWelcomePersonaCardClass(0) + " welcome-persona-skeleton";
+}
+
 export function getWelcomePersonaSkeletonCount(
   isLoading = false,
   visibleCount = 0,

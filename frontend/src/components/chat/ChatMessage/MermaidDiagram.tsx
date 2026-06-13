@@ -546,6 +546,7 @@ function MermaidViewer({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imgLoading, setImgLoading] = useState(true);
   const [showCode, setShowCode] = useState(initialShowCode);
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -792,6 +793,11 @@ function MermaidViewer({
             }}
             onMouseDown={handleMouseDown}
           >
+            {imgLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="skeleton-line w-48 h-32 rounded-lg" />
+              </div>
+            )}
             <img
               src={svgBlobUrl}
               alt={t("chat.mermaidDiagram", "Mermaid 图表")}
@@ -800,7 +806,9 @@ function MermaidViewer({
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
                 transition: isDragging ? "none" : "transform 0.1s ease-out",
                 touchAction: "none",
+                opacity: imgLoading ? 0 : 1,
               }}
+              onLoad={() => setImgLoading(false)}
               draggable={false}
             />
           </div>

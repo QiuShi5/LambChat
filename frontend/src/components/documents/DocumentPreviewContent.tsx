@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { AlertCircle } from "lucide-react";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { ImageViewer } from "../common/ImageViewer";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import CodeRenderer from "./previews/CodeRenderer";
 import MarkdownRenderer from "./previews/MarkdownRenderer";
 import HtmlPreview from "./previews/HtmlPreview";
@@ -312,14 +313,14 @@ export default function DocumentPreviewContent({
     return (
       <>
         <div className="flex items-center justify-center p-4 sm:p-8 bg-stone-50 dark:bg-stone-800/50 h-full overflow-auto">
-          <img
+          <ImageWithSkeleton
             src={imageUrl || `data:image/${ext};base64,${data?.content}`}
             alt={fileName}
-            className="rounded-lg shadow-lg object-contain cursor-pointer hover:opacity-90 transition-opacity max-w-full max-h-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowImageViewer(true);
-            }}
+            skipUrlResolve
+            inline
+            className="rounded-lg shadow-lg max-w-full max-h-full"
+            style={{ cursor: "pointer", objectFit: "contain" }}
+            onClick={() => setShowImageViewer(true)}
           />
         </div>
         {showImageViewer && (

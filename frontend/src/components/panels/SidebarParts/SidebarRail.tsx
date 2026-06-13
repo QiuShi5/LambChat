@@ -11,6 +11,8 @@ import { useAuth } from "../../../hooks/useAuth";
 import { Permission } from "../../../types/auth";
 import { getFullUrl } from "../../../services/api";
 import { APP_NAME } from "../../../constants";
+import { BrandLogo } from "../../common/BrandLogo";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 const railBtn =
   "sidebar-rail-btn flex h-9 w-9 items-center justify-center rounded-full transition-colors mx-2 touch-manipulation";
@@ -36,7 +38,7 @@ interface SidebarRailProps {
 export function SidebarRail({
   user,
   imgError,
-  onImgError,
+  onImgError: _onImgError,
   onExpand,
   onNewSession,
   onOpenSearch,
@@ -70,11 +72,7 @@ export function SidebarRail({
           className={`${railBtn} group cursor-e-resize rtl:cursor-w-resize`}
           aria-label={t("sidebar.expandSidebar")}
         >
-          <img
-            src="/images/lamb.webp"
-            alt={APP_NAME}
-            className="size-7 object-contain group-hover:hidden"
-          />
+          <BrandLogo alt={APP_NAME} className="size-7 group-hover:hidden" />
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -182,12 +180,20 @@ export function SidebarRail({
             style={{ boxShadow: "0 0 0 1px var(--theme-border)" }}
           >
             {user?.avatar_url && !imgError ? (
-              <img
+              <ImageWithSkeleton
                 src={getFullUrl(user.avatar_url) ?? user.avatar_url}
                 alt={user?.username || t("common.user")}
+                skipUrlResolve
+                inline
                 className="w-full h-full object-cover rounded-full"
-                onError={onImgError}
-                draggable={false}
+                style={{ borderRadius: "50%" }}
+                errorFallback={
+                  <div className="flex w-full h-full items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500 rounded-full">
+                    <span className="text-xs font-semibold text-white font-serif">
+                      {user?.username?.charAt(0).toUpperCase() || "U"}
+                    </span>
+                  </div>
+                }
               />
             ) : (
               <div className="flex w-full h-full items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500 rounded-full">

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "../../common/ThemeToggle";
 import { LanguageToggle } from "../../common/LanguageToggle";
 import { BrandWordmark } from "../../common/BrandWordmark";
+import { BrandLogo } from "../../common/BrandLogo";
 import { NAV_ITEMS } from "../constants";
 import { CloseIcon, MenuIcon } from "./Icons";
 
@@ -37,11 +38,7 @@ export function Navbar({
           className="flex items-center cursor-pointer group gap-1.5"
           onClick={() => navigate("/")}
         >
-          <img
-            src="/images/lamb.webp"
-            alt=""
-            className="size-8 object-contain transition-transform duration-300 group-hover:scale-105"
-          />
+          <BrandLogo className="size-8 transition-transform duration-300 group-hover:scale-105" />
           <BrandWordmark
             decorative
             className="w-auto text-stone-900 dark:text-stone-100 h-8"

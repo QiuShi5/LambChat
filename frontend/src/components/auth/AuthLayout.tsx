@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ThemeToggle } from "../common/ThemeToggle";
 import { LanguageToggle } from "../common/LanguageToggle";
 import { BrandWordmark } from "../common/BrandWordmark";
+import { BrandLogo } from "../common/BrandLogo";
 import { APP_NAME } from "../../constants";
 import { useMobileKeyboardAware } from "../../hooks/useMobileKeyboardAware";
 
@@ -24,10 +25,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 dark:bg-stone-950/90 border-b border-stone-100/60 dark:border-stone-800/40 transition-shadow duration-300">
         <div className="mx-auto flex h-14 max-w-full items-center justify-between px-4 sm:px-8">
           <Link to="/" className="flex items-center group  gap-1.5">
-            <img
-              src="/images/lamb.webp"
+            <BrandLogo
               alt={APP_NAME}
-              className="h-8 object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-8 transition-transform duration-300 group-hover:scale-105"
             />
             <BrandWordmark
               decorative

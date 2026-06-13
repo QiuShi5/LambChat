@@ -16,6 +16,7 @@ import {
   type RevealArtifactTreeDir,
   type RevealArtifactTreeFile,
 } from "./revealArtifacts";
+import { ImageWithSkeleton } from "./ImageWithSkeleton";
 import { copyToClipboard } from "../../../utils/clipboard";
 
 function FolderIcon({
@@ -117,9 +118,11 @@ function TreeFileRow({
       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors group cursor-pointer"
     >
       {imageSrc ? (
-        <img
+        <ImageWithSkeleton
           src={imageSrc}
           alt={node.artifact.name}
+          skipUrlResolve
+          inline
           className="w-9 h-9 rounded-lg object-cover shrink-0 bg-stone-100 dark:bg-stone-800"
         />
       ) : (

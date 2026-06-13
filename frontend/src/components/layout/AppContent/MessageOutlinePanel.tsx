@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -45,36 +46,25 @@ function UserAvatar({
   avatarUrl: string | undefined;
   username: string;
 }) {
-  const [imgError, setImgError] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-
-  if (avatarUrl && !imgError) {
-    return (
-      <span className="relative inline-flex size-[22px] rounded-full overflow-hidden">
-        {!imgLoaded && (
-          <span className="absolute inset-0 skeleton-line rounded-full ring-1 ring-white/20" />
-        )}
-        <img
-          src={avatarUrl}
-          alt={username}
-          className="size-[22px] object-cover rounded-full ring-1 ring-white/20"
-          onLoad={() => setImgLoaded(true)}
-          onError={() => {
-            setImgLoaded(true);
-            setImgError(true);
-          }}
-          style={imgLoaded ? {} : { opacity: 0 }}
-        />
-      </span>
-    );
-  }
-
-  return (
+  const fallback = (
     <div className="flex size-[22px] items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500 rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.15)]">
       <span className="text-[10px] font-bold text-white leading-none">
         {username.charAt(0).toUpperCase() || "U"}
       </span>
     </div>
+  );
+
+  if (!avatarUrl) return fallback;
+
+  return (
+    <ImageWithSkeleton
+      src={avatarUrl}
+      alt={username}
+      skipUrlResolve
+      inline
+      className="size-[22px] rounded-full ring-1 ring-white/20"
+      errorFallback={fallback}
+    />
   );
 }
 

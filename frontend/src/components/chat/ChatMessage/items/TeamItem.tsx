@@ -1,8 +1,9 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { clsx } from "clsx";
 import { Users, Tag, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
+import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import { extractText } from "./toolUtils";
 import { openPersistentToolPanel } from "./persistentToolPanelState";
 import { ToolInlineDetails } from "./ToolInlineDetails";
@@ -25,24 +26,14 @@ function ToolAvatarImg({
   src: string;
   className?: string;
 }) {
-  const [loaded, setLoaded] = useState(false);
   return (
-    <span className="relative inline-flex w-full h-full">
-      {!loaded && (
-        <span className="absolute inset-0 skeleton-line rounded-full" />
-      )}
-      <img
-        src={src}
-        alt=""
-        className={className}
-        onLoad={() => setLoaded(true)}
-        onError={(e) => {
-          setLoaded(true);
-          (e.target as HTMLImageElement).style.display = "none";
-        }}
-        style={loaded ? {} : { opacity: 0 }}
-      />
-    </span>
+    <ImageWithSkeleton
+      src={src}
+      alt=""
+      skipUrlResolve
+      inline
+      className={className}
+    />
   );
 }
 

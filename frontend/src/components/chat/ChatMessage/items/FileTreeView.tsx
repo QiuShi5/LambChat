@@ -6,6 +6,7 @@ import { getFileTypeInfo, isImageFile } from "../../../documents/utils";
 import { exportProjectZip } from "../../../../utils/exportProjectZip";
 import { copyToClipboard } from "../../../../utils/clipboard";
 import { countProjectRevealFiles } from "./projectRevealState";
+import { ImageWithSkeleton } from "../ImageWithSkeleton";
 
 export interface TreeNode {
   name: string;
@@ -213,9 +214,11 @@ function FileTreeNode({
       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-theme-bg-subtle transition-colors group cursor-pointer"
     >
       {imageSrc ? (
-        <img
+        <ImageWithSkeleton
           src={imageSrc}
           alt={node.name}
+          skipUrlResolve
+          inline
           className="w-9 h-9 rounded-lg object-cover shrink-0 bg-theme-bg-subtle"
         />
       ) : (

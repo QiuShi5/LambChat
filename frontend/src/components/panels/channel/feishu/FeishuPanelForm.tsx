@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { TFunction } from "i18next";
 import { LoadingSpinner } from "../../../common/LoadingSpinner";
+import { ImageWithSkeleton } from "../../../chat/ChatMessage/ImageWithSkeleton";
 import { ChannelAgentSelect } from "../ChannelAgentSelect";
 import { ChannelModelSelect } from "../ChannelModelSelect";
 import { ChannelPersonaSelect } from "../ChannelPersonaSelect";
@@ -291,9 +292,11 @@ export function FeishuPanelForm({
               <div className="mt-5 flex flex-col items-center">
                 <div className="flex size-[224px] items-center justify-center rounded-xl border border-[var(--theme-border)] bg-white p-3 shadow-sm">
                   {registrationQrDataUrl ? (
-                    <img
+                    <ImageWithSkeleton
                       src={registrationQrDataUrl}
                       alt={t("feishu.scanWithFeishu", "Scan with Feishu")}
+                      skipUrlResolve
+                      inline
                       className="size-full"
                     />
                   ) : (

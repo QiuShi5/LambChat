@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { MarkdownContent } from "../MarkdownContent";
 import { CopyButton, ImageViewer } from "../../../common";
+import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import { dispatchPersonaPresetsChanged } from "../../../../hooks/personaPresetEvents";
 import { getPersonaPresetMutationDetail } from "./personaPresetToolResult";
 import type { McpContentBlock, McpMultiModalResult } from "./toolUtils";
@@ -21,7 +22,6 @@ import {
   extractGeneratedImageResults,
   type GeneratedImageResult,
 } from "./toolImageResults";
-import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import {
   closeBlockPreview,
   getBlockPreview,
@@ -128,29 +128,22 @@ function isContentBlocksArray(result: unknown): result is McpContentBlock[] {
 // 单个 MCP content block 的预览
 export function McpBlockPreview({ block }: { block: McpContentBlock }) {
   const { t } = useTranslation();
-  const [loaded, setLoaded] = useState(false);
 
   if (block.type === "image") {
     const src = block.base64
       ? `data:${block.mime_type || "image/png"};base64,${block.base64}`
       : block.url || "";
     return (
-      <>
-        {!loaded && (
-          <div className="w-48 h-32 rounded-md border border-theme-border bg-theme-bg-subtle animate-pulse" />
-        )}
-        <img
-          src={src}
-          alt={t("chat.message.toolOutput")}
-          className={`max-w-full max-h-48 rounded-md border border-theme-border cursor-pointer hover:opacity-80 transition-opacity${
-            !loaded ? " hidden" : ""
-          }`}
-          onClick={() => {
-            if (src) openBlockPreview({ type: "image", src });
-          }}
-          onLoad={() => setLoaded(true)}
-        />
-      </>
+      <ImageWithSkeleton
+        src={src}
+        alt={t("chat.message.toolOutput")}
+        skipUrlResolve
+        inline
+        className="max-w-full max-h-48 rounded-md border border-theme-border cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => {
+          if (src) openBlockPreview({ type: "image", src });
+        }}
+      />
     );
   }
 

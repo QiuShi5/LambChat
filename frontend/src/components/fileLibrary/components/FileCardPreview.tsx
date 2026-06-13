@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { getFullUrl } from "../../../services/api";
 import type { FileCardPreview as FileCardPreviewModel } from "../utils";
 import { ExcalidrawCardPreview } from "../../documents/previews/ExcalidrawCardPreview";
+import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 interface FileCardPreviewProps {
   preview: FileCardPreviewModel;
@@ -261,12 +262,12 @@ export function FileCardPreview({
 
   if (preview.kind === "image" && imageUrl) {
     return (
-      <img
+      <ImageWithSkeleton
         src={imageUrl}
         alt={preview.title}
-        referrerPolicy="no-referrer"
-        className="h-full w-full object-cover transition-transform duration-300 group-hover/card:scale-[1.02]"
-        loading="lazy"
+        skipUrlResolve
+        inline
+        className="h-full w-full transition-transform duration-300 group-hover/card:scale-[1.02]"
       />
     );
   }

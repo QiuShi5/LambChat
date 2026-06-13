@@ -26,6 +26,7 @@ import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
 import { personaPresetApi } from "../../services/api/personaPreset";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import { uploadApi } from "../../services/api";
 import { compressImageFile } from "../../utils/imageCompression";
 import toast from "react-hot-toast";
@@ -487,14 +488,13 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                         title={emoji}
                       >
                         <span className="relative inline-flex size-5">
-                          <span className="absolute inset-0 skeleton-line rounded-md" />
-                          <img
+                          <ImageWithSkeleton
                             src={getEmojiAvatarUrl(emoji)}
                             alt=""
-                            width={20}
-                            height={20}
-                            className="relative z-[1]"
-                            loading="lazy"
+                            skipUrlResolve
+                            inline
+                            className="rounded-md"
+                            style={{ width: 20, height: 20 }}
                           />
                         </span>
                       </button>

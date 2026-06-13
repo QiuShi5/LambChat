@@ -4,6 +4,7 @@ import { X, Camera, Loader2, Smile } from "lucide-react";
 import toast from "react-hot-toast";
 import { uploadApi } from "../../services/api";
 import { compressImageFile } from "../../utils/imageCompression";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import {
   isPersonaImageAvatar,
   isEmojiAvatar,
@@ -165,15 +166,13 @@ export function AvatarSection({ draft, onDraftChange }: AvatarSectionProps) {
                 title={t(item.labelKey)}
               >
                 <span className="relative inline-flex size-5">
-                  <span className="absolute inset-0 skeleton-line rounded-md" />
-                  <img
+                  <ImageWithSkeleton
                     src={getFluentEmojiCDN(item.emoji, { type: "anim" })}
                     alt={t(item.labelKey)}
-                    width={20}
-                    height={20}
-                    style={{ objectFit: "contain" }}
-                    className="relative z-[1]"
-                    loading="lazy"
+                    skipUrlResolve
+                    inline
+                    className="rounded-md"
+                    style={{ width: 20, height: 20, objectFit: "contain" }}
                   />
                 </span>
               </button>

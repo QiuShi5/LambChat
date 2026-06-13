@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import {
   FileIcon,
   Image,
@@ -139,12 +140,15 @@ export function BinaryFilePreview({
                 </div>
               </div>
             )}
-            <img
+            <ImageWithSkeleton
               src={fullUrl}
               alt={fileName}
+              skipUrlResolve
+              inline
+              className="max-w-full max-h-[60dvh] rounded-lg shadow-md"
+              style={{ objectFit: "contain" }}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageLoaded(true)}
-              className="max-w-full max-h-[60dvh] rounded-lg object-contain shadow-md hover:opacity-90 transition-opacity"
             />
           </div>
         )}

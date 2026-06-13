@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { Sparkles, ImageIcon, Tag, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill, ImageViewer } from "../../../common";
+import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import { extractText } from "./toolUtils";
 import { extractGeneratedImageResults } from "./toolImageResults";
 import { openPersistentToolPanel } from "./persistentToolPanelState";
@@ -195,11 +196,12 @@ const ImageGenerateItem = memo(function ImageGenerateItem({
               )}
               onClick={() => openImagePreview(img.url)}
             >
-              <img
+              <ImageWithSkeleton
                 src={img.url}
                 alt={img.name}
+                skipUrlResolve
+                inline
                 className="w-full aspect-square object-cover"
-                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity">
                 <div className="absolute bottom-2 left-2 right-2">
@@ -291,11 +293,12 @@ const ImageGenerateItem = memo(function ImageGenerateItem({
               className="relative rounded-lg overflow-hidden border border-theme-border hover:border-violet-200 dark:hover:border-violet-800/50 transition-colors cursor-pointer"
               onClick={() => openImagePreview(img.url)}
             >
-              <img
+              <ImageWithSkeleton
                 src={img.url}
                 alt={img.name}
+                skipUrlResolve
+                inline
                 className="w-full aspect-square object-cover"
-                loading="lazy"
               />
             </div>
           ))}
