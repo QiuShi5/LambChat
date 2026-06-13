@@ -752,6 +752,7 @@ export function SubagentBlock({
     success,
     error,
     isPending,
+    parts,
     partsKey,
     startedAt,
     completedAt,

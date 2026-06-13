@@ -455,7 +455,7 @@ const AskHumanItem = memo(function AskHumanItem({
       const preview =
         message.length > 50 ? message.slice(0, 47) + "…" : message;
       // Strip markdown for pill label
-      const plain = preview.replace(/[#*_`~>\[\]!]/g, "").trim();
+      const plain = preview.replace(/[#*_`~>[\]!]/g, "").trim();
       return `${base} — ${plain}`;
     }
     return base;

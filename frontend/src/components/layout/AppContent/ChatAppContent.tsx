@@ -741,7 +741,13 @@ export function ChatAppContent({
         }
       }
     },
-    [restoreSessionConfig, restoreAgentOptions, switchAgent, selectTeam],
+    [
+      restoreSessionConfig,
+      restoreAgentOptions,
+      switchAgent,
+      selectTeam,
+      setPersonaPreset,
+    ],
   );
 
   const { handleSelectSession, handleNewSession } = useSessionSync({

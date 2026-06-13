@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { Users, Tag, Zap, Sparkles } from "lucide-react";
+import { Users, Tag, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
 import { extractText } from "./toolUtils";
