@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { FolderOpen, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsiblePill } from "../../../common";
-import { extractPaths } from "./toolUtils";
+import { extractPaths, extractText } from "./toolUtils";
 import { openPersistentToolPanel } from "./persistentToolPanelState";
 import { ToolArgsBlock } from "./ToolArgsBlock";
 import { ToolHoverCopyButton } from "./ToolHoverCopyButton";
@@ -33,11 +33,13 @@ const LsItem = memo(function LsItem({
   );
   const dirPath = (args.path as string) || "/";
 
+  const rawText = extractText(result);
   const entries = useMemo(() => {
     return extractPaths(result);
   }, [result]);
 
-  const canExpand = entries.length > 0;
+  const canExpand = rawText.trim().length > 0;
+  const hasEntries = entries.length > 0;
   const displayLabel =
     dirPath === "/" ? "/" : dirPath.split("/").filter(Boolean).pop() || dirPath;
   const status = isPending
@@ -53,57 +55,71 @@ const LsItem = memo(function LsItem({
       <ToolArgsBlock size="detail">
         <FolderOpen size={14} className="shrink-0 opacity-60" />
         <span className="truncate">{dirPath}</span>
-        <span className="shrink-0 text-theme-text-tertiary">
-          {entries.length} items
-        </span>
+        {hasEntries && (
+          <span className="shrink-0 text-theme-text-tertiary">
+            {entries.length} items
+          </span>
+        )}
       </ToolArgsBlock>
-      <div className="relative group rounded-lg border border-theme-border bg-theme-bg overflow-auto max-h-[60dvh]">
-        <ToolHoverCopyButton
-          text={entries.join("\n")}
-          size={14}
-          position="panelRaised"
-          copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
-        />
-        {entries.map((entry, i) => {
-          const isDir = entry.endsWith("/") || entry.endsWith("\\");
-          const name = isDir
-            ? entry.slice(0, -1).split("/").filter(Boolean).pop() ||
-              entry.slice(0, -1)
-            : entry.split("/").filter(Boolean).pop() || entry;
-          return (
-            <div
-              key={i}
-              className={clsx(
-                "flex items-center gap-2.5 px-4 py-2 text-sm font-mono tool-file-row",
-                "border-b border-theme-border-faint last:border-b-0",
-                "hover:bg-theme-bg-subtle transition-colors",
-              )}
-            >
-              {isDir ? (
-                <FolderOpen
-                  size={14}
-                  className="shrink-0 text-amber-500 dark:text-amber-400"
-                />
-              ) : (
-                <FileText
-                  size={14}
-                  className="shrink-0 text-theme-text-tertiary"
-                />
-              )}
-              <span
+      {hasEntries ? (
+        <div className="relative group rounded-lg border border-theme-border bg-theme-bg overflow-auto max-h-[60dvh]">
+          <ToolHoverCopyButton
+            text={entries.join("\n")}
+            size={14}
+            position="panelRaised"
+            copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
+          />
+          {entries.map((entry, i) => {
+            const isDir = entry.endsWith("/") || entry.endsWith("\\");
+            const name = isDir
+              ? entry.slice(0, -1).split("/").filter(Boolean).pop() ||
+                entry.slice(0, -1)
+              : entry.split("/").filter(Boolean).pop() || entry;
+            return (
+              <div
+                key={i}
                 className={clsx(
-                  "truncate",
-                  isDir
-                    ? "text-theme-text font-medium"
-                    : "text-theme-text-secondary",
+                  "flex items-center gap-2.5 px-4 py-2 text-sm font-mono tool-file-row",
+                  "border-b border-theme-border-faint last:border-b-0",
+                  "hover:bg-theme-bg-subtle transition-colors",
                 )}
               >
-                {name}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                {isDir ? (
+                  <FolderOpen
+                    size={14}
+                    className="shrink-0 text-amber-500 dark:text-amber-400"
+                  />
+                ) : (
+                  <FileText
+                    size={14}
+                    className="shrink-0 text-theme-text-tertiary"
+                  />
+                )}
+                <span
+                  className={clsx(
+                    "truncate",
+                    isDir
+                      ? "text-theme-text font-medium"
+                      : "text-theme-text-secondary",
+                  )}
+                >
+                  {name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <pre className="group/result relative max-h-[60dvh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-theme-border bg-theme-bg p-3 text-xs text-theme-text-secondary">
+          <ToolHoverCopyButton
+            text={rawText}
+            size={14}
+            position="result"
+            copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
+          />
+          {rawText}
+        </pre>
+      )}
     </div>
   );
 
@@ -122,6 +138,7 @@ const LsItem = memo(function LsItem({
             title: `${t("chat.message.toolLs")} ${displayLabel}`,
             icon: <FolderOpen size={16} />,
             status,
+            panelKey: `ls:${dirPath}`,
             subtitle: dirPath,
             children: detailContent,
             footer: durationFooter,
@@ -133,56 +150,69 @@ const LsItem = memo(function LsItem({
             <ToolArgsBlock size="compact">
               <FolderOpen size={12} className="shrink-0 opacity-60" />
               <span className="truncate">{dirPath}</span>
-              <span className="shrink-0 text-theme-text-tertiary">
-                {t("chat.message.toolItemCount", { count: entries.length })}
-              </span>
+              {hasEntries && (
+                <span className="shrink-0 text-theme-text-tertiary">
+                  {t("chat.message.toolItemCount", { count: entries.length })}
+                </span>
+              )}
             </ToolArgsBlock>
-            <div className="relative group max-h-48 overflow-y-auto rounded-md border border-theme-border bg-theme-bg">
-              <ToolHoverCopyButton
-                text={entries.join("\n")}
-                position="panelCompactRaised"
-                copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
-              />
-              {entries.map((entry, i) => {
-                const isDir = entry.endsWith("/") || entry.endsWith("\\");
-                const name = isDir
-                  ? entry.slice(0, -1).split("/").filter(Boolean).pop() ||
-                    entry.slice(0, -1)
-                  : entry.split("/").filter(Boolean).pop() || entry;
-                return (
-                  <div
-                    key={i}
-                    className={clsx(
-                      "flex items-center gap-2 px-3 py-1 text-xs font-mono tool-file-row",
-                      "border-b border-theme-border-faint last:border-b-0",
-                      "hover:bg-theme-bg-subtle transition-colors",
-                    )}
-                  >
-                    {isDir ? (
-                      <FolderOpen
-                        size={12}
-                        className="shrink-0 text-amber-500 dark:text-amber-400"
-                      />
-                    ) : (
-                      <FileText
-                        size={12}
-                        className="shrink-0 text-theme-text-tertiary"
-                      />
-                    )}
-                    <span
+            {hasEntries ? (
+              <div className="relative group max-h-48 overflow-y-auto rounded-md border border-theme-border bg-theme-bg">
+                <ToolHoverCopyButton
+                  text={entries.join("\n")}
+                  position="panelCompactRaised"
+                  copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
+                />
+                {entries.map((entry, i) => {
+                  const isDir = entry.endsWith("/") || entry.endsWith("\\");
+                  const name = isDir
+                    ? entry.slice(0, -1).split("/").filter(Boolean).pop() ||
+                      entry.slice(0, -1)
+                    : entry.split("/").filter(Boolean).pop() || entry;
+                  return (
+                    <div
+                      key={i}
                       className={clsx(
-                        "truncate",
-                        isDir
-                          ? "text-theme-text font-medium"
-                          : "text-theme-text-secondary",
+                        "flex items-center gap-2 px-3 py-1 text-xs font-mono tool-file-row",
+                        "border-b border-theme-border-faint last:border-b-0",
+                        "hover:bg-theme-bg-subtle transition-colors",
                       )}
                     >
-                      {name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                      {isDir ? (
+                        <FolderOpen
+                          size={12}
+                          className="shrink-0 text-amber-500 dark:text-amber-400"
+                        />
+                      ) : (
+                        <FileText
+                          size={12}
+                          className="shrink-0 text-theme-text-tertiary"
+                        />
+                      )}
+                      <span
+                        className={clsx(
+                          "truncate",
+                          isDir
+                            ? "text-theme-text font-medium"
+                            : "text-theme-text-secondary",
+                        )}
+                      >
+                        {name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <pre className="group/result relative max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-theme-border bg-theme-bg p-2 text-xs text-theme-text-secondary">
+                <ToolHoverCopyButton
+                  text={rawText}
+                  position="resultCompact"
+                  copyButtonClassName="!bg-theme-bg-card/80 !rounded-md !border !border-theme-border"
+                />
+                {rawText}
+              </pre>
+            )}
           </ToolInlineDetails>
         )}
       </CollapsiblePill>

@@ -514,114 +514,116 @@ export function NotificationPanel() {
               return (
                 <div
                   key={notification.id}
-                  className="glass-card rounded-xl p-4 sm:p-5 hover:border-stone-300 dark:hover:border-stone-600 transition-colors"
+                  className="glass-card overflow-hidden rounded-xl transition-colors hover:border-stone-300 dark:hover:border-stone-600"
                 >
-                  <div className="flex items-start justify-between gap-3 sm:gap-4">
-                    {/* Info */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                        <span
-                          className={`inline-flex items-center gap-1 shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none ${
-                            notification.type === "info"
-                              ? "bg-blue-500/15 text-blue-600 dark:text-blue-300"
-                              : notification.type === "success"
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
-                                : notification.type === "warning"
-                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
-                                  : "bg-orange-500/15 text-orange-600 dark:text-orange-300"
-                          }`}
-                        >
-                          {t(
-                            `notification.type${
-                              notification.type.charAt(0).toUpperCase() +
-                              notification.type.slice(1)
-                            }`,
-                          )}
-                        </span>
-                        <p className="font-medium text-stone-900 dark:text-stone-100 break-words line-clamp-1">
-                          {getLocalizedTitle(notification)}
-                        </p>
+                  <div className="flex flex-col">
+                    <div className="flex items-start justify-between gap-3 p-4 sm:p-5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
+                          <span
+                            className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-none ${
+                              notification.type === "info"
+                                ? "bg-blue-500/15 text-blue-600 dark:text-blue-300"
+                                : notification.type === "success"
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                                  : notification.type === "warning"
+                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
+                                    : "bg-orange-500/15 text-orange-600 dark:text-orange-300"
+                            }`}
+                          >
+                            {t(
+                              `notification.type${
+                                notification.type.charAt(0).toUpperCase() +
+                                notification.type.slice(1)
+                              }`,
+                            )}
+                          </span>
+                          <p className="min-w-0 flex-1 truncate text-sm font-medium leading-6 text-stone-900 dark:text-stone-100 sm:text-[15px]">
+                            {getLocalizedTitle(notification)}
+                          </p>
+                          <StatusBadge
+                            color={NOTIFICATION_STATUS_COLOR[status] ?? "stone"}
+                            label={t(`notification.${status}`)}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
+                          {schedule && <span>{schedule}</span>}
+                          <span>
+                            {formatDateTimeShort(notification.created_at)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <StatusBadge
-                          color={NOTIFICATION_STATUS_COLOR[status] ?? "stone"}
-                          label={t(`notification.${status}`)}
+
+                      <div className="flex flex-shrink-0 items-center gap-1">
+                        {hasContent && (
+                          <IconButton
+                            aria-label={
+                              isExpanded
+                                ? t("notification.collapse")
+                                : t("notification.expand")
+                            }
+                            icon={
+                              <ChevronDown
+                                size={16}
+                                className={`transition-transform duration-200 ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                            }
+                            onClick={() =>
+                              setExpandedId(isExpanded ? null : notification.id)
+                            }
+                            className={`h-9 w-9 rounded-lg ${
+                              isExpanded
+                                ? "text-stone-600 bg-stone-100 dark:text-stone-300 dark:bg-stone-800"
+                                : "text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+                            }`}
+                            title={
+                              isExpanded
+                                ? t("notification.collapse")
+                                : t("notification.expand")
+                            }
+                          />
+                        )}
+                        <IconButton
+                          aria-label={t("notification.edit")}
+                          icon={<Pencil size={16} />}
+                          onClick={() => setEditingNotification(notification)}
+                          className="h-9 w-9 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+                          title={t("notification.edit")}
+                        />
+                        <IconButton
+                          aria-label={t("notification.delete")}
+                          icon={<Trash2 size={16} />}
+                          onClick={() => setDeleteTarget(notification)}
+                          className="h-9 w-9 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                          title={t("notification.delete")}
                         />
                       </div>
-                      {schedule && (
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
-                          {schedule}
-                        </p>
-                      )}
-                      <p className="text-xs text-stone-400 dark:text-stone-500">
-                        {formatDateTimeShort(notification.created_at)}
-                      </p>
-                      {/* Expandable content */}
-                      {hasContent && (
+                    </div>
+
+                    {hasContent && (
+                      <div
+                        className={`border-t px-4 pb-4 sm:px-5 sm:pb-5 ${
+                          isExpanded ? "pt-3 sm:pt-4" : "pt-0"
+                        }`}
+                        style={{ borderColor: "var(--theme-border)" }}
+                      >
                         <div
-                          className={`mt-2 text-xs leading-relaxed text-stone-600 dark:text-stone-400 overflow-hidden transition-all duration-200 ${
+                          className={`overflow-hidden transition-all duration-200 ${
                             isExpanded
                               ? "max-h-96 opacity-100"
                               : "max-h-0 opacity-0"
                           }`}
                         >
-                          <div
-                            className="pt-2 border-t"
-                            style={{ borderColor: "var(--theme-border)" }}
-                          >
-                            {content}
+                          <div className="w-full text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+                            <div className="w-full break-words whitespace-pre-wrap">
+                              {content}
+                            </div>
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {hasContent && (
-                        <IconButton
-                          aria-label={
-                            isExpanded
-                              ? t("notification.collapse")
-                              : t("notification.expand")
-                          }
-                          icon={
-                            <ChevronDown
-                              size={16}
-                              className={`transition-transform duration-200 ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          }
-                          onClick={() =>
-                            setExpandedId(isExpanded ? null : notification.id)
-                          }
-                          className={`h-9 w-9 rounded-lg ${
-                            isExpanded
-                              ? "text-stone-600 bg-stone-100 dark:text-stone-300 dark:bg-stone-800"
-                              : "text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-300"
-                          }`}
-                          title={
-                            isExpanded
-                              ? t("notification.collapse")
-                              : t("notification.expand")
-                          }
-                        />
-                      )}
-                      <IconButton
-                        aria-label={t("notification.edit")}
-                        icon={<Pencil size={16} />}
-                        onClick={() => setEditingNotification(notification)}
-                        className="h-9 w-9 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-300"
-                        title={t("notification.edit")}
-                      />
-                      <IconButton
-                        aria-label={t("notification.delete")}
-                        icon={<Trash2 size={16} />}
-                        onClick={() => setDeleteTarget(notification)}
-                        className="h-9 w-9 rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                        title={t("notification.delete")}
-                      />
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

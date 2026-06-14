@@ -112,6 +112,10 @@ function TokenDetailsButton({
   const [showDetails, setShowDetails] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const cacheRate =
+    tokenUsage && tokenUsage.input_tokens > 0
+      ? (tokenUsage.cache_read_tokens ?? 0) / tokenUsage.input_tokens
+      : null;
 
   // Close details when clicking outside
   useEffect(() => {
@@ -184,6 +188,14 @@ function TokenDetailsButton({
                     <span className="font-medium">
                       {(tokenUsage.cache_creation_tokens ?? 0).toLocaleString()}{" "}
                       tokens
+                    </span>
+                  </div>
+                )}
+                {cacheRate !== null && cacheRate > 0 && (
+                  <div className="flex justify-between gap-4 text-fuchsia-600 dark:text-fuchsia-400">
+                    <span className="">{t("chat.message.tokenCacheRate")}</span>
+                    <span className="font-medium">
+                      {(cacheRate * 100).toFixed(1)}%
                     </span>
                   </div>
                 )}
@@ -391,7 +403,7 @@ function GoalDetailsButton({
                 style={{
                   color: "var(--theme-primary)",
                   backgroundColor:
-                    "var(--theme-primary-bg, rgba(59,130,246,0.08))",
+                    "var(--theme-primary-bg, rgba(245,158,11,0.08))",
                 }}
               >
                 {statusLabel}

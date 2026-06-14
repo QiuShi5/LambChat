@@ -8,7 +8,7 @@ import { ToolArgsBlock } from "./ToolArgsBlock";
 import { ToolInlineDetails } from "./ToolInlineDetails";
 import { ToolDurationFooter } from "./ToolDurationFooter";
 import { ToolResultContent } from "./McpBlockPreview";
-import { CopyButton } from "../../../common";
+import { ToolHoverCopyButton } from "./ToolHoverCopyButton";
 
 const ToolSearchItem = memo(function ToolSearchItem({
   args,
@@ -49,6 +49,20 @@ const ToolSearchItem = memo(function ToolSearchItem({
       : JSON.stringify(result, null, 2)
     : "";
 
+  const resultPreview = hasResult ? (
+    <div className="group/result relative text-xs text-theme-text-secondary overflow-y-auto min-w-0">
+      <ToolHoverCopyButton
+        text={resultText}
+        position="resultCompact"
+        className="z-20 pointer-events-auto"
+        copyButtonClassName="bg-white/90 shadow-sm ring-1 ring-stone-200/70 hover:bg-stone-100 dark:bg-stone-900/90 dark:ring-stone-700/70 dark:hover:bg-stone-800"
+      />
+      <div>
+        <ToolResultContent result={result} hideCopyButton />
+      </div>
+    </div>
+  ) : null;
+
   // --- Panel content (mobile / click to expand) ---
   const panelContent = canExpand && (
     <div className="space-y-3 max-h-full overflow-y-auto p-2 sm:p-4">
@@ -63,12 +77,7 @@ const ToolSearchItem = memo(function ToolSearchItem({
           </span>
         </ToolArgsBlock>
       )}
-      {hasResult && (
-        <div className="relative group">
-          <ToolResultContent result={result} hideCopyButton />
-          <CopyButton text={resultText} size={14} />
-        </div>
-      )}
+      {resultPreview}
     </div>
   );
 
@@ -107,9 +116,7 @@ const ToolSearchItem = memo(function ToolSearchItem({
               </ToolArgsBlock>
             )}
             {hasResult && (
-              <div className="relative group max-h-72 overflow-y-auto">
-                <ToolResultContent result={result} hideCopyButton />
-              </div>
+              <div className="max-h-72 overflow-y-auto">{resultPreview}</div>
             )}
           </ToolInlineDetails>
         )}

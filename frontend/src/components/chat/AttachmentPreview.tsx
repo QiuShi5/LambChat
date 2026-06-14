@@ -48,7 +48,7 @@ export const AttachmentPreview = memo(function AttachmentPreview({
             {/* Progress bar */}
             {isUploading && (
               <div
-                className="absolute inset-y-0 left-0 bg-blue-400/20 dark:bg-blue-500/20 transition-all duration-200"
+                className="absolute inset-y-0 left-0 bg-[color-mix(in_srgb,var(--theme-primary)_18%,transparent)] transition-all duration-200"
                 style={{
                   width: `${attachment.uploadProgress ?? 0}%`,
                 }}

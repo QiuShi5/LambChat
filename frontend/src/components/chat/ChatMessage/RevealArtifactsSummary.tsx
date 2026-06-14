@@ -264,11 +264,11 @@ function ProjectRow({
       onClick={() => onOpenPreview?.(artifact.preview, "manual")}
       className="group flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[var(--theme-primary-light)]"
     >
-      <span className="flex items-center justify-center size-10 rounded-xl shrink-0 bg-blue-100 dark:bg-blue-900/40 transition-transform duration-200 group-hover:scale-105">
+      <span className="flex items-center justify-center size-10 rounded-xl shrink-0 bg-[var(--theme-primary-light)] transition-transform duration-200 group-hover:scale-105">
         <Icon
           size={20}
           strokeWidth={1.8}
-          className="shrink-0 text-blue-600 dark:text-blue-400"
+          className="shrink-0 text-[var(--theme-primary)]"
         />
       </span>
       <span className="min-w-0 flex-1 text-left">

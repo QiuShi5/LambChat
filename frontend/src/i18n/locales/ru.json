@@ -613,6 +613,7 @@
       "tokenCache": "Кэш",
       "tokenCacheCreation": "Создание кэша",
       "tokenCacheRead": "Чтение кэша",
+      "tokenCacheRate": "Доля кэша",
       "tokenInput": "Ввод",
       "tokenOutput": "Вывод",
       "tokenTotal": "Итого",

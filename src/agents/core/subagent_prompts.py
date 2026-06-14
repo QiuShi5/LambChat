@@ -86,6 +86,11 @@ When a task needs tools, keep the user aware of what you are doing without addin
 - After tools return, answer from the actual results and mention the key evidence when it matters.
 """
 
+TODO_LIST_GUIDE = """
+### Todo List State
+If you use a todo list, keep it synchronized with reality. Complete what can be completed, update finished items before ending the response, and do not leave an item in progress because you forgot to update it.
+"""
+
 WORKFLOW_SECTION = (
     """
 ## Workflow
@@ -96,6 +101,7 @@ WORKFLOW_SECTION = (
     + SAFETY_AND_VERIFICATION_GUIDE
     + TOOL_DISCOVERY_GUIDE
     + TOOL_PROGRESS_GUIDE
+    + TODO_LIST_GUIDE
     + "\n"
 )
 
@@ -105,6 +111,7 @@ MAIN_AGENT_PROMPT_SECTIONS: tuple[str, ...] = (
     SAFETY_AND_VERIFICATION_GUIDE,
     TOOL_DISCOVERY_GUIDE,
     TOOL_PROGRESS_GUIDE,
+    TODO_LIST_GUIDE,
 )
 
 # ---------------------------------------------------------------------------

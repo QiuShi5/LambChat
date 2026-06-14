@@ -613,6 +613,7 @@
       "tokenCache": "キャッシュ",
       "tokenCacheCreation": "キャッシュ作成",
       "tokenCacheRead": "キャッシュ読込",
+      "tokenCacheRate": "キャッシュ率",
       "tokenInput": "入力",
       "tokenOutput": "出力",
       "tokenTotal": "合計",

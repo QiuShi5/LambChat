@@ -73,7 +73,7 @@ export interface CancelledPart {
 }
 
 // Todo 任务列表块类型
-export type TodoStatus = "pending" | "in_progress" | "completed";
+export type TodoStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
 export interface TodoItem {
   content: string;

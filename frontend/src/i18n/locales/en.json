@@ -626,6 +626,7 @@
       "tokenCache": "Cache",
       "tokenCacheCreation": "Cache Creation",
       "tokenCacheRead": "Cache Read",
+      "tokenCacheRate": "Cache Rate",
       "tokenInput": "Input",
       "tokenOutput": "Output",
       "tokenTotal": "Total",

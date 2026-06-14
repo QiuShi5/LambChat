@@ -626,6 +626,7 @@
       "tokenCache": "缓存",
       "tokenCacheCreation": "缓存写入",
       "tokenCacheRead": "缓存读取",
+      "tokenCacheRate": "缓存率",
       "tokenInput": "输入",
       "tokenOutput": "输出",
       "tokenTotal": "总计",

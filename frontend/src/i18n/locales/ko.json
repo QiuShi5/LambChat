@@ -613,6 +613,7 @@
       "tokenCache": "캐시",
       "tokenCacheCreation": "캐시 생성",
       "tokenCacheRead": "캐시 읽기",
+      "tokenCacheRate": "캐시율",
       "tokenInput": "입력",
       "tokenOutput": "출력",
       "tokenTotal": "총계",

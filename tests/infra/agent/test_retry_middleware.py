@@ -62,3 +62,24 @@ async def test_fallback_runs_when_primary_returns_truncated_content() -> None:
     result = await middleware.awrap_model_call(_Request(primary_model), handler)
 
     assert result.content == "fallback answer"
+
+
+async def test_fallback_model_is_created_with_same_thinking_config(monkeypatch) -> None:
+    calls = []
+    fallback_model = object()
+    thinking = {"type": "enabled", "level": "medium", "budget_tokens": 8192}
+    middleware = ModelFallbackMiddleware(
+        fallback_model="openai/fallback-model",
+        thinking=thinking,
+    )
+
+    async def fake_get_model(**kwargs):
+        calls.append(kwargs)
+        return fallback_model
+
+    monkeypatch.setattr("src.infra.llm.client.LLMClient.get_model", fake_get_model)
+
+    result = await middleware._get_fallback_llm()
+
+    assert result is fallback_model
+    assert calls == [{"model": "openai/fallback-model", "thinking": thinking}]
