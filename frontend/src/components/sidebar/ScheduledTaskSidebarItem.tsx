@@ -47,6 +47,9 @@ interface ScheduledTaskSidebarItemProps {
   unreadBySession?: UnreadBySession;
   onMarkAllRead?: (opts?: { scheduledTaskId?: string }) => void;
   markingReadId?: string | null;
+  selectionMode?: boolean;
+  selectedSessionIds?: Set<string>;
+  onToggleSessionSelected?: (sessionId: string) => void;
 }
 
 function dedupSessions(sessions: BackendSession[]): BackendSession[] {
@@ -92,6 +95,9 @@ export const ScheduledTaskSidebarItem = forwardRef<
     unreadBySession = new Map(),
     onMarkAllRead,
     markingReadId,
+    selectionMode = false,
+    selectedSessionIds = new Set(),
+    onToggleSessionSelected,
   },
   ref,
 ) {
@@ -305,6 +311,9 @@ export const ScheduledTaskSidebarItem = forwardRef<
                   isFavorite={isSessionFavorite(session)}
                   onDragStartTouch={undefined}
                   isDraggingTouch={draggingSessionId === session.id}
+                  selectionMode={selectionMode}
+                  isSelected={selectedSessionIds.has(session.id)}
+                  onToggleSelected={() => onToggleSessionSelected?.(session.id)}
                 />
               ))}
               {hasMore && (

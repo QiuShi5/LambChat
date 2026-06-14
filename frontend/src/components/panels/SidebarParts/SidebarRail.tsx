@@ -15,7 +15,7 @@ import { BrandLogo } from "../../common/BrandLogo";
 import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 
 const railBtn =
-  "sidebar-rail-btn flex h-9 w-9 items-center justify-center rounded-full transition-colors mx-2 touch-manipulation";
+  "sidebar-rail-btn flex size-8 items-center justify-center rounded-full transition-colors mx-2 touch-manipulation";
 
 interface SidebarRailProps {
   user: { username?: string; avatar_url?: string } | null;
@@ -77,7 +77,7 @@ export function SidebarRail({
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            className="w-5 h-5 hidden group-hover:block"
+            className="size-7 hidden group-hover:block"
           >
             <path
               fillRule="evenodd"

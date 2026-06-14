@@ -258,7 +258,10 @@ function OutlineFlowInner({
   );
 
   return (
-    <div ref={containerRef} className="relative w-full h-full">
+    <div
+      ref={containerRef}
+      className="outline-flow-shell relative w-full h-full"
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -267,7 +270,7 @@ function OutlineFlowInner({
         minZoom={0.6}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
-        className="!bg-[var(--theme-bg)] rounded-lg"
+        className="!bg-transparent"
       >
         <Background
           variant={BackgroundVariant.Dots}

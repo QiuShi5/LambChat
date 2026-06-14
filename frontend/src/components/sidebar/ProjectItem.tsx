@@ -60,6 +60,9 @@ interface ProjectItemProps {
   favoritesOnly?: boolean;
   onMarkAllRead?: (opts?: { projectId?: string }) => void;
   markingReadId?: string | null;
+  selectionMode?: boolean;
+  selectedSessionIds?: Set<string>;
+  onToggleSessionSelected?: (sessionId: string) => void;
 }
 
 export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
@@ -85,6 +88,9 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
       favoritesOnly = false,
       onMarkAllRead,
       markingReadId,
+      selectionMode = false,
+      selectedSessionIds = new Set(),
+      onToggleSessionSelected,
     },
     ref,
   ) {
@@ -431,6 +437,11 @@ export const ProjectItem = forwardRef<ProjectItemHandle, ProjectItemProps>(
                     isFavorite={isSessionFavorite(session)}
                     onDragStartTouch={undefined}
                     isDraggingTouch={draggingSessionId === session.id}
+                    selectionMode={selectionMode}
+                    isSelected={selectedSessionIds.has(session.id)}
+                    onToggleSelected={() =>
+                      onToggleSessionSelected?.(session.id)
+                    }
                   />
                 ))}
                 {hasMore && (

@@ -27,6 +27,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+async function getPushRegistration(): Promise<ServiceWorkerRegistration | null> {
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) return null;
+  return navigator.serviceWorker.ready;
+}
+
 export function useWebPush() {
   const [status, setStatus] = useState<PushStatus>("idle");
   const [vapidKey, setVapidKey] = useState<string | null>(null);
@@ -52,12 +58,16 @@ export function useWebPush() {
         if (!cancelled) setVapidKey(key);
 
         // Check existing subscription
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await getPushRegistration();
+        if (!registration) {
+          if (!cancelled) setStatus("unavailable");
+          return;
+        }
         const existing = await registration.pushManager.getSubscription();
         if (existing && !cancelled) {
           setStatus("subscribed");
         } else if (!cancelled) {
-          setStatus("idle");
+          setStatus((current) => (current === "loading" ? current : "idle"));
         }
       } catch {
         if (!cancelled) setStatus("unavailable");
@@ -82,7 +92,11 @@ export function useWebPush() {
         return false;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getPushRegistration();
+      if (!registration) {
+        setStatus("unavailable");
+        return false;
+      }
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
@@ -104,7 +118,11 @@ export function useWebPush() {
     if (status !== "subscribed") return;
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getPushRegistration();
+      if (!registration) {
+        setStatus("unavailable");
+        return false;
+      }
       const existing = await registration.pushManager.getSubscription();
       if (existing) {
         const endpoint = existing.endpoint;

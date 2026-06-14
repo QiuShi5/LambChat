@@ -84,7 +84,7 @@ test("panel headers move mobile actions into a search-row overflow menu", () => 
   );
   assert.match(
     componentsCss,
-    /\.panel-header__mobile-menu-accessory > :is\(\.relative, \.flex, \.panel-header-actions\),\s*\.panel-header__mobile-menu-item > :is\(\.relative, \.flex, \.panel-header-actions\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?width:\s*100%;[\s\S]*?gap:\s*0\.375rem;/,
+    /\.panel-header__mobile-menu-accessory\s*>\s*:is\(\.relative, \.flex, \.panel-header-actions\),\s*\.panel-header__mobile-menu-item\s*>\s*:is\(\.relative, \.flex, \.panel-header-actions\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?width:\s*100%;[\s\S]*?gap:\s*0\.375rem;/,
   );
   const mobileMenuBlock = cssBlock(componentsCss, ".panel-header__mobile-menu");
   assert.match(
@@ -168,6 +168,33 @@ test("panel headers move mobile actions into a search-row overflow menu", () => 
   assert.doesNotMatch(
     panelHeader,
     /className="btn-secondary panel-header__mobile-more/,
+  );
+});
+
+test("panel filter dropdowns use viewport-clamped left positioning and refresh while open", () => {
+  const panelControls = source("../PanelControls.tsx");
+
+  assert.match(panelControls, /const updateDropdownPosition = \(\) => \{/);
+  assert.match(panelControls, /const left = Math\.max\(/);
+  assert.match(panelControls, /left,/);
+  assert.doesNotMatch(panelControls, /right:\s*Math\.max/);
+  assert.match(
+    panelControls,
+    /window\.addEventListener\("resize", updateDropdownPosition\)/,
+  );
+  assert.match(
+    panelControls,
+    /window\.addEventListener\("scroll", updateDropdownPosition, true\)/,
+  );
+});
+
+test("panel header mounts search accessory only once while the mobile overflow menu is open", () => {
+  const panelHeader = source("../PanelHeader.tsx");
+
+  assert.match(
+    panelHeader,
+    /\{searchAccessory && !isMobileMenuOpen && \(/,
+    "the search-row accessory should unmount while its mobile-menu copy is active",
   );
 });
 

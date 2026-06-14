@@ -138,6 +138,10 @@ export const SessionSidebar = forwardRef<
   const [isMobile, setIsMobile] = useState(
     () => window.matchMedia("(max-width: 639px)").matches,
   );
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   // Sync scheduledTasksCollapsed from other tabs / metadata sync on login
   useEffect(() => {
@@ -323,6 +327,11 @@ export const SessionSidebar = forwardRef<
     [projects],
   );
 
+  const clearSelection = useCallback(() => {
+    setSelectedSessionIds(new Set());
+    setIsSelectionMode(false);
+  }, []);
+
   // ─── Aggregated action objects ────────────────────────────────────
 
   const sessionActions: SessionActions = useMemo(
@@ -332,6 +341,14 @@ export const SessionSidebar = forwardRef<
       onMoveSession: actions.handleMoveSession,
       onToggleFavorite: actions.handleToggleFavorite,
       onShareSession: actions.handleShareSession,
+      onRequestBatchMoveSessions: (ids, projectId) =>
+        actions.setBatchMoveConfirm({
+          isOpen: true,
+          sessionIds: ids,
+          projectId,
+        }),
+      onRequestBatchDeleteSessions: (ids) =>
+        actions.setBatchDeleteConfirm({ isOpen: true, sessionIds: ids }),
       onSelectSession: actions.selectAndClose,
       onDragStartTouch: touchDrag.handleDragStartTouch,
       draggingSessionId: touchDrag.draggingSessionId,
@@ -433,6 +450,11 @@ export const SessionSidebar = forwardRef<
     onConsumeAutoExpandProjectId: onConsumeAutoExpandProjectId!,
     onMarkAllRead: actions.handleMarkAllRead,
     markingReadId: actions.markingReadId,
+    isSelectionMode,
+    selectedSessionIds,
+    onSetSelectionMode: setIsSelectionMode,
+    onSetSelectedSessionIds: setSelectedSessionIds,
+    onClearSelection: clearSelection,
   };
 
   // ─── JSX ──────────────────────────────────────────────────────────
@@ -592,6 +614,53 @@ export const SessionSidebar = forwardRef<
         onConfirm={actions.confirmDeleteSession}
         onCancel={() =>
           actions.setDeleteConfirm({ isOpen: false, sessionId: null })
+        }
+        variant="danger"
+      />
+
+      {/* Batch move session confirmation */}
+      <ConfirmDialog
+        isOpen={actions.batchMoveConfirm.isOpen}
+        title={t("sidebar.moveSelectedSessions")}
+        message={t("sidebar.batchMoveConfirm", {
+          count: actions.batchMoveConfirm.sessionIds.length,
+          project:
+            actions.batchMoveConfirm.projectId === null
+              ? t("sidebar.uncategorized")
+              : projects.find(
+                  (p) => p.id === actions.batchMoveConfirm.projectId,
+                )?.name || t("sidebar.projects"),
+        })}
+        confirmText={t("sidebar.moveToProject")}
+        cancelText={t("common.cancel")}
+        onConfirm={async () => {
+          await actions.confirmBatchMoveSessions();
+          clearSelection();
+        }}
+        onCancel={() =>
+          actions.setBatchMoveConfirm({
+            isOpen: false,
+            sessionIds: [],
+            projectId: null,
+          })
+        }
+      />
+
+      {/* Batch delete session confirmation */}
+      <ConfirmDialog
+        isOpen={actions.batchDeleteConfirm.isOpen}
+        title={t("sidebar.deleteSelectedSessions")}
+        message={t("sidebar.batchDeleteConfirm", {
+          count: actions.batchDeleteConfirm.sessionIds.length,
+        })}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
+        onConfirm={async () => {
+          await actions.confirmBatchDeleteSessions();
+          clearSelection();
+        }}
+        onCancel={() =>
+          actions.setBatchDeleteConfirm({ isOpen: false, sessionIds: [] })
         }
         variant="danger"
       />

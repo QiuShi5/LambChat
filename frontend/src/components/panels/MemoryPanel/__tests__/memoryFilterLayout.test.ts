@@ -18,6 +18,14 @@ const marketplaceSource = readFileSync(
   new URL("../../MarketplacePanel.tsx", import.meta.url),
   "utf8",
 );
+const skillFilterDropdownSource = readFileSync(
+  new URL("../../SkillFilterDropdown.tsx", import.meta.url),
+  "utf8",
+);
+const panelControlsSource = readFileSync(
+  new URL("../../../common/PanelControls.tsx", import.meta.url),
+  "utf8",
+);
 
 test("memory filter trigger uses shared stable panel filter sizing", () => {
   assert.match(filterSource, /data-filter-menu/);
@@ -42,11 +50,19 @@ test("memory filter trigger uses shared stable panel filter sizing", () => {
   );
   assert.match(
     componentsCss,
-    /\.panel-filter-trigger\s*\{[\s\S]*?max-width:\s*100%;[\s\S]*?justify-content:\s*flex-start;/,
+    /\.panel-filter-trigger\s*\{[\s\S]*?max-width:\s*100%;[\s\S]*?justify-content:\s*space-between;/,
   );
   assert.match(
     componentsCss,
-    /\.panel-filter-trigger__label\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?text-overflow:\s*ellipsis;/,
+    /\.panel-filter-trigger__label\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?overflow:\s*hidden;[\s\S]*?text-overflow:\s*ellipsis;/,
+  );
+  assert.match(
+    componentsCss,
+    /\.panel-filter-trigger \.ui-button__label\s*\{[\s\S]*?display:\s*flex;[\s\S]*?width:\s*100%;/,
+  );
+  assert.match(
+    componentsCss,
+    /\.panel-filter-trigger \.ui-button__label > svg:last-child\s*\{[\s\S]*?margin-left:\s*auto;/,
   );
   assert.match(
     componentsCss,
@@ -59,26 +75,30 @@ test("memory filter trigger uses shared stable panel filter sizing", () => {
 });
 
 test("tag filter dropdowns opt into stable mobile filter-menu behavior", () => {
-  assert.match(skillsListSource, /data-filter-menu/);
-  assert.match(skillsListSource, /panel-filter-trigger/);
-  assert.match(skillsListSource, /panel-filter-menu/);
-  assert.match(skillsListSource, /aria-haspopup="menu"/);
-  assert.match(skillsListSource, /aria-expanded=\{isFilterOpen\}/);
+  assert.match(panelControlsSource, /data-filter-menu/);
+  assert.match(panelControlsSource, /panel-filter-menu/);
+  assert.match(skillsListSource, /SkillFilterDropdown/);
+  assert.doesNotMatch(skillsListSource, /<FilterDropdown/);
+  assert.match(marketplaceSource, /SkillFilterDropdown/);
+  assert.doesNotMatch(marketplaceSource, /<FilterDropdown/);
+  assert.match(skillFilterDropdownSource, /data-panel-header-dropdown/);
   assert.match(
-    skillsListSource,
-    /aria-pressed=\{selectedTags\.includes\(tag\)\}/,
-  );
-  assert.match(marketplaceSource, /data-filter-menu/);
-  assert.match(marketplaceSource, /panel-filter-trigger/);
-  assert.match(marketplaceSource, /panel-filter-menu/);
-  assert.match(marketplaceSource, /aria-haspopup="menu"/);
-  assert.match(marketplaceSource, /aria-expanded=\{isFilterOpen\}/);
-  assert.match(
-    marketplaceSource,
-    /aria-pressed=\{selectedTags\.includes\(tag\)\}/,
+    skillFilterDropdownSource,
+    /className="fixed inset-0 z-\[999\]"/,
   );
   assert.match(
-    componentsCss,
-    /\.panel-header__mobile-menu \.skill-filter-dropdown\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?max-height:\s*min\(46dvh,\s*18rem\);/,
+    skillFilterDropdownSource,
+    /skill-filter-dropdown panel-header-dropdown/,
+  );
+  assert.match(skillFilterDropdownSource, /role="menu"/);
+  assert.match(skillFilterDropdownSource, /getDropdownPosition/);
+  assert.match(skillFilterDropdownSource, /window\.visualViewport/);
+  assert.match(skillFilterDropdownSource, /skill-filter-segment/);
+  assert.match(skillFilterDropdownSource, /skill-tag-chip/);
+  assert.match(skillFilterDropdownSource, /aria-haspopup="menu"/);
+  assert.match(skillFilterDropdownSource, /aria-expanded=\{isOpen\}/);
+  assert.match(
+    skillFilterDropdownSource,
+    /aria-pressed=\{selectedTags\.includes\(tag\)\}/,
   );
 });

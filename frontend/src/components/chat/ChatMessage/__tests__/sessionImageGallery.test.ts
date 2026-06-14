@@ -95,6 +95,121 @@ test("collects session images from attachments, markdown, and individual reveal_
   assert.equal(items.filter((item) => item.group === "reveal-file").length, 1);
 });
 
+test("collects generated image tool results for correct preview navigation", () => {
+  const messages: Message[] = [
+    createMessage({
+      id: "assistant-generated",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool",
+          name: "image_generate",
+          success: true,
+          args: { prompt: "orange cat in sunlight" },
+          result: JSON.stringify({
+            success: true,
+            images: [
+              {
+                url: "/api/upload/file/generated-images/cat-1.png",
+                content_type: "image/png",
+              },
+              {
+                url: "/api/upload/file/generated-images/cat-2.png",
+                content_type: "image/png",
+              },
+            ],
+          }),
+        },
+      ],
+    }),
+  ];
+
+  assert.deepEqual(
+    collectSessionImageGalleryItems(messages).map((item) => [
+      item.id,
+      item.src,
+      item.alt,
+      item.group,
+    ]),
+    [
+      [
+        "assistant-generated:part:0:generated-image:0",
+        "/api/upload/file/generated-images/cat-1.png",
+        "cat-1.png",
+        "conversation",
+      ],
+      [
+        "assistant-generated:part:0:generated-image:1",
+        "/api/upload/file/generated-images/cat-2.png",
+        "cat-2.png",
+        "conversation",
+      ],
+    ],
+  );
+});
+
+test("deduplicates images collected from markdown, attachments, and generated image results", () => {
+  const messages: Message[] = [
+    createMessage({
+      id: "user-with-attachment",
+      role: "user",
+      content:
+        "same image ![inline](/api/upload/file/generated-images/cat.png)",
+      attachments: [
+        {
+          id: "attachment-image",
+          key: "generated-images/cat.png",
+          name: "cat.png",
+          type: "image",
+          mimeType: "image/png",
+          size: 12,
+          url: "/api/upload/file/generated-images/cat.png",
+        },
+      ],
+    }),
+    createMessage({
+      id: "assistant-generated",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool",
+          name: "image_generate",
+          success: true,
+          args: { prompt: "orange cat in sunlight" },
+          result: JSON.stringify({
+            success: true,
+            images: [
+              {
+                url: "/api/upload/file/generated-images/cat.png",
+                content_type: "image/png",
+              },
+            ],
+          }),
+        },
+      ],
+    }),
+  ];
+
+  assert.deepEqual(
+    collectSessionImageGalleryItems(messages).map((item) => item.src),
+    ["/api/upload/file/generated-images/cat.png"],
+  );
+});
+
+test("ImageViewer follows the mobile visual viewport instead of the layout viewport", () => {
+  const source = readFileSync(
+    new URL("../../../common/ImageViewer.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /className="fixed inset-0 z-\[300\] flex flex-col/);
+  assert.match(source, /height:\s*"var\(--app-viewport-height, 100dvh\)"/);
+  assert.match(
+    source,
+    /transform:\s*"translate3d\(0, var\(--app-viewport-offset-top, 0px\), 0\)"/,
+  );
+});
+
 test("ChatView provides a session image gallery around chat messages", () => {
   const source = readFileSync(
     new URL("../../../layout/AppContent/ChatView.tsx", import.meta.url),

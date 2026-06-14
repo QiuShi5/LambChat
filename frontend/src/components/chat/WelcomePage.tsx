@@ -592,7 +592,7 @@ export const WelcomePage = memo(function WelcomePage({
                       <span className="welcome-persona-info min-w-0 flex-1">
                         <span className="welcome-persona-name-row relative flex items-center gap-1.5">
                           <span
-                            className="welcome-persona-name truncate text-[13px] sm:text-[14px] font-semibold leading-[1.3] transition-colors duration-300 group-hover:text-[var(--theme-text)]"
+                            className="welcome-persona-name truncate text-[13px] sm:text-[14px] font-bold leading-[1.3] transition-colors duration-300 group-hover:text-[var(--theme-text)] font-serif"
                             style={{ color: "var(--theme-text)" }}
                           >
                             {team.name}
@@ -677,7 +677,7 @@ export const WelcomePage = memo(function WelcomePage({
                       <span className="welcome-persona-info min-w-0 flex-1">
                         <span className="welcome-persona-name-row relative flex items-center gap-1.5">
                           <span
-                            className="welcome-persona-name truncate text-[13px] sm:text-[14px] font-semibold leading-[1.3] transition-colors duration-300 group-hover:text-[var(--theme-text)]"
+                            className="welcome-persona-name truncate text-[13px] sm:text-[14px] font-bold leading-[1.3] transition-colors duration-300 group-hover:text-[var(--theme-text)] font-serif"
                             style={{ color: "var(--theme-text)" }}
                           >
                             {preset.name}

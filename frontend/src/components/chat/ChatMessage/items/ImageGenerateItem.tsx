@@ -2,7 +2,7 @@ import { memo, useMemo, useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { Sparkles, ImageIcon, Tag, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CollapsiblePill, ImageViewer } from "../../../common";
+import { CollapsiblePill, CopyButton, ImageViewer } from "../../../common";
 import { ImageWithSkeleton } from "../ImageWithSkeleton";
 import { extractText } from "./toolUtils";
 import { extractGeneratedImageResults } from "./toolImageResults";
@@ -162,13 +162,18 @@ const ImageGenerateItem = memo(function ImageGenerateItem({
 
       {/* ── Prompt ── */}
       {prompt && (
-        <div className="group/args relative rounded-lg tool-code-block">
+        <div className="relative rounded-lg tool-code-block">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-bg-subtle text-theme-text-tertiary text-xs transition-colors duration-200">
             <Sparkles
               size={12}
               className="text-violet-500 dark:text-violet-400"
             />
-            Prompt
+            <span className="min-w-0 flex-1 truncate">Prompt</span>
+            <CopyButton
+              text={prompt}
+              size={12}
+              className="!h-6 !w-6 !rounded-md !bg-theme-bg-card/80 !border !border-theme-border"
+            />
           </div>
           <div className="px-3 py-2 text-sm text-theme-text-secondary whitespace-pre-wrap break-words leading-relaxed">
             {prompt}

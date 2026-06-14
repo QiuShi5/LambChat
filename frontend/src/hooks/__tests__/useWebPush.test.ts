@@ -71,6 +71,11 @@ test("hook checks existing subscription via pushManager.getSubscription", () => 
   assert.match(source, /"subscribed"/);
 });
 
+test("hook verifies a service worker registration before waiting for readiness", () => {
+  assert.match(source, /serviceWorker\.getRegistration\(\)/);
+  assert.match(source, /if \(!registration\)/);
+});
+
 test("subscribe returns false when push is unavailable", () => {
   assert.match(source, /status\s*===\s*"unavailable".*return/);
 });

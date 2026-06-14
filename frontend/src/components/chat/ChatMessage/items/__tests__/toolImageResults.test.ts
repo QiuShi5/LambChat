@@ -89,3 +89,21 @@ test("generated image result previews open the shared ImageViewer", () => {
     "generated image ImageViewer should support next navigation",
   );
 });
+
+test("image generation prompt can be copied from the detail panel", () => {
+  const source = readFileSync(
+    new URL("../ImageGenerateItem.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /import\s+\{[^}]*CopyButton[^}]*\}\s+from\s+"..\/..\/..\/common"/s,
+    "image generation item should import the shared copy button",
+  );
+  assert.match(
+    source,
+    /<CopyButton[\s\S]*?\btext=\{prompt\}/,
+    "the full prompt block should expose a copy action for the prompt",
+  );
+});

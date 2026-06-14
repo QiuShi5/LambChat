@@ -228,7 +228,7 @@ export function PanelHeader({
               </div>
             )}
           </div>
-          {searchAccessory && (
+          {searchAccessory && !isMobileMenuOpen && (
             <div className="panel-header__search-accessory">
               {searchAccessory}
             </div>

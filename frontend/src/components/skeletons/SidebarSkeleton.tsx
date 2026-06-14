@@ -69,7 +69,7 @@ function SidebarExpandedSkeleton() {
       }}
     >
       {/* Header area — app icon (h-7) + name + collapse button */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-3">
+      <div className="flex items-center justify-between px-3 pt-3 pb-2">
         <div className="flex h-7 items-center gap-1.5">
           <div className="skeleton-line h-7 rounded-full shrink-0" />
           <div className="skeleton-line h-7 w-20 rounded-md" />

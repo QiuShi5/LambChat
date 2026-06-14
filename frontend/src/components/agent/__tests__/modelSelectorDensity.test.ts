@@ -15,3 +15,11 @@ test("model selector dropdown keeps a compact visual density", () => {
   assert.doesNotMatch(source, /min-h-\[46px\]/);
   assert.doesNotMatch(source, /w-\[min\(calc\(100vw-1rem\),28rem\)\]/);
 });
+
+test("model selector dropdown stays above mobile panels and fullscreen viewers", () => {
+  assert.match(
+    source,
+    /className="fixed z-\[10000\][^"]*w-\[min\(calc\(100vw-0\.75rem\),24rem\)\]/,
+    "model selector should render above other app overlays on mobile",
+  );
+});

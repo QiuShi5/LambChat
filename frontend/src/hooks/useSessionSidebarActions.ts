@@ -67,6 +67,15 @@ export function useSessionSidebarActions({
     isOpen: boolean;
     sessionId: string | null;
   }>({ isOpen: false, sessionId: null });
+  const [batchDeleteConfirm, setBatchDeleteConfirm] = useState<{
+    isOpen: boolean;
+    sessionIds: string[];
+  }>({ isOpen: false, sessionIds: [] });
+  const [batchMoveConfirm, setBatchMoveConfirm] = useState<{
+    isOpen: boolean;
+    sessionIds: string[];
+    projectId: string | null;
+  }>({ isOpen: false, sessionIds: [], projectId: null });
 
   // ─── Mark-all-read loading tracker ────────────────────────────────
 
@@ -113,64 +122,116 @@ export function useSessionSidebarActions({
 
   // ─── Move session ──────────────────────────────────────────────────
 
-  const handleMoveSession = useCallback(
-    async (sessionId: string, projectId: string | null) => {
-      try {
-        const response = await sessionApi.moveToProject(sessionId, projectId);
-        if (response.session) {
-          const favorite = isSessionFavorite(response.session);
-          for (const [, handle] of projectRefs.current) {
-            handle.removeSession(sessionId);
-          }
-          for (const [, handle] of scheduledTaskRefs.current) {
-            handle.removeSession(sessionId);
-          }
-          uncategorizedList.removeSession(sessionId);
-          if (projectId) {
-            getProjectRef(projectId)?.prependSession(response.session);
-          } else {
-            uncategorizedList.prependSession(response.session);
-          }
-          if (favorite) {
-            const fp = projects.find((p) => p.type === "favorites");
-            if (fp) getProjectRef(fp.id)?.prependSession(response.session);
-          }
-          setUnreadBySession((prev) =>
-            mergeUnreadUpdate(prev, {
-              sessionId,
-              unreadCount: response.session.unread_count ?? 0,
-              projectId:
-                (response.session.metadata?.project_id as
-                  | string
-                  | null
-                  | undefined) ?? null,
-              scheduledTaskId:
-                (response.session.metadata?.scheduled_task_id as
-                  | string
-                  | null
-                  | undefined) ?? null,
-              isFavorite: favorite,
-            }),
-          );
-        }
-      } catch (err) {
-        console.error("Failed to move session:", err);
-        toast.error(t("sidebar.sessionMoveFailed"));
+  const applyMovedSession = useCallback(
+    (sessionId: string, movedSession: BackendSession) => {
+      const favorite = isSessionFavorite(movedSession);
+      const movedProjectId =
+        (movedSession.metadata?.project_id as string | null | undefined) ??
+        null;
+
+      for (const [, handle] of projectRefs.current) {
+        handle.removeSession(sessionId);
       }
+      for (const [, handle] of scheduledTaskRefs.current) {
+        handle.removeSession(sessionId);
+      }
+      uncategorizedList.removeSession(sessionId);
+
+      if (movedProjectId) {
+        getProjectRef(movedProjectId)?.prependSession(movedSession);
+      } else {
+        uncategorizedList.prependSession(movedSession);
+      }
+      if (favorite) {
+        const fp = projects.find((p) => p.type === "favorites");
+        if (fp) getProjectRef(fp.id)?.prependSession(movedSession);
+      }
+
+      setUnreadBySession((prev) =>
+        mergeUnreadUpdate(prev, {
+          sessionId,
+          unreadCount: movedSession.unread_count ?? 0,
+          projectId: movedProjectId,
+          scheduledTaskId:
+            (movedSession.metadata?.scheduled_task_id as
+              | string
+              | null
+              | undefined) ?? null,
+          isFavorite: favorite,
+        }),
+      );
     },
     [
       getProjectRef,
       projects,
       projectRefs,
       scheduledTaskRefs,
-      uncategorizedList,
       setUnreadBySession,
-      t,
+      uncategorizedList,
     ],
+  );
+
+  const handleMoveSession = useCallback(
+    async (sessionId: string, projectId: string | null) => {
+      try {
+        const response = await sessionApi.moveToProject(sessionId, projectId);
+        if (response.session) {
+          applyMovedSession(sessionId, response.session);
+        }
+      } catch (err) {
+        console.error("Failed to move session:", err);
+        toast.error(t("sidebar.sessionMoveFailed"));
+      }
+    },
+    [applyMovedSession, t],
   );
 
   const handleMoveSessionRef = useRef(handleMoveSession);
   handleMoveSessionRef.current = handleMoveSession;
+
+  const handleBatchMoveSessions = useCallback(
+    async (sessionIds: string[], projectId: string | null) => {
+      if (sessionIds.length === 0) return;
+
+      const results = await Promise.allSettled(
+        sessionIds.map(async (sessionId) => {
+          const response = await sessionApi.moveToProject(sessionId, projectId);
+          if (response.session) applyMovedSession(sessionId, response.session);
+        }),
+      );
+      const failedCount = results.filter(
+        (result) => result.status === "rejected",
+      ).length;
+
+      if (failedCount > 0) {
+        toast.error(
+          t("sidebar.batchMovePartialFailed", {
+            count: failedCount,
+            defaultValue: "{{count}} 个会话移动失败",
+          }),
+        );
+        return;
+      }
+
+      toast.success(
+        t("sidebar.batchMoved", {
+          count: sessionIds.length,
+          defaultValue: "已移动 {{count}} 个会话",
+        }),
+      );
+    },
+    [applyMovedSession, t],
+  );
+
+  const confirmBatchMoveSessions = useCallback(async () => {
+    const { sessionIds, projectId } = batchMoveConfirm;
+    if (sessionIds.length === 0) return;
+    try {
+      await handleBatchMoveSessions(sessionIds, projectId);
+    } finally {
+      setBatchMoveConfirm({ isOpen: false, sessionIds: [], projectId: null });
+    }
+  }, [batchMoveConfirm, handleBatchMoveSessions]);
 
   // ─── Share session ────────────────────────────────────────────────
 
@@ -393,6 +454,73 @@ export function useSessionSidebarActions({
     t,
   ]);
 
+  const confirmBatchDeleteSessions = useCallback(async () => {
+    const sessionIds = batchDeleteConfirm.sessionIds;
+    if (sessionIds.length === 0) return;
+
+    let deletedCount = 0;
+    try {
+      const results = await Promise.allSettled(
+        sessionIds.map((sessionId) => sessionApi.delete(sessionId)),
+      );
+      const deletedIds = sessionIds.filter(
+        (_sessionId, index) => results[index]?.status === "fulfilled",
+      );
+      deletedCount = deletedIds.length;
+
+      for (const sessionId of deletedIds) {
+        for (const [, handle] of projectRefs.current) {
+          handle.removeSession(sessionId);
+        }
+        for (const [, handle] of scheduledTaskRefs.current) {
+          handle.removeSession(sessionId);
+        }
+        uncategorizedList.removeSession(sessionId);
+      }
+
+      setUnreadBySession((prev) => {
+        const next = new Map(prev);
+        deletedIds.forEach((sessionId) => next.delete(sessionId));
+        return next;
+      });
+
+      if (currentSessionId && deletedIds.includes(currentSessionId)) {
+        onNewSession();
+      }
+
+      const failedCount = sessionIds.length - deletedCount;
+      if (failedCount > 0) {
+        toast.error(
+          t("sidebar.batchDeletePartialFailed", {
+            count: failedCount,
+            defaultValue: "{{count}} 个会话删除失败",
+          }),
+        );
+      } else {
+        toast.success(
+          t("sidebar.batchDeleted", {
+            count: deletedCount,
+            defaultValue: "已删除 {{count}} 个会话",
+          }),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to batch delete sessions:", err);
+      toast.error(t("sidebar.deleteFailed"));
+    } finally {
+      setBatchDeleteConfirm({ isOpen: false, sessionIds: [] });
+    }
+  }, [
+    batchDeleteConfirm.sessionIds,
+    currentSessionId,
+    onNewSession,
+    projectRefs,
+    scheduledTaskRefs,
+    setUnreadBySession,
+    t,
+    uncategorizedList,
+  ]);
+
   // ─── Select session helper (mobile close) ───────────────────────
 
   const selectAndClose = useCallback(
@@ -436,6 +564,10 @@ export function useSessionSidebarActions({
     handleSessionUnread,
     handleMoveSession,
     handleMoveSessionRef,
+    handleBatchMoveSessions,
+    batchMoveConfirm,
+    setBatchMoveConfirm,
+    confirmBatchMoveSessions,
     handleShareSession,
     handleToggleFavorite,
     handleMarkAllRead,
@@ -446,6 +578,9 @@ export function useSessionSidebarActions({
     deleteConfirm,
     setDeleteConfirm,
     confirmDeleteSession,
+    batchDeleteConfirm,
+    setBatchDeleteConfirm,
+    confirmBatchDeleteSessions,
     selectAndClose,
   };
 }

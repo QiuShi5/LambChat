@@ -9,6 +9,11 @@ import {
   MessageSquarePlus,
   MoreHorizontal,
   CalendarClock,
+  CheckSquare,
+  FolderInput,
+  Tag,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -40,12 +45,22 @@ import type { Project } from "../../../types";
 import type { ScheduledTask } from "../../../types/scheduledTask";
 import { isSidebarProject } from "./projectFilters";
 import { subscribeScheduledTaskMutation } from "../../../stores/scheduledTaskMutationStore";
+import {
+  isEveryVisibleSessionSelected,
+  toggleAllVisibleSessions,
+  toggleSessionSelection,
+} from "../../sidebar/sessionSelection";
+
+const sectionActionIconClass =
+  "text-stone-400 transition-colors group-hover/section:text-stone-700 dark:text-stone-500 dark:group-hover/section:text-stone-200";
 
 export interface SessionActions {
   onDeleteSession: (id: string) => void;
   onMoveSession: (id: string, projectId: string | null) => void;
   onToggleFavorite: (id: string) => void;
   onShareSession: (id: string) => void;
+  onRequestBatchMoveSessions: (ids: string[], projectId: string | null) => void;
+  onRequestBatchDeleteSessions: (ids: string[]) => void;
   onSelectSession: (id: string) => void;
   onDragStartTouch: (
     sessionId: string,
@@ -114,6 +129,11 @@ interface SessionListContentProps {
     scheduledTaskId?: string;
   }) => Promise<void> | void;
   markingReadId: string | null;
+  isSelectionMode: boolean;
+  selectedSessionIds: Set<string>;
+  onSetSelectionMode: (enabled: boolean) => void;
+  onSetSelectedSessionIds: (ids: Set<string>) => void;
+  onClearSelection: () => void;
 }
 
 export function SessionListContent({
@@ -152,6 +172,11 @@ export function SessionListContent({
   onConsumeAutoExpandProjectId,
   onMarkAllRead,
   markingReadId,
+  isSelectionMode,
+  selectedSessionIds,
+  onSetSelectionMode,
+  onSetSelectedSessionIds,
+  onClearSelection,
 }: SessionListContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -160,6 +185,7 @@ export function SessionListContent({
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [scheduledTaskTotal, setScheduledTaskTotal] = useState(0);
   const [isScheduledTasksLoading, setIsScheduledTasksLoading] = useState(false);
+  const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
   const scheduledTaskUnreadByTaskRef = useRef(new Map<string, number>());
 
   const loadScheduledTasks = useCallback(async () => {
@@ -219,6 +245,16 @@ export function SessionListContent({
     visibleUncategorizedSessions,
     t,
   );
+  const visibleUncategorizedIds = visibleUncategorizedSessions
+    .map((session) => session.id)
+    .filter(Boolean);
+  const allVisibleSelected = isEveryVisibleSessionSelected(
+    selectedSessionIds,
+    visibleUncategorizedIds,
+  );
+  const selectedCount = selectedSessionIds.size;
+  const selectedIds = Array.from(selectedSessionIds);
+  const customProjects = projects.filter(isSidebarProject);
   const handleScheduledTaskUnreadChange = useCallback(
     (taskId: string, unreadCount: number) => {
       const prev = scheduledTaskUnreadByTaskRef.current;
@@ -242,31 +278,69 @@ export function SessionListContent({
     [onMarkAllRead],
   );
 
+  const handleToggleSelectionMode = useCallback(() => {
+    if (isSelectionMode) {
+      onClearSelection();
+    } else {
+      onSetSelectionMode(true);
+    }
+  }, [isSelectionMode, onClearSelection, onSetSelectionMode]);
+
+  const handleToggleAllVisible = useCallback(() => {
+    onSetSelectedSessionIds(
+      toggleAllVisibleSessions(selectedSessionIds, visibleUncategorizedIds),
+    );
+  }, [onSetSelectedSessionIds, selectedSessionIds, visibleUncategorizedIds]);
+
+  const handleToggleSessionSelected = useCallback(
+    (sessionId: string) => {
+      onSetSelectedSessionIds(
+        toggleSessionSelection(selectedSessionIds, sessionId),
+      );
+    },
+    [onSetSelectedSessionIds, selectedSessionIds],
+  );
+
+  const handleMoveSelected = useCallback(
+    (projectId: string | null) => {
+      if (selectedIds.length === 0) return;
+      setIsProjectPickerOpen(false);
+      sessionActions.onRequestBatchMoveSessions(selectedIds, projectId);
+    },
+    [selectedIds, sessionActions],
+  );
+
+  const handleRequestDeleteSelected = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    setIsProjectPickerOpen(false);
+    sessionActions.onRequestBatchDeleteSessions(selectedIds);
+  }, [selectedIds, sessionActions]);
+
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-3">
-        <div className="flex h-7 items-center gap-1.5">
-          <BrandLogo alt={APP_NAME} className="h-7" />
+      <div className="flex items-center justify-between px-3 pt-3 pb-2">
+        <div className="flex size-7 items-center gap-1.5">
+          <BrandLogo alt={APP_NAME} className="size-7 mb-1" />
           <a
             href={GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-stone-800 dark:text-stone-100 hover:text-stone-900 dark:hover:text-stone-50 transition-colors"
           >
-            <BrandWordmark decorative className="h-7 w-auto" />
+            <BrandWordmark decorative className="size-7 w-auto mb-1" />
           </a>
         </div>
         <button
           onClick={onCollapse}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800/60 transition-colors cursor-w-resize rtl:cursor-e-resize"
+          className="flex size-8 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800/60 transition-colors cursor-w-resize rtl:cursor-e-resize"
           title={t("sidebar.collapseSidebar")}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            className="w-5 h-5 text-stone-600 dark:text-stone-300"
+            className="size-5 text-stone-600 dark:text-stone-300"
           >
             <path
               fillRule="evenodd"
@@ -356,7 +430,7 @@ export function SessionListContent({
             </span>
             <ChevronDown
               size={14}
-              className={`text-stone-300 dark:text-stone-600 transition-transform duration-200 ${
+              className={`transition-transform duration-200 ${sectionActionIconClass} ${
                 isProjectsCollapsed ? "-rotate-90" : ""
               }`}
             />
@@ -401,6 +475,9 @@ export function SessionListContent({
                   favoritesOnly
                   onMarkAllRead={onMarkAllRead}
                   markingReadId={markingReadId}
+                  selectionMode={isSelectionMode}
+                  selectedSessionIds={selectedSessionIds}
+                  onToggleSessionSelected={handleToggleSessionSelected}
                 />
               );
             })()}
@@ -437,6 +514,9 @@ export function SessionListContent({
                   unreadBySession={unreadBySession}
                   onMarkAllRead={onMarkAllRead}
                   markingReadId={markingReadId}
+                  selectionMode={isSelectionMode}
+                  selectedSessionIds={selectedSessionIds}
+                  onToggleSessionSelected={handleToggleSessionSelected}
                 />
               ))}
 
@@ -458,7 +538,7 @@ export function SessionListContent({
                 </div>
                 <ChevronDown
                   size={14}
-                  className={`text-stone-300 dark:text-stone-600 transition-transform duration-200 ${
+                  className={`transition-transform duration-200 ${sectionActionIconClass} ${
                     isScheduledTasksCollapsed ? "-rotate-90" : ""
                   }`}
                 />
@@ -502,6 +582,9 @@ export function SessionListContent({
                           handleScheduledTaskMarkAllRead(task.id)
                         }
                         markingReadId={markingReadId}
+                        selectionMode={isSelectionMode}
+                        selectedSessionIds={selectedSessionIds}
+                        onToggleSessionSelected={handleToggleSessionSelected}
                       />
                     ))
                   )}
@@ -527,14 +610,19 @@ export function SessionListContent({
           {groupedUncategorized.length > 0 || isUncategorizedLoading ? (
             <>
               <div
-                onClick={onToggleChatsCollapsed}
+                onClick={isSelectionMode ? undefined : onToggleChatsCollapsed}
                 className="flex items-center justify-between px-[9px] h-9 cursor-pointer select-none group/section"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="text-[13px] font-medium text-stone-400 dark:text-stone-500 group-hover/section:text-stone-500 dark:group-hover/section:text-stone-400 transition-colors">
-                    {t("sidebar.chats")}
+                    {isSelectionMode
+                      ? t("sidebar.selectedCount", {
+                          count: selectedCount,
+                          defaultValue: "已选 {{count}} 个",
+                        })
+                      : t("sidebar.chats")}
                   </span>
-                  {chatsUnreadCount > 0 && (
+                  {!isSelectionMode && chatsUnreadCount > 0 && (
                     <MarkAllReadBadge
                       count={chatsUnreadCount}
                       badgeId="all"
@@ -544,15 +632,57 @@ export function SessionListContent({
                     />
                   )}
                 </div>
-                <ChevronDown
-                  size={14}
-                  className={`text-stone-300 dark:text-stone-600 transition-transform duration-200 ${
-                    isChatsCollapsed ? "-rotate-90" : ""
-                  }`}
-                />
+                <div className="flex items-center gap-1">
+                  {isSelectionMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleAllVisible();
+                      }}
+                      className="rounded-md px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 dark:text-stone-400 dark:hover:bg-stone-800/60 dark:hover:text-stone-200"
+                    >
+                      {allVisibleSelected
+                        ? t("sidebar.clearVisibleSelection")
+                        : t("sidebar.selectVisible")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleSelectionMode();
+                    }}
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-stone-100 dark:hover:bg-stone-800/60 ${sectionActionIconClass}`}
+                    title={
+                      isSelectionMode
+                        ? t("common.cancel")
+                        : t("sidebar.selectMode")
+                    }
+                    aria-label={
+                      isSelectionMode
+                        ? t("common.cancel")
+                        : t("sidebar.selectMode")
+                    }
+                  >
+                    {isSelectionMode ? (
+                      <X size={14} />
+                    ) : (
+                      <CheckSquare size={14} />
+                    )}
+                  </button>
+                  {!isSelectionMode && (
+                    <ChevronDown
+                      size={14}
+                      className={`shrink-0 duration-200 ${sectionActionIconClass} ${
+                        isChatsCollapsed ? "-rotate-90" : ""
+                      }`}
+                    />
+                  )}
+                </div>
               </div>
 
-              {!isChatsCollapsed && (
+              {(!isChatsCollapsed || isSelectionMode) && (
                 <>
                   {isUncategorizedLoading ? (
                     <SkeletonList count={5} compact />
@@ -599,6 +729,11 @@ export function SessionListContent({
                                   sessionActions.draggingSessionId ===
                                   session.id
                                 }
+                                selectionMode={isSelectionMode}
+                                isSelected={selectedSessionIds.has(session.id)}
+                                onToggleSelected={() =>
+                                  handleToggleSessionSelected(session.id)
+                                }
                               />
                             ))}
                         </div>
@@ -621,6 +756,85 @@ export function SessionListContent({
           ) : null}
         </div>
       </div>
+
+      {isSelectionMode && (
+        <div className="shrink-0 border-t border-stone-200/80 bg-[var(--theme-bg-sidebar)] px-2 py-2 dark:border-stone-800/70">
+          <div className="relative">
+            {isProjectPickerOpen && (
+              <div className="absolute bottom-12 left-0 right-0 z-30 overflow-hidden rounded-xl border border-stone-200 bg-stone-50 shadow-xl shadow-stone-900/10 dark:border-stone-700 dark:bg-stone-900 dark:shadow-black/30">
+                <div className="px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-stone-400 dark:text-stone-500">
+                  {t("sidebar.moveSelectedToProject")}
+                </div>
+                <div className="max-h-56 overflow-y-auto p-1">
+                  {customProjects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => handleMoveSelected(project.id)}
+                      className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] font-medium text-stone-600 transition hover:bg-stone-200/60 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+                    >
+                      <FolderInput
+                        size={15}
+                        className="shrink-0 text-stone-400"
+                      />
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleMoveSelected(null)}
+                    className="flex h-9 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] font-medium text-stone-600 transition hover:bg-stone-200/60 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+                  >
+                    <Tag size={15} className="shrink-0 text-stone-400" />
+                    <span className="truncate">
+                      {t("sidebar.uncategorized")}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 rounded-[10px] bg-stone-100/85 p-1 ring-1 ring-inset ring-stone-200/80 dark:bg-stone-800/55 dark:ring-stone-700/70">
+              <div className="flex h-8 min-w-[72px] shrink-0 items-center justify-center rounded-lg bg-white/70 px-2 text-xs font-semibold text-stone-600 ring-1 ring-inset ring-stone-200/70 dark:bg-stone-900/45 dark:text-stone-300 dark:ring-stone-700/60">
+                {t("sidebar.selectedCount", {
+                  count: selectedCount,
+                  defaultValue: "已选 {{count}} 个",
+                })}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={selectedCount === 0}
+                  onClick={() => setIsProjectPickerOpen((value) => !value)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-600 transition hover:bg-white/70 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-45 dark:text-stone-300 dark:hover:bg-stone-900/45 dark:hover:text-stone-50"
+                  title={t("sidebar.moveSelectedToProject")}
+                  aria-label={t("sidebar.moveSelectedToProject")}
+                >
+                  <FolderInput size={14} />
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedCount === 0}
+                  onClick={handleRequestDeleteSelected}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                  title={t("sidebar.deleteSelected")}
+                  aria-label={t("sidebar.deleteSelected")}
+                >
+                  <Trash2 size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClearSelection}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-stone-500 transition hover:bg-white/70 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-900/45 dark:hover:text-stone-100"
+                  title={t("common.cancel")}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="shrink-0 px-2 py-1 border-t border-stone-300/70 dark:border-stone-800/60">

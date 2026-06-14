@@ -85,6 +85,7 @@ export function useChatOutline(
       status: "idle",
       panelKey: "outline",
       viewMode: isMobile ? "center" : "sidebar",
+      mobileFillViewport: isMobile,
       children: (
         <MessageOutlinePanel
           items={outlineItems}

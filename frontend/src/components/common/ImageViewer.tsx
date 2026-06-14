@@ -222,6 +222,10 @@ export function ImageViewer({
     <div
       data-yields-sidebar
       className="fixed inset-0 z-[300] flex flex-col bg-black/90"
+      style={{
+        height: "var(--app-viewport-height, 100dvh)",
+        transform: "translate3d(0, var(--app-viewport-offset-top, 0px), 0)",
+      }}
       onClick={handleBackgroundClick}
     >
       {/* Top bar */}

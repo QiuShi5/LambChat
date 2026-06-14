@@ -111,23 +111,57 @@ export function FilterDropdown({
   // Position dropdown (portal-based, flips above when insufficient space below)
   useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const width = 288;
-    const right = Math.max(16, viewportWidth - rect.right - 16);
-    const spaceBelow = viewportHeight - rect.bottom - 16;
-    const spaceAbove = rect.top - 16;
-    const preferBelow = spaceBelow >= 200 || spaceBelow >= spaceAbove;
+    let frame = 0;
+    const updateDropdownPosition = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
 
-    setDropdownStyle({
-      position: "fixed",
-      top: preferBelow ? rect.bottom + 4 : undefined,
-      bottom: preferBelow ? undefined : viewportHeight - rect.top + 4,
-      right,
-      width,
-      zIndex: 9999,
-    });
+        const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+        const viewportHeight =
+          window.visualViewport?.height ?? window.innerHeight;
+        const viewportOffsetTop = window.visualViewport?.offsetTop ?? 0;
+        const gutter = 16;
+        const width = Math.min(288, viewportWidth - gutter * 2);
+        const left = Math.max(
+          gutter,
+          Math.min(rect.left, viewportWidth - width - gutter),
+        );
+        const spaceBelow = viewportHeight - rect.bottom - gutter;
+        const spaceAbove = rect.top - viewportOffsetTop - gutter;
+        const preferBelow = spaceBelow >= 200 || spaceBelow >= spaceAbove;
+
+        setDropdownStyle({
+          position: "fixed",
+          top: preferBelow ? rect.bottom + 4 : undefined,
+          bottom: preferBelow ? undefined : viewportHeight - rect.top + 4,
+          left,
+          width,
+          zIndex: 9999,
+        });
+      });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.visualViewport?.addEventListener("resize", updateDropdownPosition);
+    window.visualViewport?.addEventListener("scroll", updateDropdownPosition);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateDropdownPosition);
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateDropdownPosition,
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        updateDropdownPosition,
+      );
+    };
   }, [isOpen]);
 
   return (

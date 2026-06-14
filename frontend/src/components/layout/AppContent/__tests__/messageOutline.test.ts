@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import type { Message } from "../../../../types";
@@ -197,5 +198,18 @@ test("maps the first visible message index to its outline anchor", () => {
       endIndex: 2,
     }),
     createMessageAnchorId("a1"),
+  );
+});
+
+test("mobile message outline opens in a full-height viewport panel", () => {
+  const source = readFileSync(
+    new URL("../useChatOutline.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /mobileFillViewport:\s*isMobile/,
+    "mobile outline should use the available viewport instead of a short bottom sheet",
   );
 });

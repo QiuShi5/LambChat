@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreHorizontal } from "lucide-react";
+import { Check, MoreHorizontal } from "lucide-react";
 import toast from "react-hot-toast";
 import type { BackendSession } from "../../services/api/session";
 import type { Project } from "../../types";
@@ -32,6 +32,9 @@ interface SessionItemProps {
     clientY: number,
   ) => void;
   isDraggingTouch?: boolean;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: () => void;
 }
 
 export function SessionItem({
@@ -50,6 +53,9 @@ export function SessionItem({
   onDragEnd,
   onDragStartTouch,
   isDraggingTouch = false,
+  selectionMode = false,
+  isSelected = false,
+  onToggleSelected,
 }: SessionItemProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -147,6 +153,7 @@ export function SessionItem({
 
   // Touch: show menu button, auto-hide after 3s
   const handleItemTouchStart = (e: React.TouchEvent) => {
+    if (selectionMode) return;
     if (isEditing) return;
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
@@ -206,6 +213,10 @@ export function SessionItem({
 
   // Drag handlers (desktop)
   const handleDragStart = (e: React.DragEvent) => {
+    if (selectionMode) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("text/plain", session.id);
     e.dataTransfer.effectAllowed = "move";
     setIsDragging(true);
@@ -223,7 +234,7 @@ export function SessionItem({
   return (
     <>
       <div
-        draggable
+        draggable={!selectionMode}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onTouchStart={handleItemTouchStart}
@@ -238,17 +249,48 @@ export function SessionItem({
           if (shouldBlockSessionSelection(window.location.pathname)) {
             return;
           }
+          if (selectionMode) {
+            onToggleSelected?.();
+            return;
+          }
           if (!isEditing) {
             onSelect();
           }
         }}
         style={isDragging ? { touchAction: "none" } : undefined}
         className={`group relative flex cursor-pointer items-center gap-3 h-10 rounded-[10px] px-[9px] transition-colors ${
-          isActive
-            ? "bg-stone-100 dark:bg-stone-800/60"
-            : "hover:bg-stone-100 dark:hover:bg-stone-800/40"
-        } ${isDragging || isDraggingTouch ? "opacity-50 scale-95" : ""}`}
+          isSelected
+            ? "hover:bg-stone-100 dark:hover:bg-stone-800/40"
+            : isActive
+              ? "bg-stone-100 dark:bg-stone-800/60"
+              : "hover:bg-stone-100 dark:hover:bg-stone-800/40"
+        } ${isDragging || isDraggingTouch ? "opacity-50 scale-95" : ""} ${
+          selectionMode ? "pr-2" : ""
+        }`}
       >
+        {selectionMode && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelected?.();
+            }}
+            aria-pressed={isSelected}
+            aria-label={
+              isSelected
+                ? t("sidebar.unselectSession")
+                : t("sidebar.selectSession")
+            }
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
+              isSelected
+                ? "border-stone-700 bg-stone-700 text-white shadow-sm dark:border-stone-500 dark:bg-stone-600 dark:text-stone-100"
+                : "border-stone-300 bg-transparent text-transparent group-hover:border-stone-400 dark:border-stone-600 dark:group-hover:border-stone-500"
+            }`}
+          >
+            <Check size={11} strokeWidth={3} />
+          </button>
+        )}
+
         {/* Title - editable or display */}
         <div className="min-w-0 flex-1">
           {isEditing ? (
@@ -266,9 +308,11 @@ export function SessionItem({
           ) : (
             <div
               className={`truncate text-[13px] transition-colors ${
-                isActive
-                  ? "text-stone-800 dark:text-stone-100 font-medium"
-                  : "text-stone-600 dark:text-stone-300 group-hover:text-stone-700 dark:group-hover:text-stone-200"
+                isSelected
+                  ? "text-stone-700 dark:text-stone-200"
+                  : isActive
+                    ? "text-stone-800 dark:text-stone-100 font-medium"
+                    : "text-stone-600 dark:text-stone-300 group-hover:text-stone-700 dark:group-hover:text-stone-200"
               }`}
             >
               {displayTitle}
@@ -277,16 +321,21 @@ export function SessionItem({
         </div>
 
         {/* Unread dot - hidden when session is active (user is viewing it) */}
-        {!isEditing && !isActive && (session.unread_count ?? 0) > 0 && (
-          <span
-            className={`shrink-0 inline-flex items-center justify-center rounded-full bg-red-500 text-[10px] font-medium leading-none text-white ${
-              session.unread_count! <= 9 ? "w-4 h-4" : "h-4 min-w-[20px] px-1.5"
-            }`}
-          >
-            {session.unread_count}
-          </span>
-        )}
-        {!isEditing && (
+        {!selectionMode &&
+          !isEditing &&
+          !isActive &&
+          (session.unread_count ?? 0) > 0 && (
+            <span
+              className={`shrink-0 inline-flex items-center justify-center rounded-full bg-red-500 text-[10px] font-medium leading-none text-white ${
+                session.unread_count! <= 9
+                  ? "w-4 h-4"
+                  : "h-4 min-w-[20px] px-1.5"
+              }`}
+            >
+              {session.unread_count}
+            </span>
+          )}
+        {!selectionMode && !isEditing && (
           <button
             ref={menuButtonRef}
             onClick={handleMenuClick}
@@ -301,22 +350,23 @@ export function SessionItem({
           </button>
         )}
       </div>
-
       {/* Context Menu */}
-      <SessionMenu
-        session={session}
-        projects={projects}
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        onRename={handleStartEdit}
-        onDelete={onDelete}
-        onMoveToProject={onMoveToProject}
-        onShare={onShare}
-        onToggleFavorite={onToggleFavorite}
-        anchorEl={menuAnchor}
-        isFavorite={isFavorite}
-        currentProjectId={currentProjectId}
-      />
+      {!selectionMode && (
+        <SessionMenu
+          session={session}
+          projects={projects}
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          onRename={handleStartEdit}
+          onDelete={onDelete}
+          onMoveToProject={onMoveToProject}
+          onShare={onShare}
+          onToggleFavorite={onToggleFavorite}
+          anchorEl={menuAnchor}
+          isFavorite={isFavorite}
+          currentProjectId={currentProjectId}
+        />
+      )}
     </>
   );
 }

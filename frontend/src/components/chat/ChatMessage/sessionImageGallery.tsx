@@ -9,7 +9,8 @@ import {
 import type { Message, MessagePart, ToolPart } from "../../../types";
 import { getFullUrl } from "../../../services/api/config";
 import { isImageFile } from "../../documents/utils";
-import { ImageViewer } from "../../common";
+import { ImageViewer } from "../../common/ImageViewer";
+import { extractGeneratedImageResults } from "./items/toolImageResults";
 
 export interface SessionImageGalleryItem {
   id: string;
@@ -135,6 +136,21 @@ function collectRevealFileImage(
   return null;
 }
 
+function collectGeneratedImageResults(
+  part: ToolPart,
+  idPrefix: string,
+): SessionImageGalleryItem[] {
+  if (part.name !== "image_generate" || part.success !== true) return [];
+
+  const parsed = parseJsonishResult(part.result);
+  return extractGeneratedImageResults(parsed).map((image, index) => ({
+    id: `${idPrefix}:generated-image:${index}`,
+    src: image.url,
+    alt: image.name,
+    group: "conversation",
+  }));
+}
+
 function collectPartImages(
   part: MessagePart,
   idPrefix: string,
@@ -145,7 +161,10 @@ function collectPartImages(
 
   if (part.type === "tool") {
     const revealImage = collectRevealFileImage(part, idPrefix);
-    return revealImage ? [revealImage] : [];
+    return [
+      ...(revealImage ? [revealImage] : []),
+      ...collectGeneratedImageResults(part, idPrefix),
+    ];
   }
 
   if (part.type === "subagent") {
@@ -161,11 +180,23 @@ function collectPartImages(
   return [];
 }
 
+function dedupeSessionImageGalleryItems(
+  items: SessionImageGalleryItem[],
+): SessionImageGalleryItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.group}:${item.src}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function collectSessionImageGalleryItems(
   messages: Message[],
 ): SessionImageGalleryItem[] {
-  return messages.flatMap((message) => {
+  const items = messages.flatMap((message) => {
     const attachmentItems = (message.attachments || []).flatMap(
       (attachment): SessionImageGalleryItem[] => {
         const isImage =
@@ -194,6 +225,8 @@ export function collectSessionImageGalleryItems(
 
     return [...attachmentItems, ...contentItems, ...partItems];
   });
+
+  return dedupeSessionImageGalleryItems(items);
 }
 
 export function useSessionImageGallery(): SessionImageGalleryContextValue | null {
