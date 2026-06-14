@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.infra.team.manager import TeamManager
+from src.kernel.schemas.model import ModelConfig
 from src.kernel.schemas.team import (
     TeamCreate,
     TeamMemberResponse,
@@ -14,7 +15,6 @@ from src.kernel.schemas.team import (
     TeamResponse,
     TeamVisibility,
 )
-from src.kernel.schemas.model import ModelConfig
 from src.kernel.schemas.user import TokenPayload
 
 

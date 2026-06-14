@@ -620,7 +620,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                         member_agent_id,
                     )
 
-                subagent_config: dict[str, Any] = {
+                subagent_config: SubAgent = {
                     "name": subagent_type,
                     "description": (
                         f"Team member '{role_name}' "
