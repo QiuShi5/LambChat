@@ -550,7 +550,10 @@ async def test_team_member_agent_mode_override_injects_search_prompt(
     section_middleware = next(
         item for item in subagent["middleware"] if isinstance(item, dict) and "sections" in item
     )
-    assert any("virtual storage, not a real filesystem" in section for section in section_middleware["sections"])
+    assert any(
+        "virtual storage, not a real filesystem" in section
+        for section in section_middleware["sections"]
+    )
 
 
 @pytest.mark.asyncio

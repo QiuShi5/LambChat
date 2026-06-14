@@ -308,9 +308,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       (memberId: string, modelId: string | null) => {
         setMembers((prev) =>
           prev.map((m) =>
-            m.member_id === memberId
-              ? { ...m, model_id: modelId || null }
-              : m,
+            m.member_id === memberId ? { ...m, model_id: modelId || null } : m,
           ),
         );
       },
@@ -321,9 +319,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       (memberId: string, agentId: string | null) => {
         setMembers((prev) =>
           prev.map((m) =>
-            m.member_id === memberId
-              ? { ...m, agent_id: agentId || null }
-              : m,
+            m.member_id === memberId ? { ...m, agent_id: agentId || null } : m,
           ),
         );
       },

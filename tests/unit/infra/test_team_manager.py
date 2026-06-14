@@ -256,9 +256,7 @@ async def test_validate_member_agent_access_rejects_team_agent(manager, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_validate_member_agent_access_rejects_role_disallowed_agent(
-    manager, monkeypatch
-):
+async def test_validate_member_agent_access_rejects_role_disallowed_agent(manager, monkeypatch):
     import src.agents.core.base as agent_base
 
     monkeypatch.setattr(
@@ -364,9 +362,7 @@ async def test_validate_member_model_access_allows_enabled_allowed_model(
 
 
 @pytest.mark.asyncio
-async def test_validate_member_model_access_rejects_missing_or_disabled_model(
-    manager, monkeypatch
-):
+async def test_validate_member_model_access_rejects_missing_or_disabled_model(manager, monkeypatch):
     class _ModelStorage:
         async def get(self, _model_id):
             return None
@@ -386,9 +382,7 @@ async def test_validate_member_model_access_rejects_missing_or_disabled_model(
 
 
 @pytest.mark.asyncio
-async def test_validate_member_model_access_rejects_role_disallowed_model(
-    manager, monkeypatch
-):
+async def test_validate_member_model_access_rejects_role_disallowed_model(manager, monkeypatch):
     model = ModelConfig(
         id="model-member",
         value="openai/member",
