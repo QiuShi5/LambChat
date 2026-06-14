@@ -254,9 +254,7 @@ def _build_member_agent_mode_sections(
     if agent_id == "fast":
         return [FAST_SYSTEM_PROMPT]
     if agent_id == "search":
-        return [
-            SEARCH_SANDBOX_SYSTEM_PROMPT if sandbox_active else SEARCH_DEFAULT_SYSTEM_PROMPT
-        ]
+        return [SEARCH_SANDBOX_SYSTEM_PROMPT if sandbox_active else SEARCH_DEFAULT_SYSTEM_PROMPT]
     return []
 
 
