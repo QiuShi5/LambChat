@@ -383,79 +383,139 @@ export const SessionSidebar = forwardRef<
     [setScheduledTaskRef],
   );
 
-  // ─── Common SessionListContent props ──────────────────────────────
+  // ─── Stable handlers (avoid new refs on every render) ─────────
 
-  const sessionListProps = {
-    user,
-    imgError,
-    onImgError: () => setImgError(true),
-    onNewSession,
-    onOpenSearch: () => setIsSearchOpen(true),
-    onShowProfile: onShowProfile!,
-    hasMoreMenuItems: moreMenu.hasMoreMenuItems,
-    onToggleMoreMenu: () => moreMenu.setIsMoreMenuOpen((prev) => !prev),
-    expandedMoreMenuBtnRef: moreMenu.expandedMoreMenuBtnRef,
-    scrollEl,
-    onSetScrollEl: setScrollEl,
-    uncategorizedSessions: uncategorizedList.sessions,
-    isUncategorizedLoading: uncategorizedList.isLoading,
-    hasMoreUncategorized: uncategorizedList.hasMore,
-    isLoadingMoreUncategorized: uncategorizedList.isLoadingMore,
-    loadMoreRef: uncategorizedList.loadMoreRef,
-    onSoftRefreshUncategorized: uncategorizedList.softRefresh,
-    onUpdateUncategorizedSession: uncategorizedList.updateSession,
-    projects,
-    favoritesProject,
-    currentSessionId,
-    unreadBySession,
-    sessionActions,
-    projectActions,
-    scheduledTaskActions,
-    isProjectsCollapsed,
-    onToggleProjectsCollapsed: () =>
-      setIsProjectsCollapsed((prev) => {
-        const next = !prev;
-        localStorage.setItem(PROJECTS_COLLAPSED_STORAGE_KEY, String(next));
-        authApi
-          .updateMetadata({ projectsCollapsed: String(next) })
-          .catch(() => {});
-        return next;
-      }),
-    isScheduledTasksCollapsed,
-    onToggleScheduledTasksCollapsed: () =>
-      setIsScheduledTasksCollapsed((prev) => {
-        const next = !prev;
-        localStorage.setItem(
-          SCHEDULED_TASKS_COLLAPSED_STORAGE_KEY,
-          String(next),
-        );
-        authApi
-          .updateMetadata({ scheduledTasksCollapsed: String(next) })
-          .catch(() => {});
-        return next;
-      }),
-    isChatsCollapsed,
-    onToggleChatsCollapsed: () =>
-      setIsChatsCollapsed((prev) => {
-        const next = !prev;
-        localStorage.setItem(CHATS_COLLAPSED_STORAGE_KEY, String(next));
-        authApi
-          .updateMetadata({ chatsCollapsed: String(next) })
-          .catch(() => {});
-        return next;
-      }),
-    isNavCollapsed,
-    onToggleNavCollapsed: () => setIsNavCollapsed((v) => !v),
-    autoExpandProjectId: autoExpandProjectId ?? null,
-    onConsumeAutoExpandProjectId: onConsumeAutoExpandProjectId!,
-    onMarkAllRead: actions.handleMarkAllRead,
-    markingReadId: actions.markingReadId,
-    isSelectionMode,
-    selectedSessionIds,
-    onSetSelectionMode: setIsSelectionMode,
-    onSetSelectedSessionIds: setSelectedSessionIds,
-    onClearSelection: clearSelection,
-  };
+  const handleImgError = useCallback(() => setImgError(true), []);
+  const handleOpenSearch = useCallback(() => setIsSearchOpen(true), []);
+  const handleToggleMoreMenu = useCallback(
+    () => moreMenu.setIsMoreMenuOpen((prev) => !prev),
+    [moreMenu.setIsMoreMenuOpen],
+  );
+  const handleToggleProjectsCollapsed = useCallback(() => {
+    setIsProjectsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(PROJECTS_COLLAPSED_STORAGE_KEY, String(next));
+      authApi
+        .updateMetadata({ projectsCollapsed: String(next) })
+        .catch(() => {});
+      return next;
+    });
+  }, []);
+  const handleToggleScheduledTasksCollapsed = useCallback(() => {
+    setIsScheduledTasksCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(SCHEDULED_TASKS_COLLAPSED_STORAGE_KEY, String(next));
+      authApi
+        .updateMetadata({ scheduledTasksCollapsed: String(next) })
+        .catch(() => {});
+      return next;
+    });
+  }, []);
+  const handleToggleChatsCollapsed = useCallback(() => {
+    setIsChatsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(CHATS_COLLAPSED_STORAGE_KEY, String(next));
+      authApi.updateMetadata({ chatsCollapsed: String(next) }).catch(() => {});
+      return next;
+    });
+  }, []);
+  const handleToggleNavCollapsed = useCallback(
+    () => setIsNavCollapsed((v) => !v),
+    [],
+  );
+
+  // ─── Common SessionListContent props (memoized) ──────────────────
+
+  const sessionListProps = useMemo(
+    () => ({
+      user,
+      imgError,
+      onImgError: handleImgError,
+      onNewSession,
+      onOpenSearch: handleOpenSearch,
+      onShowProfile: onShowProfile!,
+      hasMoreMenuItems: moreMenu.hasMoreMenuItems,
+      onToggleMoreMenu: handleToggleMoreMenu,
+      expandedMoreMenuBtnRef: moreMenu.expandedMoreMenuBtnRef,
+      scrollEl,
+      onSetScrollEl: setScrollEl,
+      uncategorizedSessions: uncategorizedList.sessions,
+      isUncategorizedLoading: uncategorizedList.isLoading,
+      hasMoreUncategorized: uncategorizedList.hasMore,
+      isLoadingMoreUncategorized: uncategorizedList.isLoadingMore,
+      loadMoreRef: uncategorizedList.loadMoreRef,
+      onSoftRefreshUncategorized: uncategorizedList.softRefresh,
+      onUpdateUncategorizedSession: uncategorizedList.updateSession,
+      projects,
+      favoritesProject,
+      currentSessionId,
+      unreadBySession,
+      sessionActions,
+      projectActions,
+      scheduledTaskActions,
+      isProjectsCollapsed,
+      onToggleProjectsCollapsed: handleToggleProjectsCollapsed,
+      isScheduledTasksCollapsed,
+      onToggleScheduledTasksCollapsed: handleToggleScheduledTasksCollapsed,
+      isChatsCollapsed,
+      onToggleChatsCollapsed: handleToggleChatsCollapsed,
+      isNavCollapsed,
+      onToggleNavCollapsed: handleToggleNavCollapsed,
+      autoExpandProjectId: autoExpandProjectId ?? null,
+      onConsumeAutoExpandProjectId: onConsumeAutoExpandProjectId!,
+      onMarkAllRead: actions.handleMarkAllRead,
+      markingReadId: actions.markingReadId,
+      isSelectionMode,
+      selectedSessionIds,
+      onSetSelectionMode: setIsSelectionMode,
+      onSetSelectedSessionIds: setSelectedSessionIds,
+      onClearSelection: clearSelection,
+    }),
+    [
+      user,
+      imgError,
+      handleImgError,
+      onNewSession,
+      handleOpenSearch,
+      onShowProfile,
+      moreMenu.hasMoreMenuItems,
+      handleToggleMoreMenu,
+      moreMenu.expandedMoreMenuBtnRef,
+      scrollEl,
+      setScrollEl,
+      uncategorizedList.sessions,
+      uncategorizedList.isLoading,
+      uncategorizedList.hasMore,
+      uncategorizedList.isLoadingMore,
+      uncategorizedList.loadMoreRef,
+      uncategorizedList.softRefresh,
+      uncategorizedList.updateSession,
+      projects,
+      favoritesProject,
+      currentSessionId,
+      unreadBySession,
+      sessionActions,
+      projectActions,
+      scheduledTaskActions,
+      isProjectsCollapsed,
+      handleToggleProjectsCollapsed,
+      isScheduledTasksCollapsed,
+      handleToggleScheduledTasksCollapsed,
+      isChatsCollapsed,
+      handleToggleChatsCollapsed,
+      isNavCollapsed,
+      handleToggleNavCollapsed,
+      autoExpandProjectId,
+      onConsumeAutoExpandProjectId,
+      actions.handleMarkAllRead,
+      actions.markingReadId,
+      isSelectionMode,
+      selectedSessionIds,
+      setIsSelectionMode,
+      setSelectedSessionIds,
+      clearSelection,
+    ],
+  );
 
   // ─── JSX ──────────────────────────────────────────────────────────
 

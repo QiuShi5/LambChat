@@ -4,7 +4,7 @@
  * Theme-adaptive design. Responsive: mobile → tablet → desktop
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Zap,
   ArrowDownToLine,
@@ -327,6 +327,11 @@ export function UsagePanel() {
     return {};
   }, []);
 
+  // Keep a live ref to t so fetchData doesn't depend on it — prevents
+  // potential infinite loop if useTranslation() produces unstable references.
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -341,11 +346,11 @@ export function UsagePanel() {
       setTotal(response.total);
       setStats(response.stats);
     } catch (err) {
-      toast.error((err as Error).message || t("usage.loadFailed"));
+      toast.error((err as Error).message || tRef.current("usage.loadFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, [skip, period, debouncedSearch, isAdmin, computeDateRange, t]);
+  }, [skip, period, debouncedSearch, isAdmin, computeDateRange]);
 
   useEffect(() => {
     fetchData();
