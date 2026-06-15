@@ -513,6 +513,15 @@ async def test_explicit_team_router_delegates_work_to_subagents(
 
     assert fake_graph.captured_create_kwargs["tools"] == []
     assert fake_graph.captured_create_kwargs["subagents"][0]["tools"] == ["work-tool"]
+    assert any(
+        type(middleware).__name__ == "TeamRouterDelegationGuardMiddleware"
+        for middleware in fake_graph.captured_create_kwargs["middleware"]
+    )
+    subagent_middleware = fake_graph.captured_create_kwargs["subagents"][0]["middleware"]
+    assert any(
+        type(middleware).__name__ == "TextOnlyTaskGuardMiddleware"
+        for middleware in subagent_middleware
+    )
 
 
 @pytest.mark.asyncio
