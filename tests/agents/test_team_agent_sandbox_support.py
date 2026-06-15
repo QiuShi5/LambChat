@@ -487,11 +487,24 @@ async def test_explicit_team_router_delegates_work_to_subagents(
     fake_graph = _FakeDeepAgent()
     _patch_common(monkeypatch, team_nodes, fake_graph)
 
+    def tool(name: str):
+        return SimpleNamespace(name=name)
+
+    all_tools = [
+        tool("write_file"),
+        tool("execute"),
+        tool("image_generate"),
+        tool("reveal_file"),
+        tool("reveal_project"),
+        tool("transfer_file"),
+        tool("transfer_path"),
+    ]
+
     async def fake_get_tools(self):
-        return ["work-tool"]
+        return all_tools
 
     def fake_filter_tools(self):
-        return ["work-tool"]
+        return list(all_tools)
 
     monkeypatch.setattr(team_nodes.settings, "ENABLE_MCP", True)
     monkeypatch.setattr(TeamAgentContext, "get_tools", fake_get_tools)
@@ -511,8 +524,19 @@ async def test_explicit_team_router_delegates_work_to_subagents(
         ],
     )
 
-    assert fake_graph.captured_create_kwargs["tools"] == []
-    assert fake_graph.captured_create_kwargs["subagents"][0]["tools"] == ["work-tool"]
+    router_tool_names = [tool.name for tool in fake_graph.captured_create_kwargs["tools"]]
+    subagent_tool_names = [tool.name for tool in fake_graph.captured_create_kwargs["subagents"][0]["tools"]]
+
+    assert router_tool_names == [
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+    ]
+    assert "write_file" not in router_tool_names
+    assert "execute" not in router_tool_names
+    assert "image_generate" not in router_tool_names
+    assert subagent_tool_names == [tool.name for tool in all_tools]
     assert any(
         type(middleware).__name__ == "TeamRouterDelegationGuardMiddleware"
         for middleware in fake_graph.captured_create_kwargs["middleware"]

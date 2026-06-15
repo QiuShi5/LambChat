@@ -134,6 +134,9 @@ def test_team_router_prompt_requires_subagent_delegation_for_work():
     assert "call the `task` tool for at least one team member" in prompt
     assert "Team members are preferred executors" in prompt
     assert "The team router may perform work directly only for coordination" in prompt
+    assert "artifact delivery tools (`reveal_file`, `reveal_project`, `transfer_file`, `transfer_path`)" in prompt
+    assert "Do not use external upload services for artifact delivery" in prompt
+    assert "Image generation is executable artifact work" in prompt
 
 
 def test_team_router_prompt_includes_structured_delegation_helper():

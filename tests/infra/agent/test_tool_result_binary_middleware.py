@@ -338,6 +338,66 @@ async def test_subagent_policy_allows_explicit_artifact_task():
 
 
 @pytest.mark.asyncio
+async def test_subagent_policy_blocks_image_generation_for_text_task():
+    middleware = SubagentExecutionPolicyMiddleware()
+    request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: TEXT_ONLY\n"
+                        "Delivery mode: RETURN_TEXT\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: NO_TOOLS\n"
+                        "Artifact intent: false\n"
+                        "Objective: Generate four scene prompts."
+                    )
+                )
+            ]
+        },
+        tool_call={"name": "image_generate", "id": "image-1", "args": {"prompt": "draw tea"}},
+    )
+
+    async def handler(_request):
+        raise AssertionError("TEXT_ONLY tasks should not generate image artifacts")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert isinstance(result, ToolMessage)
+    assert "outside the assigned policy" in result.content
+    assert "reveal artifacts" in result.content
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_allows_image_generation_for_artifact_task():
+    middleware = SubagentExecutionPolicyMiddleware()
+    request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: FILE_ARTIFACT\n"
+                        "Delivery mode: CREATE_FILES\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: ARTIFACT_ALLOWED\n"
+                        "Artifact intent: true\n"
+                        "Objective: Generate a cover image."
+                    )
+                )
+            ]
+        },
+        tool_call={"name": "image_generate", "id": "image-2", "args": {"prompt": "draw tea"}},
+    )
+
+    async def handler(_request):
+        return ToolMessage(content="generated", tool_call_id="image-2", name="image_generate")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert result.content == "generated"
+
+
+@pytest.mark.asyncio
 async def test_binary_middleware_rewrites_mcp_image_blocks_to_llm_safe_json(monkeypatch):
     async def fake_get_or_init_storage():
         return FakeStorage()
