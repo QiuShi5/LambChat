@@ -182,20 +182,14 @@ test("team member card exposes collapsible member mode and model selectors", () 
   assert.match(memberCardSource, /onAgentChange/);
   assert.match(memberCardSource, /followTeamMode/);
   assert.match(memberCardSource, /value=\{member\.agent_id \?\? ""\}/);
-  assert.match(
-    memberCardSource,
-    /onAgentChange\?\.\(e\.target\.value \|\| null\)/,
-  );
+  assert.match(memberCardSource, /onChange=\{\(v\) => onAgentChange\?\.\(v \|\| null\)\}/);
   assert.match(memberCardSource, /availableModels/);
   assert.match(memberCardSource, /onModelChange/);
   assert.match(memberCardSource, /team-member-card__model/);
   assert.match(memberCardSource, /followSessionModel/);
-  assert.match(memberCardSource, /<select/);
+  assert.match(memberCardSource, /<Select/);
   assert.match(memberCardSource, /value=\{member\.model_id \?\? ""\}/);
-  assert.match(
-    memberCardSource,
-    /onModelChange\?\.\(e\.target\.value \|\| null\)/,
-  );
+  assert.match(memberCardSource, /onChange=\{\(v\) => onModelChange\?\.\(v \|\| null\)\}/);
   assert.match(teamCss, /\.team-member-card__model\s*\{/);
   assert.match(
     teamCss,

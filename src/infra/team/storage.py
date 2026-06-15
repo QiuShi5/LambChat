@@ -16,7 +16,9 @@ from src.kernel.schemas.team import (
     TEAM_TAGS_MAX,
     TeamMemberResponse,
     TeamResponse,
+    TeamRouterToolMode,
     TeamVisibility,
+    normalize_router_allowed_tools,
 )
 
 if TYPE_CHECKING:
@@ -174,6 +176,10 @@ class TeamStorage:
         result.setdefault("tags", [])
         result.setdefault("default_member_id", None)
         result.setdefault("team_instructions", "")
+        result.setdefault("router_tool_mode", TeamRouterToolMode.DELIVERY_ONLY.value)
+        result["router_allowed_tools"] = normalize_router_allowed_tools(
+            result.get("router_allowed_tools"),
+        )
         result.setdefault("starter_prompts", [])
         result.setdefault("visibility", TeamVisibility.PRIVATE.value)
         result.setdefault("is_favorite", False)
@@ -316,6 +322,8 @@ class TeamStorage:
         members: list[dict[str, Any]] | None = None,
         default_member_id: str | None = None,
         team_instructions: str = "",
+        router_tool_mode: str = TeamRouterToolMode.DELIVERY_ONLY.value,
+        router_allowed_tools: list[str] | None = None,
         starter_prompts: list[dict[str, Any]] | None = None,
     ) -> TeamResponse:
         """Create a new team."""
@@ -333,6 +341,8 @@ class TeamStorage:
                 default_member_id,
             ),
             "team_instructions": team_instructions,
+            "router_tool_mode": router_tool_mode,
+            "router_allowed_tools": normalize_router_allowed_tools(router_allowed_tools),
             "starter_prompts": self._starter_prompt_docs(starter_prompts),
             "visibility": TeamVisibility.PRIVATE.value,
             "created_at": now,
@@ -464,6 +474,10 @@ class TeamStorage:
             )
         if "tags" in update:
             update["tags"] = self._tags_doc(update["tags"])
+        if "router_allowed_tools" in update:
+            update["router_allowed_tools"] = normalize_router_allowed_tools(
+                update["router_allowed_tools"],
+            )
 
         if not update:
             return await self.get_team(team_id, owner_user_id=owner_user_id)
@@ -531,5 +545,7 @@ class TeamStorage:
             members=members_data,
             default_member_id=None,
             team_instructions=original.team_instructions,
+            router_tool_mode=original.router_tool_mode.value,
+            router_allowed_tools=original.router_allowed_tools,
             starter_prompts=[prompt.model_dump(mode="json") for prompt in original.starter_prompts],
         )

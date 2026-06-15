@@ -17,6 +17,7 @@ import {
   MessageSquareText,
   Plus,
   Search,
+  ShieldCheck,
   Smile,
   Sparkles,
   Tag,
@@ -24,7 +25,12 @@ import {
   X,
 } from "lucide-react";
 import type { PersonaPreset } from "../../types";
-import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
+import type {
+  Team,
+  TeamCreateRequest,
+  TeamMember,
+  TeamRouterToolMode,
+} from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
 import { agentApi } from "../../services/api/agent";
@@ -110,6 +116,41 @@ function inputToTags(value: string): string[] {
   return result;
 }
 
+const ROUTER_DELIVERY_TOOL_NAMES = [
+  "reveal_file",
+  "reveal_project",
+  "transfer_file",
+  "transfer_path",
+] as const;
+
+const ROUTER_CUSTOM_TOOL_OPTIONS = [
+  {
+    name: "read_file",
+    labelKey: "team.routerToolReadFile",
+    label: "Read file",
+  },
+  { name: "grep", labelKey: "team.routerToolGrep", label: "Grep" },
+  { name: "glob", labelKey: "team.routerToolGlob", label: "Glob" },
+  { name: "ls", labelKey: "team.routerToolList", label: "List files" },
+  {
+    name: "write_file",
+    labelKey: "team.routerToolWriteFile",
+    label: "Write file",
+  },
+  { name: "edit_file", labelKey: "team.routerToolEditFile", label: "Edit file" },
+  { name: "execute", labelKey: "team.routerToolExecute", label: "Execute" },
+  {
+    name: "image_generate",
+    labelKey: "team.routerToolImageGenerate",
+    label: "Generate image",
+  },
+  {
+    name: "upload_url_to_sandbox",
+    labelKey: "team.routerToolUploadUrl",
+    label: "Upload URL",
+  },
+] as const;
+
 export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
   function TeamBuilder(
     { teamId, onSave, onClose, surface = "page", onFormStateChange },
@@ -130,6 +171,9 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     const [teamAvatar, setTeamAvatar] = useState<string | null>(null);
     const [teamTagsInput, setTeamTagsInput] = useState("");
     const [teamInstructions, setTeamInstructions] = useState("");
+    const [routerToolMode, setRouterToolMode] =
+      useState<TeamRouterToolMode>("delivery_only");
+    const [routerAllowedTools, setRouterAllowedTools] = useState<string[]>([]);
     const [starterPromptRows, setStarterPromptRows] = useState<
       StarterPromptDraftRow[]
     >([]);
@@ -237,6 +281,8 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           setTeamAvatar(team.avatar ?? null);
           setTeamTagsInput(tagsToInput(team.tags));
           setTeamInstructions(team.team_instructions);
+          setRouterToolMode(team.router_tool_mode ?? "delivery_only");
+          setRouterAllowedTools(team.router_allowed_tools ?? []);
           setStarterPromptRows(starterPromptsToDraftRows(team.starter_prompts));
           setMembers(team.members);
           setDefaultMemberId(team.default_member_id ?? null);
@@ -248,6 +294,8 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
         setTeamAvatar(null);
         setTeamTagsInput("");
         setTeamInstructions("");
+        setRouterToolMode("delivery_only");
+        setRouterAllowedTools([]);
         setStarterPromptRows([]);
         setMembers([]);
         setDefaultMemberId(null);
@@ -326,6 +374,14 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       [],
     );
 
+    const handleRouterAllowedToolToggle = useCallback((toolName: string) => {
+      setRouterAllowedTools((prev) =>
+        prev.includes(toolName)
+          ? prev.filter((name) => name !== toolName)
+          : [...prev, toolName],
+      );
+    }, []);
+
     const handleSave = async () => {
       if (!teamName.trim()) return;
       setSaving(true);
@@ -336,6 +392,9 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           avatar: teamAvatar,
           tags: inputToTags(teamTagsInput),
           team_instructions: teamInstructions,
+          router_tool_mode: routerToolMode,
+          router_allowed_tools:
+            routerToolMode === "custom" ? routerAllowedTools : [],
           starter_prompts: draftRowsToStarterPrompts(starterPromptRows),
           default_member_id: defaultMemberId,
           members: members.map((m, idx) => ({
@@ -379,6 +438,8 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
         setTeamAvatar(cloned.avatar ?? null);
         setTeamTagsInput(tagsToInput(cloned.tags));
         setTeamInstructions(cloned.team_instructions);
+        setRouterToolMode(cloned.router_tool_mode ?? "delivery_only");
+        setRouterAllowedTools(cloned.router_allowed_tools ?? []);
         setStarterPromptRows(starterPromptsToDraftRows(cloned.starter_prompts));
         setMembers(cloned.members);
         setDefaultMemberId(cloned.default_member_id ?? null);
@@ -647,6 +708,87 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
             >
               {t("team.instructionsHint")}
             </span>
+          </div>
+
+          {/* Router tool policy */}
+          <div className="ppe-field">
+            <label className="ppe-label">
+              <ShieldCheck size={13} className="ppe-label-icon" />
+              {t("team.routerToolPolicy", "Router tools")}
+            </label>
+            <div className="team-router-tool-policy">
+              <div className="team-router-mode-group" role="group">
+                <button
+                  type="button"
+                  className={`team-router-mode-button ${
+                    routerToolMode === "delivery_only"
+                      ? "team-router-mode-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setRouterToolMode("delivery_only")}
+                >
+                  <ShieldCheck size={14} />
+                  <span>{t("team.routerToolModeDelivery", "Delivery")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`team-router-mode-button ${
+                    routerToolMode === "custom"
+                      ? "team-router-mode-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setRouterToolMode("custom")}
+                >
+                  <Cpu size={14} />
+                  <span>{t("team.routerToolModeCustom", "Custom")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`team-router-mode-button ${
+                    routerToolMode === "all"
+                      ? "team-router-mode-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setRouterToolMode("all")}
+                >
+                  <Sparkles size={14} />
+                  <span>{t("team.routerToolModeAll", "All")}</span>
+                </button>
+              </div>
+
+              <div className="team-router-tool-chips">
+                {ROUTER_DELIVERY_TOOL_NAMES.map((toolName) => (
+                  <span key={toolName} className="team-router-tool-chip">
+                    {toolName}
+                  </span>
+                ))}
+              </div>
+
+              {routerToolMode === "custom" && (
+                <div className="team-router-tool-grid">
+                  {ROUTER_CUSTOM_TOOL_OPTIONS.map((tool) => {
+                    const checked = routerAllowedTools.includes(tool.name);
+                    return (
+                      <label
+                        key={tool.name}
+                        className={`team-router-tool-option ${
+                          checked ? "team-router-tool-option--checked" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            handleRouterAllowedToolToggle(tool.name)
+                          }
+                        />
+                        <span>{t(tool.labelKey, tool.label)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Starter prompts */}

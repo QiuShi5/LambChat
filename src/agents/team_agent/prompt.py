@@ -3,6 +3,14 @@
 import re
 
 from src.agents.core.subagent_prompts import TOOL_PROGRESS_GUIDE
+from src.kernel.schemas.team import TeamRouterToolMode
+
+_DELIVERY_TOOL_NAMES = (
+    "reveal_file",
+    "reveal_project",
+    "transfer_file",
+    "transfer_path",
+)
 
 DELEGATION_HELPER = """\
 ## Delegation Helper
@@ -71,7 +79,7 @@ When a task does not clearly map to a specific role, dispatch it to the default 
 - Team members are preferred executors: if an active member can reasonably complete the work, route it to that member before doing it yourself.
 - The team router may perform work directly only for coordination, verification, packaging, missing follow-up work, member failures, or tasks that do not fit any active member.
 - The team router may use artifact delivery tools (`reveal_file`, `reveal_project`, `transfer_file`, `transfer_path`) to expose files or folders that a member already created/verified, or when the user only asks to reveal an existing artifact. Do not use external upload services for artifact delivery.
-- The team router must not directly create files, run scripts, or generate images. Image generation is executable artifact work: delegate it to a member with Tool policy: ARTIFACT_ALLOWED, then reveal/transfer the finished artifact if needed.
+- The team router must not directly create files, run scripts, or generate images unless the Router Tool Policy explicitly allows the matching tool. Image generation is executable artifact work: delegate it to a member with Tool policy: ARTIFACT_ALLOWED unless `image_generate` is explicitly listed for the router.
 - After a member returns usable work, synthesize it instead of redoing the same work yourself unless you are filling a clear gap.
 - If the user already provides a complete topic, scene list, constraints, and output fields, dispatch directly to the most relevant member. Do not call an upstream planning/copywriting member merely to recreate the brief.
 - If one member can satisfy the request, prefer a single delegation. Use multiple members only when the task genuinely needs multiple specialties or the user asks for a pipeline.
@@ -83,6 +91,8 @@ When a task does not clearly map to a specific role, dispatch it to the default 
 - Never claim work is done until all subagent results are collected and verified.
 
 {delegation_helper}
+
+{router_tool_policy_section}
 
 ## Output
 Your final answer should be a clean synthesis of all role-specific findings, not a list of subagent outputs.
@@ -140,6 +150,8 @@ def build_team_router_system_prompt(
     *,
     default_role: str,
     role_summaries: dict[str, str] | None = None,
+    router_tool_mode: TeamRouterToolMode = TeamRouterToolMode.DELIVERY_ONLY,
+    router_allowed_tools: list[str] | None = None,
 ) -> str:
     """Build the router system prompt for a concrete team."""
     team_instructions = (getattr(team, "team_instructions", "") or "").strip()
@@ -154,8 +166,48 @@ def build_team_router_system_prompt(
         team_instructions_section=team_instructions_section,
         default_role=default_role,
         delegation_helper=DELEGATION_HELPER.strip(),
+        router_tool_policy_section=build_router_tool_policy_section(
+            router_tool_mode,
+            router_allowed_tools=router_allowed_tools,
+        ),
         tool_progress_guide=TOOL_PROGRESS_GUIDE.strip(),
     )
+
+
+def build_router_tool_policy_section(
+    mode: TeamRouterToolMode,
+    *,
+    router_allowed_tools: list[str] | None = None,
+) -> str:
+    """Describe the concrete router tool policy in the system prompt."""
+    allowed_tools = list(_DELIVERY_TOOL_NAMES)
+    if mode == TeamRouterToolMode.CUSTOM:
+        for tool_name in router_allowed_tools or []:
+            if tool_name not in allowed_tools:
+                allowed_tools.append(tool_name)
+
+    if mode == TeamRouterToolMode.ALL:
+        return """
+## Router Tool Policy
+The team router is configured to use all tools that remain enabled after system and user filtering. This is an advanced mode: delegate substantive work to members first, and use router tools only when direct fallback or final delivery is clearly needed.
+""".strip()
+
+    allowed_text = ", ".join(f"`{name}`" for name in allowed_tools)
+    custom_note = ""
+    if mode == TeamRouterToolMode.CUSTOM:
+        custom_note = " Custom router tools are explicitly allowed by this team's settings."
+
+    image_note = (
+        " If `image_generate` is not listed above, image generation must be delegated to a member with Tool policy: ARTIFACT_ALLOWED."
+        if "image_generate" not in allowed_tools
+        else " `image_generate` is explicitly allowed for this router, but prefer delegation when a member can handle the image task."
+    )
+
+    return f"""
+## Router Tool Policy
+The team router may directly use only these tools: {allowed_text}.{custom_note} Do not use tools outside this list directly; delegate executable work to members instead. Do not use external upload services for artifact delivery.
+{image_note.strip()}
+""".strip()
 
 
 def build_team_subagent_display_names(team) -> dict[str, str]:

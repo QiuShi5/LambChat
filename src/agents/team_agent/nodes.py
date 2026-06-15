@@ -80,6 +80,7 @@ from src.infra.storage.checkpoint import get_async_checkpointer
 from src.infra.storage.mongodb_store import acreate_store
 from src.kernel.config import settings
 from src.kernel.schemas.model import ModelConfig
+from src.kernel.schemas.team import TeamResponse, TeamRouterToolMode
 
 logger = get_logger(__name__)
 
@@ -93,15 +94,18 @@ _TEAM_ROUTER_DELIVERY_TOOL_NAMES = frozenset(
 )
 
 
-def _filter_team_router_delivery_tools(tools: list[Any] | None) -> list[Any]:
-    """Expose only artifact delivery tools to explicit team routers."""
+def _filter_team_router_tools(tools: list[Any] | None, team: TeamResponse | None) -> list[Any]:
+    """Expose router tools according to the team's router tool policy."""
     if not tools:
         return []
-    return [
-        tool
-        for tool in tools
-        if getattr(tool, "name", str(tool)) in _TEAM_ROUTER_DELIVERY_TOOL_NAMES
-    ]
+    if team and team.router_tool_mode == TeamRouterToolMode.ALL:
+        return list(tools)
+
+    allowed_names = set(_TEAM_ROUTER_DELIVERY_TOOL_NAMES)
+    if team and team.router_tool_mode == TeamRouterToolMode.CUSTOM:
+        allowed_names.update(team.router_allowed_tools)
+
+    return [tool for tool in tools if getattr(tool, "name", str(tool)) in allowed_names]
 
 
 # ============================================================================
@@ -420,6 +424,8 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             team,
             default_role=default_role,
             role_summaries=role_summaries,
+            router_tool_mode=team.router_tool_mode,
+            router_allowed_tools=team.router_allowed_tools,
         )
     else:
         system_prompt = FAST_SYSTEM_PROMPT
@@ -503,7 +509,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         filtered_tools.append(search_tool)
 
     subagent_tools = filtered_tools
-    router_tools = _filter_team_router_delivery_tools(filtered_tools) if team else filtered_tools
+    router_tools = _filter_team_router_tools(filtered_tools, team) if team else filtered_tools
 
     # 创建内层 graph (deep agent)
     checkpointer_start = time.time()

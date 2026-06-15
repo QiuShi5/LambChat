@@ -11,7 +11,12 @@ import pytest
 from bson import ObjectId
 
 from src.infra.team.storage import TeamStorage
-from src.kernel.schemas.team import TEAM_MEMBERS_MAX, TEAM_STARTER_PROMPTS_MAX, TEAM_TAGS_MAX
+from src.kernel.schemas.team import (
+    TEAM_MEMBERS_MAX,
+    TEAM_STARTER_PROMPTS_MAX,
+    TEAM_TAGS_MAX,
+    TeamRouterToolMode,
+)
 
 
 def _make_fake_collection():
@@ -305,6 +310,49 @@ async def test_create_and_get_team_preserves_member_agent_id(storage):
     assert fetched is not None
     assert fetched.members[0].agent_id == "search"
     assert store[0]["members"][0]["agent_id"] == "search"
+
+
+@pytest.mark.asyncio
+async def test_create_and_update_team_preserves_router_tool_policy(storage):
+    s, store, users = storage
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Router Team",
+        router_tool_mode="custom",
+        router_allowed_tools=["image_generate", "image_generate", " write_file "],
+    )
+
+    assert team.router_tool_mode == TeamRouterToolMode.CUSTOM
+    assert team.router_allowed_tools == ["image_generate", "write_file"]
+    assert store[0]["router_tool_mode"] == "custom"
+    assert store[0]["router_allowed_tools"] == ["image_generate", "write_file"]
+
+    updated = await s.update_team(
+        team.id,
+        owner_user_id="user-1",
+        update={
+            "router_tool_mode": "delivery_only",
+            "router_allowed_tools": [" execute ", "execute", ""],
+        },
+    )
+
+    assert updated is not None
+    assert updated.router_tool_mode == TeamRouterToolMode.DELIVERY_ONLY
+    assert updated.router_allowed_tools == ["execute"]
+
+
+@pytest.mark.asyncio
+async def test_old_team_without_router_tool_policy_uses_delivery_default(storage):
+    s, store, users = storage
+    team = await s.create_team(owner_user_id="user-1", name="Legacy Team")
+    del store[0]["router_tool_mode"]
+    del store[0]["router_allowed_tools"]
+
+    fetched = await s.get_team(team.id, owner_user_id="user-1")
+
+    assert fetched is not None
+    assert fetched.router_tool_mode == TeamRouterToolMode.DELIVERY_ONLY
+    assert fetched.router_allowed_tools == []
 
 
 @pytest.mark.asyncio
@@ -783,6 +831,23 @@ async def test_clone_team_preserves_member_agent_id(storage):
 
     assert cloned is not None
     assert cloned.members[0].agent_id == "search"
+
+
+@pytest.mark.asyncio
+async def test_clone_team_preserves_router_tool_policy(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        router_tool_mode="custom",
+        router_allowed_tools=["image_generate"],
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert cloned.router_tool_mode == TeamRouterToolMode.CUSTOM
+    assert cloned.router_allowed_tools == ["image_generate"]
 
 
 @pytest.mark.asyncio

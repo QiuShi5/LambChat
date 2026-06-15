@@ -280,15 +280,19 @@ async def _run_team_node_with_members(
     team_nodes,
     fake_graph: _FakeDeepAgent,
     members,
+    router_tool_mode=None,
+    router_allowed_tools=None,
 ) -> None:
     from src.agents.team_agent.context import TeamAgentContext
-    from src.kernel.schemas.team import TeamResponse
+    from src.kernel.schemas.team import TeamResponse, TeamRouterToolMode
 
     team = TeamResponse(
         id="team-1",
         owner_user_id="user-1",
         name="Model Team",
         members=members,
+        router_tool_mode=router_tool_mode or TeamRouterToolMode.DELIVERY_ONLY,
+        router_allowed_tools=router_allowed_tools or [],
     )
 
     async def fake_resolve_runtime_team(**_kwargs):
@@ -525,7 +529,9 @@ async def test_explicit_team_router_delegates_work_to_subagents(
     )
 
     router_tool_names = [tool.name for tool in fake_graph.captured_create_kwargs["tools"]]
-    subagent_tool_names = [tool.name for tool in fake_graph.captured_create_kwargs["subagents"][0]["tools"]]
+    subagent_tool_names = [
+        tool.name for tool in fake_graph.captured_create_kwargs["subagents"][0]["tools"]
+    ]
 
     assert router_tool_names == [
         "reveal_file",
@@ -550,6 +556,63 @@ async def test_explicit_team_router_delegates_work_to_subagents(
         type(middleware).__name__ == "SubagentExecutionPolicyMiddleware"
         for middleware in subagent_middleware
     )
+
+
+@pytest.mark.asyncio
+async def test_explicit_team_router_custom_tools_extend_delivery_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.agents.team_agent.context import TeamAgentContext
+    from src.kernel.schemas.team import TeamMemberResponse, TeamRouterToolMode
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+
+    def tool(name: str):
+        return SimpleNamespace(name=name)
+
+    all_tools = [
+        tool("write_file"),
+        tool("execute"),
+        tool("image_generate"),
+        tool("reveal_file"),
+        tool("reveal_project"),
+    ]
+
+    async def fake_get_tools(self):
+        return all_tools
+
+    def fake_filter_tools(self):
+        return list(all_tools)
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_MCP", True)
+    monkeypatch.setattr(TeamAgentContext, "get_tools", fake_get_tools)
+    monkeypatch.setattr(TeamAgentContext, "filter_tools", fake_filter_tools)
+
+    await _run_team_node_with_members(
+        monkeypatch,
+        team_nodes,
+        fake_graph,
+        [
+            TeamMemberResponse(
+                member_id="m-artist",
+                persona_preset_id="preset-1",
+                role_name="Artist",
+                enabled=True,
+            )
+        ],
+        router_tool_mode=TeamRouterToolMode.CUSTOM,
+        router_allowed_tools=["image_generate", "write_file", "missing_tool"],
+    )
+
+    router_tool_names = [tool.name for tool in fake_graph.captured_create_kwargs["tools"]]
+
+    assert router_tool_names == ["write_file", "image_generate", "reveal_file", "reveal_project"]
+    assert "execute" not in router_tool_names
+    assert "missing_tool" not in router_tool_names
 
 
 @pytest.mark.asyncio

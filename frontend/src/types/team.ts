@@ -1,6 +1,8 @@
 // frontend/src/types/team.ts
 import type { PersonaStarterPrompt } from "./personaPreset";
 
+export type TeamRouterToolMode = "delivery_only" | "custom" | "all";
+
 export interface TeamMember {
   member_id: string;
   persona_preset_id: string;
@@ -24,6 +26,8 @@ export interface Team {
   members: TeamMember[];
   default_member_id?: string | null;
   team_instructions: string;
+  router_tool_mode?: TeamRouterToolMode;
+  router_allowed_tools?: string[];
   starter_prompts?: PersonaStarterPrompt[];
   visibility: "private";
   is_favorite?: boolean;
@@ -41,6 +45,8 @@ export interface TeamCreateRequest {
   members?: TeamMemberCreateRequest[];
   default_member_id?: string | null;
   team_instructions?: string;
+  router_tool_mode?: TeamRouterToolMode;
+  router_allowed_tools?: string[];
   starter_prompts?: PersonaStarterPrompt[];
 }
 
@@ -65,6 +71,8 @@ export interface TeamUpdateRequest {
   members?: TeamMemberCreateRequest[];
   default_member_id?: string | null;
   team_instructions?: string;
+  router_tool_mode?: TeamRouterToolMode;
+  router_allowed_tools?: string[];
   starter_prompts?: PersonaStarterPrompt[];
 }
 

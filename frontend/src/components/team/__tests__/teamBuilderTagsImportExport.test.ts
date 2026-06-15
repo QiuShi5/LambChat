@@ -51,3 +51,33 @@ test("team editor persists member agent mode overrides", () => {
     /agent_id:\s*[\s\S]*record\.agent_id[\s\S]*:\s*null/,
   );
 });
+
+test("team editor persists router tool policy", () => {
+  assert.match(builderSource, /routerToolMode/);
+  assert.match(builderSource, /routerAllowedTools/);
+  assert.match(
+    builderSource,
+    /setRouterToolMode\(team\.router_tool_mode \?\? "delivery_only"\)/,
+  );
+  assert.match(builderSource, /router_tool_mode:\s*routerToolMode/);
+  assert.match(
+    builderSource,
+    /router_allowed_tools:\s*[\s\S]*routerToolMode === "custom"[\s\S]*routerAllowedTools/,
+  );
+  assert.match(builderSource, /ROUTER_DELIVERY_TOOL_NAMES/);
+  assert.match(builderSource, /ROUTER_CUSTOM_TOOL_OPTIONS/);
+  assert.match(builderSource, /setRouterToolMode\("all"\)/);
+});
+
+test("team import keeps router tool policy fields", () => {
+  assert.match(wrapperSource, /normalizeImportedRouterToolMode/);
+  assert.match(wrapperSource, /normalizeImportedRouterAllowedTools/);
+  assert.match(
+    wrapperSource,
+    /router_tool_mode:\s*normalizeImportedRouterToolMode/,
+  );
+  assert.match(
+    wrapperSource,
+    /router_allowed_tools:\s*normalizeImportedRouterAllowedTools/,
+  );
+});

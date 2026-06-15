@@ -13,6 +13,7 @@ from src.kernel.schemas.team import (
     TeamMemberResponse,
     TeamPreferenceUpdate,
     TeamResponse,
+    TeamRouterToolMode,
     TeamVisibility,
 )
 from src.kernel.schemas.user import TokenPayload
@@ -139,6 +140,23 @@ async def test_create_team_delegates_tags_to_storage(manager, mock_storage):
 
     _, kwargs = mock_storage.create_team.await_args
     assert kwargs["tags"] == ["research", "planning"]
+
+
+@pytest.mark.asyncio
+async def test_create_team_delegates_router_tool_policy_to_storage(manager, mock_storage):
+    created = _make_team(name="Router Team")
+    mock_storage.create_team = AsyncMock(return_value=created)
+
+    data = TeamCreate(
+        name="Router Team",
+        router_tool_mode=TeamRouterToolMode.CUSTOM,
+        router_allowed_tools=["image_generate", "write_file"],
+    )
+    await manager.create_team(data, owner_user_id="user-1")
+
+    _, kwargs = mock_storage.create_team.await_args
+    assert kwargs["router_tool_mode"] == "custom"
+    assert kwargs["router_allowed_tools"] == ["image_generate", "write_file"]
 
 
 @pytest.mark.asyncio
