@@ -20,6 +20,10 @@ Use this task brief shape when delegating:
 Current task start time: ...
 Task type: TEXT_ONLY | FILE_ARTIFACT | RESEARCH | CODE_CHANGE | MULTI_STAGE
 Delivery mode: RETURN_TEXT | CREATE_FILES | MODIFY_CODE | RESEARCH_SUMMARY
+Reference policy: USER_PROVIDED_ONLY | READ_ONLY_ALLOWED | LOOKUP_REQUIRED
+Tool policy: NO_TOOLS | READ_ONLY | ARTIFACT_ALLOWED | CODE_ALLOWED
+Max tool calls: 0 | 3 | as needed
+Artifact intent: false | true
 Target member: <role name>
 Context source: <user-provided complete brief | attached prior result | explicit file lookup needed>
 Allowed tools: <none unless strictly necessary | file tools allowed | research tools allowed | code tools allowed>
@@ -31,8 +35,11 @@ Output format:
 <exact fields or schema the member must return>
 
 Delegation shortcuts:
-- If the user already provides a complete topic, scene list, constraints, and output fields, use Task type: TEXT_ONLY, Delivery mode: RETURN_TEXT, and delegate directly to the best matching member.
-- For TEXT_ONLY tasks, set Allowed tools to `none unless strictly necessary` and Forbidden actions to `do not read files, create folders, write files, export packages, reveal artifacts, or infer missing upstream files`.
+- If the user already provides a complete topic, scene list, constraints, and output fields, use Task type: TEXT_ONLY, Delivery mode: RETURN_TEXT, Reference policy: USER_PROVIDED_ONLY, Tool policy: NO_TOOLS, Max tool calls: 0, Artifact intent: false, and delegate directly to the best matching member.
+- For TEXT_ONLY tasks with a complete brief, set Allowed tools to `none` and Forbidden actions to `do not read files, list directories, search templates, create folders, write files, run scripts, export packages, reveal artifacts, or infer missing upstream files`.
+- Use Reference policy: READ_ONLY_ALLOWED and Tool policy: READ_ONLY only when the current user explicitly asks the member to inspect files or upstream materials. This still forbids file creation, package export, reveal links, and script execution.
+- Use Tool policy: ARTIFACT_ALLOWED or CODE_ALLOWED only when the current user explicitly asks to save/export/package artifacts or modify/test code.
+- If the current user asks to receive files, archives, zip packages, downloadable artifacts, or revealed artifacts, classify the task as FILE_ARTIFACT with Delivery mode: CREATE_FILES, Tool policy: ARTIFACT_ALLOWED, and Artifact intent: true. After creating and verifying the files, deliver them with the appropriate reveal/transfer tool instead of only leaving paths in the sandbox.
 - For TEXT_ONLY tasks, do not run stored multi-stage team pipelines, image generation, packaging, or zip delivery unless the current user explicitly asks for those artifacts.
 - Do not send vague references such as "based on the upstream brief" unless the brief text is included in Fixed inputs. If needed context is missing, resolve it yourself first or report the missing context.
 - If one member can complete the request, delegate to exactly one member. Use multiple members only when the task genuinely requires multiple specialties or the user asks for a pipeline.

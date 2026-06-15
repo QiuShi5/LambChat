@@ -6,6 +6,8 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from src.infra.agent.middleware.tool_interception import (
+    SubagentExecutionPolicyMiddleware,
+    TaskDelegationEnvelopeMiddleware,
     TeamRouterDelegationGuardMiddleware,
     TextOnlyTaskGuardMiddleware,
     ToolResultBinaryMiddleware,
@@ -183,6 +185,156 @@ async def test_text_only_guard_allows_intentional_retry_after_nudge():
 
     assert "Text-only task policy" in first.content
     assert second.content == "ran"
+
+
+@pytest.mark.asyncio
+async def test_task_delegation_envelope_nudges_unstructured_task_call():
+    middleware = TaskDelegationEnvelopeMiddleware()
+    request = SimpleNamespace(
+        state={"messages": [HumanMessage(content="Generate four prompts.")]},
+        tool_call={
+            "name": "task",
+            "id": "task-call-1",
+            "args": {"subagent_type": "writer", "description": "Generate four prompts."},
+        },
+    )
+
+    async def handler(_request):
+        raise AssertionError("unstructured task calls should be nudged before dispatch")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert isinstance(result, ToolMessage)
+    assert "structured task brief required" in result.content
+    assert "Tool policy" in result.content
+
+
+@pytest.mark.asyncio
+async def test_task_delegation_envelope_allows_structured_task_call():
+    middleware = TaskDelegationEnvelopeMiddleware()
+    request = SimpleNamespace(
+        state={"messages": [HumanMessage(content="Generate four prompts.")]},
+        tool_call={
+            "name": "task",
+            "id": "task-call-2",
+            "args": {
+                "subagent_type": "writer",
+                "description": (
+                    "Task type: TEXT_ONLY\n"
+                    "Delivery mode: RETURN_TEXT\n"
+                    "Reference policy: USER_PROVIDED_ONLY\n"
+                    "Tool policy: NO_TOOLS\n"
+                    "Objective: Generate four prompts."
+                ),
+            },
+        },
+    )
+
+    async def handler(_request):
+        return ToolMessage(content="dispatched", tool_call_id="task-call-2", name="task")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert result.content == "dispatched"
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_blocks_reads_for_no_tools_text_task():
+    middleware = SubagentExecutionPolicyMiddleware()
+    request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: TEXT_ONLY\n"
+                        "Delivery mode: RETURN_TEXT\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: NO_TOOLS\n"
+                        "Artifact intent: false\n"
+                        "Objective: Generate four scene prompts."
+                    )
+                )
+            ]
+        },
+        tool_call={"name": "glob", "id": "glob-1", "args": {"pattern": "**/*.txt"}},
+    )
+
+    async def handler(_request):
+        raise AssertionError("NO_TOOLS text tasks should not read/search files")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert isinstance(result, ToolMessage)
+    assert "outside the assigned policy" in result.content
+    assert "Do not read files" in result.content
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_allows_read_only_lookup_but_blocks_artifacts():
+    middleware = SubagentExecutionPolicyMiddleware()
+    messages = [
+        HumanMessage(
+            content=(
+                "Task type: TEXT_ONLY\n"
+                "Delivery mode: RETURN_TEXT\n"
+                "Reference policy: READ_ONLY_ALLOWED\n"
+                "Tool policy: READ_ONLY\n"
+                "Artifact intent: false\n"
+                "Objective: Summarize the referenced file."
+            )
+        )
+    ]
+
+    async def handler(request):
+        return ToolMessage(
+            content="allowed",
+            tool_call_id=request.tool_call["id"],
+            name=request.tool_call["name"],
+        )
+
+    read_request = SimpleNamespace(
+        state={"messages": messages},
+        tool_call={"name": "read_file", "id": "read-1", "args": {"file_path": "/tmp/a"}},
+    )
+    write_request = SimpleNamespace(
+        state={"messages": messages},
+        tool_call={"name": "write_file", "id": "write-1", "args": {"file_path": "/tmp/a"}},
+    )
+
+    read_result = await middleware.awrap_tool_call(read_request, handler)
+    write_result = await middleware.awrap_tool_call(write_request, handler)
+
+    assert read_result.content == "allowed"
+    assert "allows reference lookup only" in write_result.content
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_allows_explicit_artifact_task():
+    middleware = SubagentExecutionPolicyMiddleware()
+    request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: FILE_ARTIFACT\n"
+                        "Delivery mode: CREATE_FILES\n"
+                        "Reference policy: READ_ONLY_ALLOWED\n"
+                        "Tool policy: ARTIFACT_ALLOWED\n"
+                        "Artifact intent: true\n"
+                        "Objective: Create a prompt package."
+                    )
+                )
+            ]
+        },
+        tool_call={"name": "write_file", "id": "write-2", "args": {"file_path": "/tmp/a"}},
+    )
+
+    async def handler(_request):
+        return ToolMessage(content="written", tool_call_id="write-2", name="write_file")
+
+    result = await middleware.awrap_tool_call(request, handler)
+
+    assert result.content == "written"
 
 
 @pytest.mark.asyncio
