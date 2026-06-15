@@ -111,6 +111,30 @@ def test_team_router_prompt_forbids_coordination_notification_tasks():
     assert "The `task` tool is for work assignments only" in prompt
 
 
+def test_team_router_prompt_requires_subagent_delegation_for_work():
+    team = TeamResponse(
+        id="t1",
+        owner_user_id="u1",
+        name="Dev Team",
+        members=[
+            TeamMemberResponse(
+                member_id="m1",
+                persona_preset_id="p1",
+                role_name="Writer",
+                enabled=True,
+            ),
+        ],
+    )
+
+    prompt = build_team_router_system_prompt(
+        team,
+        default_role="team-m1-writer",
+    )
+
+    assert "call the `task` tool for at least one team member" in prompt
+    assert "Do not complete role-specific work yourself" in prompt
+
+
 def test_team_router_prompt_includes_tool_progress_guidance():
     team = TeamResponse(
         id="t1",
