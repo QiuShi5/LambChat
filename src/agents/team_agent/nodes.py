@@ -468,16 +468,19 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     filtered_tools = None
     if settings.ENABLE_MCP:
         await context.get_tools()
-        filtered_tools = context.filter_tools() or None
+    filtered_tools = context.filter_tools() or None
 
-        if context.deferred_manager is not None and filtered_tools is not None:
-            from src.infra.tool.tool_search_tool import ToolSearchTool
+    if context.deferred_manager is not None and filtered_tools is not None:
+        from src.infra.tool.tool_search_tool import ToolSearchTool
 
-            search_tool = ToolSearchTool(
-                manager=context.deferred_manager,
-                search_limit=settings.DEFERRED_TOOL_SEARCH_LIMIT,
-            )
-            filtered_tools.append(search_tool)
+        search_tool = ToolSearchTool(
+            manager=context.deferred_manager,
+            search_limit=settings.DEFERRED_TOOL_SEARCH_LIMIT,
+        )
+        filtered_tools.append(search_tool)
+
+    subagent_tools = filtered_tools
+    router_tools = [] if team else filtered_tools
 
     # 创建内层 graph (deep agent)
     checkpointer_start = time.time()
@@ -627,6 +630,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                         + (f" {member.role_instructions}" if member.role_instructions else "")
                     ),
                     "system_prompt": SUBAGENT_PROMPT,
+                    "tools": subagent_tools or [],
                     "middleware": _build_subagent_middleware(
                         subagent_type,
                         prompt_sections=role_prompt_sections,
@@ -733,7 +737,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         model=llm,
         system_prompt=system_prompt,
         backend=backend,
-        tools=filtered_tools,
+        tools=router_tools,
         checkpointer=inner_checkpointer,
         store=store,
         skills=None,
