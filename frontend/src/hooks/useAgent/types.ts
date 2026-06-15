@@ -109,7 +109,7 @@ export interface EventData {
   todos?: Array<{
     content: string;
     activeForm?: string;
-    status: "pending" | "in_progress" | "completed";
+    status: "pending" | "in_progress" | "completed" | "cancelled";
   }>;
   updated_index?: number;
   // summary event fields
@@ -188,7 +188,7 @@ export interface HistoryEventData {
   todos?: Array<{
     content: string;
     activeForm?: string;
-    status: "pending" | "in_progress" | "completed";
+    status: "pending" | "in_progress" | "completed" | "cancelled";
   }>;
   updated_index?: number;
   questions?: Array<

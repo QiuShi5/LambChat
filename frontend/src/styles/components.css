@@ -110,9 +110,18 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: transparent;
+  width: 100%;
+  flex: 0 0 auto;
+  background: var(--theme-bg);
   border-bottom: 1px solid var(--theme-border);
   padding: 0.75rem 1rem;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-bg) 80%, transparent);
+  isolation: isolate;
+}
+
+.glass-shell .panel-header {
+  background: var(--theme-bg);
+  border-bottom-color: var(--glass-border, var(--theme-border));
 }
 
 @media (min-width: 640px) {
@@ -234,9 +243,10 @@
   max-width: min(13rem, 42vw);
 }
 
-.panel-filter-trigger {
+.panel-header .panel-filter-trigger {
   max-width: 100%;
   justify-content: space-between;
+  height: 2.5rem;
   padding-inline: 0.625rem;
   background: color-mix(in srgb, var(--theme-bg-card) 60%, transparent);
   backdrop-filter: blur(8px);
@@ -440,6 +450,24 @@
   > .panel-header-actions
   [data-filter-menu]
   .panel-filter-select {
+  width: 100%;
+}
+
+/* Filter select fills mobile menu */
+.panel-header__mobile-menu-accessory .panel-filter-select,
+.panel-header__mobile-menu-item > .panel-filter-select {
+  min-width: 100%;
+  max-width: 100%;
+}
+
+.panel-header__mobile-menu-accessory .panel-filter-trigger,
+.panel-header__mobile-menu-item > .ui-select > .panel-filter-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Non-button children (e.g. filter div) fill mobile menu item */
+.panel-header__mobile-menu-item > .ui-select {
   width: 100%;
 }
 
@@ -1537,6 +1565,9 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+.editor-sidebar--sidebar .editor-sidebar-body {
+  background: var(--theme-bg);
+}
 
 /* --- Footer (outside scroll area) --- */
 .editor-sidebar-footer {
@@ -2303,7 +2334,7 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 .list-item-card__name {
   font-size: 0.8125rem;
@@ -3291,6 +3322,75 @@
 /* Panel detail content entrance */
 .tool-panel-content {
   animation: tool-panel-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Usage panel surfaces */
+.usage-panel {
+  --usage-surface: var(--theme-bg-card);
+  --usage-surface-hover: color-mix(
+    in srgb,
+    var(--theme-bg-card) 92%,
+    var(--theme-primary) 8%
+  );
+  --usage-inset-bg: color-mix(
+    in srgb,
+    var(--theme-bg) 75%,
+    var(--theme-bg-card) 25%
+  );
+  --usage-code-bg: color-mix(
+    in srgb,
+    var(--theme-bg) 80%,
+    var(--theme-bg-card) 20%
+  );
+  --usage-icon-bg: color-mix(
+    in srgb,
+    var(--theme-primary) 8%,
+    var(--theme-bg-card)
+  );
+  --usage-border: color-mix(in srgb, var(--theme-border) 80%, transparent);
+  --usage-border-hover: color-mix(
+    in srgb,
+    var(--theme-primary) 28%,
+    var(--theme-border)
+  );
+  --usage-shadow: none;
+}
+
+.dark .usage-panel {
+  --usage-surface: var(--theme-bg-card);
+  --usage-surface-hover: color-mix(
+    in srgb,
+    var(--theme-bg-card) 88%,
+    var(--theme-primary) 8%
+  );
+  --usage-inset-bg: color-mix(
+    in srgb,
+    var(--theme-bg) 60%,
+    var(--theme-bg-card) 40%
+  );
+  --usage-code-bg: color-mix(
+    in srgb,
+    var(--theme-bg) 55%,
+    var(--theme-bg-card) 45%
+  );
+  --usage-icon-bg: color-mix(
+    in srgb,
+    var(--theme-primary) 10%,
+    var(--theme-bg-card)
+  );
+  --usage-border: color-mix(in srgb, var(--theme-border) 70%, transparent);
+  --usage-border-hover: color-mix(
+    in srgb,
+    var(--theme-primary) 28%,
+    var(--theme-border)
+  );
+  --usage-shadow: none;
+}
+
+.usage-surface {
+  border: 1px solid var(--usage-border);
+  background: var(--usage-surface);
+  box-shadow: var(--usage-shadow);
 }
 
 @keyframes tool-panel-enter {

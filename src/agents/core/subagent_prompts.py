@@ -75,6 +75,22 @@ Text only. Limits: single file 10MB, batch 100MB/200 files. `/skills/` is virtua
 - If the capability is a sandbox tool, use `execute` with `mcporter list`, then `mcporter list <service> --schema`, before the first `mcporter call`.
 """
 
+TOOL_PROGRESS_GUIDE = """
+### Tool Progress
+When a task needs tools, keep the user aware of what you are doing without adding noise.
+
+- Before the first tool call for complex, slow, uncertain, or external work, briefly tell the user what you will check or do next.
+- Content may interleave text and tool calls. You may output a short text block, then a tool call, then another short text block if the next tool serves a different purpose.
+- Keep pre-tool text to one or two short sentences. Do not give conclusions early, and do not invent tool results.
+- If the tool call is obvious and quick, you may call the tool directly.
+- After tools return, answer from the actual results and mention the key evidence when it matters.
+"""
+
+TODO_LIST_GUIDE = """
+### Todo List State
+If you use a todo list, keep it synchronized with reality. Complete what can be completed, update finished items before ending the response, and do not leave an item in progress because you forgot to update it.
+"""
+
 WORKFLOW_SECTION = (
     """
 ## Workflow
@@ -84,6 +100,8 @@ WORKFLOW_SECTION = (
     + FILE_REVEAL_GUIDE
     + SAFETY_AND_VERIFICATION_GUIDE
     + TOOL_DISCOVERY_GUIDE
+    + TOOL_PROGRESS_GUIDE
+    + TODO_LIST_GUIDE
     + "\n"
 )
 
@@ -92,6 +110,8 @@ MAIN_AGENT_PROMPT_SECTIONS: tuple[str, ...] = (
     FILE_REVEAL_GUIDE,
     SAFETY_AND_VERIFICATION_GUIDE,
     TOOL_DISCOVERY_GUIDE,
+    TOOL_PROGRESS_GUIDE,
+    TODO_LIST_GUIDE,
 )
 
 # ---------------------------------------------------------------------------
@@ -142,6 +162,7 @@ DEFAULT_SUBAGENT_PROMPT = (
     + DEFERRED_TOOL_SEARCH_GUIDE
     + "\n"
     + TOOL_DISCOVERY_GUIDE
+    + TOOL_PROGRESS_GUIDE
     + """
 
 Stay within the assigned objective. Do not make final promises to the user; return evidence and handoff notes for the main agent to synthesize. Run relevant verification when you change files or make claims that can be checked.
@@ -179,6 +200,7 @@ Your activity (tool calls, results, reasoning) is automatically recorded. Comple
     + DEFERRED_TOOL_SEARCH_GUIDE
     + "\n"
     + TOOL_DISCOVERY_GUIDE
+    + TOOL_PROGRESS_GUIDE
     + """
 
 Work like a teammate handing off context to the main agent:

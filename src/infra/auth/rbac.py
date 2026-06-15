@@ -176,6 +176,8 @@ class RBACManager:
                     Permission.SCHEDULED_TASK_READ.value,
                     Permission.SCHEDULED_TASK_WRITE.value,
                     Permission.SCHEDULED_TASK_DELETE.value,
+                    # Usage
+                    Permission.USAGE_READ.value,
                 ],
                 "limits": {"max_channels": 10},
                 "is_system": False,

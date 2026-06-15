@@ -1,9 +1,10 @@
 import { SkeletonLine } from "./primitives";
 import { PanelHeaderSkeleton } from "./PanelHeaderSkeleton";
+import { PanelPaginationSkeleton } from "./PanelSkeletonHelpers";
 
 export function PersonaPlazaSkeleton() {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 animate-fade-in">
+    <div className="glass-shell flex h-full flex-col min-h-0 animate-fade-in">
       <PanelHeaderSkeleton hasSearch />
       <div className="skill-content-area flex-1 overflow-y-auto py-2 sm:py-4 px-4 sm:p-6 lg:px-8 lg:py-8">
         <div className="grid auto-grid-cols gap-4 sm:gap-5">
@@ -79,13 +80,7 @@ export function PersonaPlazaSkeleton() {
           ))}
         </div>
         {/* Pagination placeholder */}
-        <div className="glass-divider px-3 py-3 sm:px-6 mt-2">
-          <div className="flex items-center justify-center gap-2">
-            <div className="skeleton-line size-8 rounded-lg" />
-            <div className="skeleton-line w-24 h-3" />
-            <div className="skeleton-line size-8 rounded-lg" />
-          </div>
-        </div>
+        <PanelPaginationSkeleton />
       </div>
     </div>
   );

@@ -3,7 +3,13 @@
  * move, share, toggle favorite, mark-all-read, delete, and select-and-close.
  */
 
-import { useState, useCallback, useRef, type MutableRefObject } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  type MutableRefObject,
+} from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { sessionApi, type BackendSession } from "../services/api";
@@ -560,27 +566,48 @@ export function useSessionSidebarActions({
     ],
   );
 
-  return {
-    handleSessionUnread,
-    handleMoveSession,
-    handleMoveSessionRef,
-    handleBatchMoveSessions,
-    batchMoveConfirm,
-    setBatchMoveConfirm,
-    confirmBatchMoveSessions,
-    handleShareSession,
-    handleToggleFavorite,
-    handleMarkAllRead,
-    markingReadId,
-    shareDialogSessionId,
-    setShareDialogSessionId,
-    shareDialogSessionName,
-    deleteConfirm,
-    setDeleteConfirm,
-    confirmDeleteSession,
-    batchDeleteConfirm,
-    setBatchDeleteConfirm,
-    confirmBatchDeleteSessions,
-    selectAndClose,
-  };
+  return useMemo(
+    () => ({
+      handleSessionUnread,
+      handleMoveSession,
+      handleMoveSessionRef,
+      handleBatchMoveSessions,
+      batchMoveConfirm,
+      setBatchMoveConfirm,
+      confirmBatchMoveSessions,
+      handleShareSession,
+      handleToggleFavorite,
+      handleMarkAllRead,
+      markingReadId,
+      shareDialogSessionId,
+      setShareDialogSessionId,
+      shareDialogSessionName,
+      deleteConfirm,
+      setDeleteConfirm,
+      confirmDeleteSession,
+      batchDeleteConfirm,
+      setBatchDeleteConfirm,
+      confirmBatchDeleteSessions,
+      selectAndClose,
+    }),
+    [
+      handleSessionUnread,
+      handleMoveSession,
+      handleMoveSessionRef,
+      handleBatchMoveSessions,
+      batchMoveConfirm,
+      confirmBatchMoveSessions,
+      handleShareSession,
+      handleToggleFavorite,
+      handleMarkAllRead,
+      markingReadId,
+      shareDialogSessionId,
+      shareDialogSessionName,
+      deleteConfirm,
+      confirmDeleteSession,
+      batchDeleteConfirm,
+      confirmBatchDeleteSessions,
+      selectAndClose,
+    ],
+  );
 }

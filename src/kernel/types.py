@@ -110,6 +110,10 @@ class Permission(str, Enum):
     # Notification
     NOTIFICATION_MANAGE = "notification:manage"
 
+    # Usage
+    USAGE_READ = "usage:read"
+    USAGE_ADMIN = "usage:admin"
+
 
 class MessageType(str, Enum):
     """消息类型"""

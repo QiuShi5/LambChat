@@ -66,6 +66,24 @@ def test_default_user_role_includes_scheduled_task_permissions() -> None:
     assert Permission.SCHEDULED_TASK_READ.value in roles["admin"]["permissions"]
 
 
+def test_usage_permissions_exist_and_are_grouped() -> None:
+    assert Permission.USAGE_READ.value == "usage:read"
+    assert Permission.USAGE_ADMIN.value == "usage:admin"
+
+    response = get_permissions_response()
+    grouped_values = {
+        permission.value
+        for group in response.groups
+        if group.name == "用量统计"
+        for permission in group.permissions
+    }
+
+    assert grouped_values == {
+        "usage:read",
+        "usage:admin",
+    }
+
+
 def test_persona_preset_create_defaults_to_user_private_draft() -> None:
     data = PersonaPresetCreate(name="Coder", system_prompt="Be precise.")
 

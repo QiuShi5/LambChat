@@ -76,6 +76,9 @@ export enum Permission {
   TEAM_DELETE = "team:delete",
   // Notification
   NOTIFICATION_MANAGE = "notification:manage",
+  // Usage
+  USAGE_READ = "usage:read",
+  USAGE_ADMIN = "usage:admin",
 }
 
 // 用户信息

@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { CheckCircle2, Circle, Loader2, ListTodo } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, ListTodo, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TodoItem, TodoStatus } from "../../../types";
 
@@ -19,12 +19,17 @@ const statusConfig: Record<
   },
   in_progress: {
     icon: Loader2,
-    colorClass: "text-blue-500 dark:text-blue-400",
+    colorClass: "text-[var(--theme-primary)]",
     textClass: "text-stone-700 dark:text-stone-200 font-medium",
   },
   completed: {
     icon: CheckCircle2,
     colorClass: "text-emerald-500 dark:text-emerald-400",
+    textClass: "text-stone-400 dark:text-stone-500 line-through",
+  },
+  cancelled: {
+    icon: XCircle,
+    colorClass: "text-stone-400 dark:text-stone-500",
     textClass: "text-stone-400 dark:text-stone-500 line-through",
   },
 };

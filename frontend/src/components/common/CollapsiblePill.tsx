@@ -142,6 +142,7 @@ export function CollapsiblePill({
   return (
     <div className="my-1 min-w-0 max-w-full">
       <button
+        type="button"
         onClick={handleToggle}
         className={clsx(
           "pill-btn",
@@ -153,7 +154,7 @@ export function CollapsiblePill({
           !canExpand && "cursor-default",
         )}
       >
-        <StatusIndicator status={status} />
+        {status === "loading" && <StatusIndicator status={status} />}
         {icon}
         <span
           className={clsx(

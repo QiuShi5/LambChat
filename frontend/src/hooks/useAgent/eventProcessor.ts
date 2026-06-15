@@ -467,6 +467,14 @@ export function processMessageEvent(
       break;
     }
 
+    // ---- Completion ----
+
+    case "complete":
+    case "done": {
+      result.parts = clearAllLoadingStates(parts);
+      break;
+    }
+
     // ---- Error ----
 
     case "error": {

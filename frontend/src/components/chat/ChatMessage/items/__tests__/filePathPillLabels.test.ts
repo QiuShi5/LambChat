@@ -43,7 +43,7 @@ test("collapsible pill always truncates labels to prevent overflow", () => {
     "utf8",
   );
 
-  assert.match(source, /"font-mono min-w-0 truncate overflow-hidden"/);
+  assert.match(source, /"font-mono min-w-0 truncate overflow-hidden[^"]*"/);
 });
 
 test("collapsible pill can preserve labels without path-breaking formatting", () => {
@@ -58,4 +58,26 @@ test("collapsible pill can preserve labels without path-breaking formatting", ()
     /const displayedLabel = formatLabel \? formattedLabel : label/,
   );
   assert.match(source, /\{displayedLabel\}/);
+});
+
+test("collapsible pill uses a non-submit button for form-safe tool clicks", () => {
+  const source = readFileSync(
+    new URL("../../../../common/CollapsiblePill.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /<button[\s\S]*type="button"/);
+});
+
+test("ls tool panel has a stable key so repeated clicks keep the sidebar open", () => {
+  const source = readSource("../LsItem.tsx");
+
+  assert.match(source, /panelKey:\s*`ls:\$\{dirPath\}`/);
+});
+
+test("ls tool opens from any non-empty result even when entries do not parse", () => {
+  const source = readSource("../LsItem.tsx");
+
+  assert.match(source, /const rawText = extractText\(result\);/);
+  assert.match(source, /const canExpand = rawText\.trim\(\)\.length > 0;/);
 });

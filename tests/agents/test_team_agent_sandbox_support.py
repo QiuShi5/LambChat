@@ -475,6 +475,47 @@ async def test_multiple_team_members_use_their_own_model_overrides(
 
 
 @pytest.mark.asyncio
+async def test_explicit_team_router_delegates_work_to_subagents(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.agents.team_agent.context import TeamAgentContext
+    from src.kernel.schemas.team import TeamMemberResponse
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+
+    async def fake_get_tools(self):
+        return ["work-tool"]
+
+    def fake_filter_tools(self):
+        return ["work-tool"]
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_MCP", True)
+    monkeypatch.setattr(TeamAgentContext, "get_tools", fake_get_tools)
+    monkeypatch.setattr(TeamAgentContext, "filter_tools", fake_filter_tools)
+
+    await _run_team_node_with_members(
+        monkeypatch,
+        team_nodes,
+        fake_graph,
+        [
+            TeamMemberResponse(
+                member_id="m-writer",
+                persona_preset_id="preset-1",
+                role_name="Writer",
+                enabled=True,
+            )
+        ],
+    )
+
+    assert fake_graph.captured_create_kwargs["tools"] == []
+    assert fake_graph.captured_create_kwargs["subagents"][0]["tools"] == ["work-tool"]
+
+
+@pytest.mark.asyncio
 async def test_team_member_model_unavailable_is_not_silently_fallbacked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -550,7 +591,10 @@ async def test_team_member_agent_mode_override_injects_search_prompt(
     section_middleware = next(
         item for item in subagent["middleware"] if isinstance(item, dict) and "sections" in item
     )
-    assert any("virtual storage, not a real filesystem" in section for section in section_middleware["sections"])
+    assert any(
+        "virtual storage, not a real filesystem" in section
+        for section in section_middleware["sections"]
+    )
 
 
 @pytest.mark.asyncio

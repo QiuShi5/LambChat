@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(
-  new URL("../PanelSkeletons.tsx", import.meta.url),
+  new URL("../PanelSkeletonHelpers.tsx", import.meta.url),
   "utf8",
 );
 
@@ -19,10 +19,9 @@ test("panel skeletons share the repeated pagination placeholder", () => {
     source,
     /<div className="flex items-center justify-center gap-2">/,
   );
-  assert.match(source, /<PanelPaginationSkeleton variant="transparent" \/>/);
 
   assert.equal(source.match(/skeleton-line size-8 rounded-lg/g)?.length, 2);
-  assert.equal(source.match(/skeleton-line w-24 h-3/g)?.length, 1);
+  assert.equal(source.match(/skeleton-line w-32 sm:w-36 h-3/g)?.length, 1);
   assert.doesNotMatch(source, /skeleton-line h-3 w-24/);
 });
 

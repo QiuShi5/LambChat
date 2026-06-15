@@ -166,7 +166,7 @@ export function ActiveGoalBar({
       className={`mx-auto flex w-full max-w-[52rem] min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-sm ${className}`}
       style={{
         borderColor: "var(--theme-border)",
-        backgroundColor: "var(--theme-primary-bg, rgba(59,130,246,0.06))",
+        backgroundColor: "var(--theme-primary-bg, rgba(245,158,11,0.08))",
         color: "var(--theme-text-secondary)",
       }}
     >

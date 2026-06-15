@@ -127,3 +127,36 @@ test("adds recommended questions from recommendation events", () => {
     ],
   );
 });
+
+test("complete event cancels unfinished todo items", () => {
+  const result = processMessageEvent(
+    "complete",
+    {},
+    [
+      {
+        type: "todo",
+        isStreaming: true,
+        items: [
+          { content: "done", status: "completed" },
+          { content: "started", status: "in_progress", activeForm: "starting" },
+          { content: "not started", status: "pending" },
+        ],
+      },
+    ],
+    "",
+    [],
+    0,
+    [],
+    true,
+    "message-1",
+  );
+
+  const todo = result.parts[0];
+  assert.equal(todo.type, "todo");
+  assert.equal(todo.isStreaming, false);
+  assert.deepEqual(
+    todo.items.map((item) => item.status),
+    ["completed", "cancelled", "cancelled"],
+  );
+  assert.equal(todo.items[1].activeForm, undefined);
+});

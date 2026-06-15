@@ -11,6 +11,7 @@ interface PaginationProps {
   pageSize: number;
   total: number;
   onChange: (page: number) => void;
+  itemLabel?: string;
 }
 
 function useIsMobile(breakpoint = 640) {
@@ -33,6 +34,7 @@ export function Pagination({
   pageSize,
   total,
   onChange,
+  itemLabel,
 }: PaginationProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -54,7 +56,9 @@ export function Pagination({
       >
         {isMobile
           ? `${page} / ${totalPages}`
-          : `${startItem}-${endItem} / ${total}`}
+          : itemLabel
+            ? `${startItem}-${endItem} / ${total} ${itemLabel}`
+            : `${startItem}-${endItem} / ${total}`}
       </p>
 
       {/* Page controls */}

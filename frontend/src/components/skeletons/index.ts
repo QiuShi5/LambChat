@@ -27,4 +27,5 @@ export {
   ChannelConfigSkeleton,
   AgentPanelSkeleton,
   ModelPanelSkeleton,
+  UsagePanelSkeleton,
 } from "./PanelSkeletons";

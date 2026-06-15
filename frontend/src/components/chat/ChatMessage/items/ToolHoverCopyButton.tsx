@@ -1,4 +1,5 @@
 import { CopyButton } from "../../../common";
+import { clsx } from "clsx";
 
 type ToolHoverCopyPosition =
   | "panel"
@@ -19,8 +20,7 @@ const positionClasses: Record<ToolHoverCopyPosition, string> = {
     "absolute top-1 right-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10",
   result:
     "absolute top-1.5 right-1.5 sm:opacity-0 sm:group-hover/result:opacity-100 transition-opacity",
-  resultCompact:
-    "absolute top-0.5 right-0.5 sm:opacity-0 sm:group-hover/result:opacity-100 transition-opacity",
+  resultCompact: "absolute top-0.5 right-0.5 transition-opacity",
 };
 
 export function ToolHoverCopyButton({
@@ -28,16 +28,21 @@ export function ToolHoverCopyButton({
   size = 12,
   position,
   copyButtonClassName,
+  className,
   hidden = false,
 }: {
   text: string;
   size?: number;
   position: ToolHoverCopyPosition;
   copyButtonClassName?: string;
+  className?: string;
   hidden?: boolean;
 }) {
   return (
-    <div className={positionClasses[position]}>
+    <div
+      className={clsx(positionClasses[position], className)}
+      onClick={(event) => event.stopPropagation()}
+    >
       {!hidden && (
         <CopyButton text={text} size={size} className={copyButtonClassName} />
       )}

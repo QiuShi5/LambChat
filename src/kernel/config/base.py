@@ -137,6 +137,7 @@ class Settings(BaseSettings):
     MONGODB_AUTH_SOURCE: str = "admin"
     MONGODB_SESSIONS_COLLECTION: str = "sessions"
     MONGODB_TRACES_COLLECTION: str = "traces"
+    MONGODB_USAGE_LOGS_COLLECTION: str = "usage_logs"
     MONGODB_STORE_BATCH_CONCURRENCY: int = 16
 
     # Event Merger Settings

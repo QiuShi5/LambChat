@@ -388,7 +388,7 @@ const AskHumanItem = memo(function AskHumanItem({
         {!isPending && parsedResult && parsedResult.status === "success" && (
           <>
             <div className="approval-divider" />
-            <div className="px-5 pb-4">
+            <div className="approval-result-section">
               <AnswerSummary
                 fields={fields}
                 values={parsedResult.values}
@@ -404,7 +404,7 @@ const AskHumanItem = memo(function AskHumanItem({
           parsedResult.status !== "success" && (
             <>
               <div className="approval-divider" />
-              <div className="px-5 pb-4">
+              <div className="approval-result-section">
                 <div
                   className={clsx(
                     "text-xs px-3 py-2 rounded-lg",

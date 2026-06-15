@@ -124,7 +124,7 @@ export function PanelHeader({
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="panel-header__title truncate text-base font-semibold text-theme-text lg:text-lg">
+              <h1 className="panel-header__title truncate text-base font-semibold text-theme-text lg:text-lg font-serif">
                 {title}
               </h1>
               {subtitle && (

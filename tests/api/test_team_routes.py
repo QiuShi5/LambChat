@@ -125,9 +125,7 @@ async def test_create_team_returns_bad_request_for_invalid_member_model() -> Non
             "/api/teams",
             json={
                 "name": "Team",
-                "members": [
-                    {"persona_preset_id": "preset-1", "model_id": "missing-model"}
-                ],
+                "members": [{"persona_preset_id": "preset-1", "model_id": "missing-model"}],
             },
         )
 
@@ -154,9 +152,7 @@ async def test_update_team_passes_current_user_to_model_validation() -> None:
         response = await client.put(
             "/api/teams/team-1",
             json={
-                "members": [
-                    {"persona_preset_id": "preset-1", "model_id": "model-member"}
-                ],
+                "members": [{"persona_preset_id": "preset-1", "model_id": "model-member"}],
             },
         )
 

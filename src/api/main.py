@@ -43,6 +43,7 @@ from src.api.routes import (
     skill,
     team,
     upload,
+    usage,
     user,
     version,
     websocket,
@@ -372,6 +373,12 @@ def _startup_index_initializers():
         await UserStorage().ensure_indexes_if_needed()
         logger.info("UserStorage indexes initialized")
 
+    async def _init_usage_storage() -> None:
+        from src.infra.usage.storage import get_usage_storage
+
+        await get_usage_storage().ensure_indexes()
+        logger.info("UsageStorage indexes initialized")
+
     return [
         ("agent_config_storage", _init_agent_config_storage),
         ("model_storage", _init_model_storage),
@@ -383,6 +390,7 @@ def _startup_index_initializers():
         ("notification_storage", _init_notification_storage),
         ("push_subscription_storage", _init_push_subscription_storage),
         ("user_storage", _init_user_storage),
+        ("usage_storage", _init_usage_storage),
     ]
 
 
@@ -709,6 +717,7 @@ def create_app() -> FastAPI:
     app.include_router(revealed_file.router, prefix="/api/files", tags=["Files"])
     app.include_router(human.router, prefix="/human", tags=["Human"])
     app.include_router(feedback.router, prefix="/api/feedback", tags=["Feedback"])
+    app.include_router(usage.router, prefix="/api/usage", tags=["Usage"])
     app.include_router(notification.router, prefix="/api/notifications", tags=["Notifications"])
     app.include_router(push.router, prefix="/api/push", tags=["Push"])
     # Generic channel configuration

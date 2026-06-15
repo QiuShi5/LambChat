@@ -77,7 +77,7 @@ export function SidebarRail({
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
-            className="size-7 hidden group-hover:block"
+            className="size-5 hidden group-hover:block"
           >
             <path
               fillRule="evenodd"

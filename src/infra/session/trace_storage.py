@@ -43,6 +43,26 @@ SESSION_EVENT_FILTER_LIST_LIMIT = 100
 TRACE_EVENTS_DEFAULT_LIMIT = 1000
 TRACE_EVENTS_READ_LIMIT = 5000
 TRACE_LIST_LIMIT = 100
+_USAGE_LOGS_ENABLED = True  # 是否在 trace 完成时写入 usage_logs 集合
+
+
+async def _write_usage_log(trace_id: str) -> None:
+    """在 trace 完成后，异步将 token 用量写入独立的 usage_logs 集合。"""
+    try:
+        from src.infra.usage.storage import get_usage_storage
+
+        storage = get_usage_storage()
+        collection = storage.collection
+
+        # 读取完整 trace（含 events）
+        trace_doc = await collection.database[settings.MONGODB_TRACES_COLLECTION].find_one(
+            {"trace_id": trace_id}
+        )
+        if trace_doc:
+            await storage.upsert_usage_log(trace_doc)
+    except Exception as e:
+        # 写入 usage_logs 失败不应影响主流程
+        logger.warning(f"Failed to write usage log for trace {trace_id}: {e}")
 
 
 def _get_session_event_read_default_limit() -> int:
@@ -388,6 +408,9 @@ class TraceStorage:
                 {"trace_id": trace_id},
                 update,
             )
+            # 异步写入 usage_logs 集合（fire-and-forget，失败不影响主流程）
+            if _USAGE_LOGS_ENABLED and result.modified_count > 0:
+                asyncio.create_task(_write_usage_log(trace_id))
             return result.modified_count > 0
         except Exception as e:
             logger.error(f"Failed to complete trace {trace_id}: {e}")

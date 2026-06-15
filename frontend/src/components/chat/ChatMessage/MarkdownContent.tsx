@@ -20,6 +20,7 @@ import { shouldInterceptFilePreviewLink } from "./items/revealPreviewLinks";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { useSessionImageGallery } from "./sessionImageGallery";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
+import { normalizeMarkdownCodeFences } from "./markdownCodeFences";
 
 function extractNodeText(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -528,7 +529,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           },
         }}
       >
-        {content}
+        {normalizeMarkdownCodeFences(content)}
       </ReactMarkdown>
 
       {/* Image preview lightbox */}

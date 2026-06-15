@@ -11,6 +11,7 @@ import {
   Star,
   Bell,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { Permission } from "../../types";
@@ -48,6 +49,7 @@ export function UserMenu({ onShowProfile }: UserMenuProps) {
   const canManageAgents = hasAnyPermission([Permission.AGENT_ADMIN]);
   const canManageModels = hasAnyPermission([Permission.MODEL_ADMIN]);
   const canViewFeedback = hasAnyPermission([Permission.FEEDBACK_READ]);
+  const canViewUsage = hasAnyPermission([Permission.USAGE_READ]);
   const canManageNotifications = hasAnyPermission([
     Permission.NOTIFICATION_MANAGE,
   ]);
@@ -154,6 +156,12 @@ export function UserMenu({ onShowProfile }: UserMenuProps) {
       label: t("nav.feedback"),
       icon: Star,
       show: canViewFeedback,
+    },
+    {
+      path: "/usage",
+      label: t("nav.usage"),
+      icon: BarChart3,
+      show: canViewUsage,
     },
     {
       path: "/notifications",

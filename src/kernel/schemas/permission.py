@@ -258,6 +258,15 @@ PERMISSION_METADATA: dict[str, dict[str, str]] = {
         "label": "管理通知",
         "description": "创建、编辑、删除系统通知公告",
     },
+    # Usage
+    Permission.USAGE_READ.value: {
+        "label": "查看用量统计",
+        "description": "查看自己的模型调用和 Token 用量统计",
+    },
+    Permission.USAGE_ADMIN.value: {
+        "label": "管理用量统计",
+        "description": "查看所有用户的模型调用和 Token 用量统计",
+    },
     # Environment Variables
     Permission.ENVVAR_READ.value: {
         "label": "读取环境变量",
@@ -413,6 +422,13 @@ PERMISSION_GROUPS_CONFIG: list[PermissionGroupConfig] = [
         "name": "通知公告",
         "permissions": [
             Permission.NOTIFICATION_MANAGE.value,
+        ],
+    },
+    {
+        "name": "用量统计",
+        "permissions": [
+            Permission.USAGE_READ.value,
+            Permission.USAGE_ADMIN.value,
         ],
     },
     {

@@ -18,6 +18,9 @@
   --approval-submit-text: #fff;
   --approval-cancel-border: var(--theme-border);
   --approval-cancel-text: var(--theme-text-secondary);
+  --approval-section-x: 1.25rem;
+  --approval-section-y: 0.875rem;
+  --approval-section-gap: 0.75rem;
 }
 
 .dark .approval-card {
@@ -52,7 +55,7 @@
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.875rem 1.25rem 0.5rem;
+  padding: var(--approval-section-y) var(--approval-section-x) 0.5rem;
 }
 
 .approval-icon {
@@ -76,7 +79,7 @@
 
 /* Message area */
 .approval-message {
-  padding: 0.25rem 1.25rem 0.625rem;
+  padding: 0.25rem var(--approval-section-x) var(--approval-section-gap);
   overflow-x: hidden;
 }
 
@@ -165,23 +168,23 @@
 /* Divider */
 .approval-divider {
   height: 1px;
-  margin: 0 1.25rem;
+  margin: 0 var(--approval-section-x);
   background: var(--approval-border);
 }
 
 /* Form area — clean inset */
 .approval-form {
-  padding: 0.875rem 1.25rem 0.75rem;
+  padding: var(--approval-section-y) var(--approval-section-x);
 }
 
 .approval-form .space-y-3 > div {
-  padding: 0.5rem 0;
+  padding: 0;
 }
 
 .approval-form .space-y-3 > div + div {
   border-top: 1px solid
     color-mix(in srgb, var(--approval-border) 50%, transparent);
-  padding-top: 0.75rem;
+  padding-top: var(--approval-section-gap);
 }
 
 /* ── Form inputs ── */
@@ -331,10 +334,13 @@
   pointer-events: none;
 }
 
-/* ── Filled text answer — subtle left accent border ── */
+/* ── Filled text answer ── */
 .approval-answer-filled {
-  border-left: 3px solid var(--approval-accent);
   padding-left: 0.75rem;
+}
+
+.approval-result-section {
+  padding: var(--approval-section-y) var(--approval-section-x);
 }
 
 /* ── Answer summary (replaces generic status footer) ── */
@@ -407,7 +413,7 @@
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.5;
-  color: var(--approval-text);
+  color: var(--approval-text-dim);
   word-break: break-word;
   padding: 0.25rem 0.5rem;
   background: color-mix(
@@ -432,7 +438,7 @@
 
 /* ── Action buttons ── */
 .approval-actions {
-  padding: 0.625rem 1.25rem 1rem;
+  padding: var(--approval-section-gap) var(--approval-section-x) 1rem;
 }
 
 .approval-btn-submit {

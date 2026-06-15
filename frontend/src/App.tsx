@@ -298,6 +298,15 @@ function ScheduledTasksPage() {
   return <AppContent key="scheduled-tasks" activeTab="scheduled-tasks" />;
 }
 
+function UsagePage() {
+  useSEO({
+    title: "seo.usage.title",
+    description: "seo.usage.description",
+    path: "/usage",
+  });
+  return <AppContent key="usage" activeTab="usage" />;
+}
+
 function GitHubPage() {
   useSEO({
     title: "LambChat GitHub",
@@ -640,6 +649,19 @@ function App() {
                   toastMessage={t("errors.noPermission")}
                 >
                   <ScheduledTasksPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usage"
+              element={
+                <ProtectedRoute
+                  permissions={[Permission.USAGE_READ]}
+                  redirectTo="/chat"
+                  showToast
+                  toastMessage={t("errors.noPermission")}
+                >
+                  <UsagePage />
                 </ProtectedRoute>
               }
             />

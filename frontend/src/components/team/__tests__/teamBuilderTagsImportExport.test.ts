@@ -34,7 +34,10 @@ test("team editor persists member model overrides", () => {
   assert.match(builderSource, /modelApi\s*\.\s*listAvailable\(\)/);
   assert.match(builderSource, /useOptionalSettingsContext/);
   assert.match(wrapperSource, /record\.model_id/);
-  assert.match(wrapperSource, /model_id:\s*[\s\S]*record\.model_id[\s\S]*:\s*null/);
+  assert.match(
+    wrapperSource,
+    /model_id:\s*[\s\S]*record\.model_id[\s\S]*:\s*null/,
+  );
 });
 
 test("team editor persists member agent mode overrides", () => {
@@ -43,5 +46,8 @@ test("team editor persists member agent mode overrides", () => {
   assert.match(builderSource, /handleAgentChange/);
   assert.match(builderSource, /agentApi\s*\.\s*list\(\)/);
   assert.match(wrapperSource, /record\.agent_id/);
-  assert.match(wrapperSource, /agent_id:\s*[\s\S]*record\.agent_id[\s\S]*:\s*null/);
+  assert.match(
+    wrapperSource,
+    /agent_id:\s*[\s\S]*record\.agent_id[\s\S]*:\s*null/,
+  );
 });

@@ -9,6 +9,7 @@ import {
   ScheduledTaskPanelSkeleton,
   ChannelsGridSkeleton,
   AgentPanelSkeleton,
+  UsagePanelSkeleton,
 } from "../../skeletons";
 import { PanelLoadingState } from "../../common/PanelLoadingState";
 import type { TabType } from "./types";
@@ -75,6 +76,11 @@ const TeamBuilderPanel = lazy(() =>
     default: m.TeamBuilderWrapper,
   })),
 );
+const UsagePanel = lazy(() =>
+  import("../../panels/UsagePanel").then((m) => ({
+    default: m.UsagePanel,
+  })),
+);
 
 const panelMap: Record<
   string,
@@ -95,6 +101,7 @@ const panelMap: Record<
   notifications: NotificationPanel,
   memory: MemoryPanel,
   "scheduled-tasks": ScheduledTaskPanel,
+  usage: UsagePanel,
 };
 
 const skeletonMap: Partial<Record<TabType, ReactNode>> = {
@@ -107,6 +114,7 @@ const skeletonMap: Partial<Record<TabType, ReactNode>> = {
   "scheduled-tasks": <ScheduledTaskPanelSkeleton />,
   channels: <ChannelsGridSkeleton />,
   agents: <AgentPanelSkeleton />,
+  usage: <UsagePanelSkeleton />,
 };
 
 export function TabContent({ activeTab }: { activeTab: TabType }) {
