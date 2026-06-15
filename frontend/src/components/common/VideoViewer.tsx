@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X, Download } from "lucide-react";
+import { ViewerTopBar } from "./ViewerTopBar";
 import { ViewerTopBarButton } from "./ViewerTopBarButton";
 import { downloadUrl } from "./viewerDownload";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
@@ -54,7 +55,7 @@ export function VideoViewer({ src, isOpen, onClose, title }: VideoViewerProps) {
       className="fixed inset-0 z-[300] flex flex-col bg-black"
       onClick={handleBackgroundClick}
     >
-      <div className="safe-area-top flex items-center justify-between px-3 sm:px-6 py-3 bg-black/80 shrink-0">
+      <ViewerTopBar className="bg-black/80 shrink-0">
         <ViewerTopBarButton
           onClick={onClose}
           aria-label={t("common.close")}
@@ -73,7 +74,7 @@ export function VideoViewer({ src, isOpen, onClose, title }: VideoViewerProps) {
         >
           <span className="hidden sm:inline">{t("imageViewer.download")}</span>
         </ViewerTopBarButton>
-      </div>
+      </ViewerTopBar>
 
       <div className="safe-area-bottom flex-1 overflow-hidden flex items-center justify-center">
         <video

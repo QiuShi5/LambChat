@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { ViewerToolbar } from "./ViewerToolbar";
+import { ViewerTopBar } from "./ViewerTopBar";
 import { ViewerTopBarButton } from "./ViewerTopBarButton";
 import { downloadUrl } from "./viewerDownload";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
@@ -229,7 +230,7 @@ export function ImageViewer({
       onClick={handleBackgroundClick}
     >
       {/* Top bar */}
-      <div className="safe-area-top flex items-center justify-between px-3 sm:px-6 py-3 bg-black">
+      <ViewerTopBar>
         <ViewerTopBarButton
           onClick={onClose}
           aria-label={t("common.close")}
@@ -250,7 +251,7 @@ export function ImageViewer({
         >
           <span className="hidden sm:inline">{t("imageViewer.download")}</span>
         </ViewerTopBarButton>
-      </div>
+      </ViewerTopBar>
 
       {/* Main area */}
       <div ref={containerRef} className="flex-1 overflow-hidden relative">
@@ -320,7 +321,6 @@ export function ImageViewer({
           scale={scale}
           minScale={MIN_SCALE}
           maxScale={MAX_SCALE}
-          className="safe-area-bottom"
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onRotateLeft={rotateLeft}

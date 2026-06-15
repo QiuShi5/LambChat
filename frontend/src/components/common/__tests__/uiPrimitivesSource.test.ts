@@ -126,6 +126,7 @@ test("viewer toolbar uses a fixed-size reusable icon button for overlay controls
 
 test("viewer top bar buttons keep overlay actions fixed and non-wrapping", () => {
   const commonIndex = readSource("../index.ts");
+  const topBar = readSource("../ViewerTopBar.tsx");
   const source = readSource("../ViewerTopBarButton.tsx");
   const imageViewer = readSource("../ImageViewer.tsx");
   const videoViewer = readSource("../VideoViewer.tsx");
@@ -134,6 +135,9 @@ test("viewer top bar buttons keep overlay actions fixed and non-wrapping", () =>
     "../../documents/previews/ExcalidrawPreview.tsx",
   );
 
+  assertExports(commonIndex, "ViewerTopBar");
+  assert.match(topBar, /safe-area-top bg-black/);
+  assert.match(topBar, /flex h-16 items-center justify-between px-3 sm:px-6/);
   assertExports(commonIndex, "ViewerTopBarButton");
   assert.match(source, /flex shrink-0/);
   assert.match(source, /whitespace-nowrap/);
@@ -143,6 +147,10 @@ test("viewer top bar buttons keep overlay actions fixed and non-wrapping", () =>
 
   assert.match(imageViewer, /import \{ ViewerTopBarButton \}/);
   assert.match(videoViewer, /import \{ ViewerTopBarButton \}/);
+  assert.match(imageViewer, /import \{ ViewerTopBar \}/);
+  assert.match(videoViewer, /import \{ ViewerTopBar \}/);
+  assert.match(mermaidViewer, /import \{[\s\S]*ViewerTopBar/);
+  assert.match(excalidrawViewer, /import \{[\s\S]*ViewerTopBar/);
   assert.match(imageViewer, /<ViewerTopBarButton[\s\S]*common\.close/);
   assert.match(videoViewer, /<ViewerTopBarButton[\s\S]*common\.close/);
   assert.match(mermaidViewer, /import \{[\s\S]*ViewerTopBarButton/);

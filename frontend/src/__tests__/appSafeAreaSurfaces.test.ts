@@ -79,6 +79,7 @@ test("sidebars, fullscreen editors, and media viewers use vertical safe-area spa
   );
   const imageViewer = readSource("../components/common/ImageViewer.tsx");
   const videoViewer = readSource("../components/common/VideoViewer.tsx");
+  const viewerTopBar = readSource("../components/common/ViewerTopBar.tsx");
   const excalidrawThumbnail = readSource(
     "../components/common/ExcalidrawThumbnail.tsx",
   );
@@ -124,19 +125,20 @@ test("sidebars, fullscreen editors, and media viewers use vertical safe-area spa
     /top:\s*"calc\(1rem \+ var\(--app-safe-area-top-active,/,
   );
 
-  assert.match(imageViewer, /className="safe-area-top\b/);
+  assert.match(viewerTopBar, /className=\{clsx\("safe-area-top\b/);
+  assert.match(imageViewer, /<ViewerTopBar[\s>]/);
   assert.match(imageViewer, /className="safe-area-bottom\b/);
-  assert.match(videoViewer, /className="safe-area-top\b/);
+  assert.match(videoViewer, /<ViewerTopBar[\s>]/);
   assert.match(videoViewer, /className="safe-area-bottom\b/);
   assert.match(excalidrawThumbnail, /safe-area-viewport-padding/);
   assert.match(toolResultPanel, /safe-area-viewport-padding fixed inset-0/);
-  assert.match(excalidrawPreview, /className="safe-area-top\b/);
+  assert.match(excalidrawPreview, /<ViewerTopBar[\s>]/);
   assert.match(excalidrawPreview, /className="safe-area-bottom\b/);
   assert.match(
     excalidrawDirectViewer,
     /safe-area-viewport-padding fixed inset-0/,
   );
-  assert.match(mermaidViewer, /className="safe-area-top\b/);
+  assert.match(mermaidViewer, /<ViewerTopBar[\s>]/);
   assert.match(mermaidViewer, /className="safe-area-bottom\b/);
 });
 

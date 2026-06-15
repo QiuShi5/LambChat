@@ -7,6 +7,7 @@ import {
   stripResponsiveWidthAttribute,
 } from "./mermaidSvgUtils";
 import { ViewerDropdownMenuItem } from "../../common";
+import { ViewerTopBar } from "../../common/ViewerTopBar";
 import { ViewerToolbar } from "../../common/ViewerToolbar";
 import { ViewerTopBarButton } from "../../common/ViewerTopBarButton";
 import { downloadBlob } from "../../common/viewerDownload";
@@ -698,7 +699,7 @@ function MermaidViewer({
       className="fixed inset-0 z-[300] flex flex-col bg-black/90"
     >
       {/* Top bar - close + code actions */}
-      <div className="safe-area-top flex items-center justify-between px-3 sm:px-6 py-3 bg-black">
+      <ViewerTopBar>
         <ViewerTopBarButton
           onClick={onClose}
           aria-label={t("common.close")}
@@ -772,7 +773,7 @@ function MermaidViewer({
             </span>
           </ViewerTopBarButton>
         </div>
-      </div>
+      </ViewerTopBar>
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden relative">
@@ -818,7 +819,6 @@ function MermaidViewer({
             scale={scale}
             minScale={MIN_SCALE}
             maxScale={MAX_SCALE}
-            className="safe-area-bottom"
             onZoomIn={() =>
               setScale((prev) => Math.min(MAX_SCALE, prev + SCALE_STEP))
             }

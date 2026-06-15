@@ -18,6 +18,7 @@ export { AboutDialog } from "./AboutDialog";
 
 export { ImageViewer } from "./ImageViewer";
 export { VideoViewer } from "./VideoViewer";
+export { ViewerTopBar } from "./ViewerTopBar";
 export { ViewerTopBarButton } from "./ViewerTopBarButton";
 export type { ViewerTopBarButtonProps } from "./ViewerTopBarButton";
 export { ViewerDropdownMenuItem } from "./ViewerDropdownMenuItem";

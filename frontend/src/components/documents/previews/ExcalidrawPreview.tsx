@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { LoadingSpinner } from "../../common/LoadingSpinner";
 import { ImageWithSkeleton } from "../../chat/ChatMessage/ImageWithSkeleton";
 import { ViewerDropdownMenuItem } from "../../common";
+import { ViewerTopBar } from "../../common/ViewerTopBar";
 import { ViewerToolbar } from "../../common/ViewerToolbar";
 import { ViewerTopBarButton } from "../../common/ViewerTopBarButton";
 import { downloadBlob } from "../../common/viewerDownload";
@@ -413,7 +414,7 @@ export function ExcalidrawFullscreenViewer({
       onClick={handleBackgroundClick}
     >
       {/* Top bar — matches ImageViewer pattern */}
-      <div className="safe-area-top flex items-center justify-between px-3 sm:px-6 py-3 bg-black">
+      <ViewerTopBar>
         <ViewerTopBarButton
           onClick={onClose}
           aria-label={t("common.close")}
@@ -458,7 +459,7 @@ export function ExcalidrawFullscreenViewer({
             </div>
           )}
         </div>
-      </div>
+      </ViewerTopBar>
 
       {/* Main area */}
       <div ref={containerRef} className="flex-1 overflow-hidden relative">
@@ -494,7 +495,6 @@ export function ExcalidrawFullscreenViewer({
           scale={scale}
           minScale={MIN_SCALE}
           maxScale={MAX_SCALE}
-          className="safe-area-bottom"
           onZoomIn={() =>
             setScale((prev) => Math.min(MAX_SCALE, prev + SCALE_STEP))
           }
