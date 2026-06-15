@@ -159,10 +159,17 @@ def test_team_router_prompt_includes_structured_delegation_helper():
     assert "## Delegation Helper" in prompt
     assert "Task type: TEXT_ONLY | FILE_ARTIFACT | RESEARCH | CODE_CHANGE | MULTI_STAGE" in prompt
     assert "Delivery mode: RETURN_TEXT | CREATE_FILES | MODIFY_CODE | RESEARCH_SUMMARY" in prompt
+    assert "Reference policy: USER_PROVIDED_ONLY | READ_ONLY_ALLOWED | LOOKUP_REQUIRED" in prompt
+    assert "Tool policy: NO_TOOLS | READ_ONLY | ARTIFACT_ALLOWED | CODE_ALLOWED" in prompt
+    assert "Max tool calls: 0 | 3 | as needed" in prompt
+    assert "Artifact intent: false | true" in prompt
     assert "Fixed inputs:" in prompt
     assert "Output format:" in prompt
     assert "delegate directly to the best matching member" in prompt
-    assert "do not read files, create folders, write files, export packages" in prompt
+    assert "do not read files, list directories, search templates" in prompt
+    assert "Reference policy: READ_ONLY_ALLOWED and Tool policy: READ_ONLY" in prompt
+    assert "If the current user asks to receive files, archives, zip packages" in prompt
+    assert "deliver them with the appropriate reveal/transfer tool" in prompt
     assert "do not run stored multi-stage team pipelines" in prompt
     assert "The current user request is authoritative" in prompt
     assert "Do not send vague references such as \"based on the upstream brief\"" in prompt

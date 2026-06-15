@@ -7,6 +7,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import shlex
 import uuid
 from collections.abc import Awaitable, Callable
@@ -125,6 +126,30 @@ _ARTIFACT_TASK_MARKERS = (
     "task type: file_artifact",
     "delivery mode: create_files",
     "delivery mode: modify_code",
+)
+_TASK_ENVELOPE_NUDGE = "Task delegation policy: structured task brief required"
+_EXECUTION_POLICY_NUDGE = "Task execution policy: tool call is outside the assigned policy"
+_TASK_ENVELOPE_REQUIRED_FIELDS = (
+    "task type",
+    "delivery mode",
+    "tool policy",
+)
+_TASK_POLICY_FIELD_PATTERN = re.compile(r"^\s*([A-Za-z][A-Za-z ]+):\s*(.*?)\s*$", re.MULTILINE)
+_READ_ONLY_TOOLS = frozenset(("ls", "glob", "grep", "read_file", "tool_search"))
+_ARTIFACT_AND_EXEC_TOOLS = frozenset(
+    (
+        "write_file",
+        "edit_file",
+        "execute",
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+        "upload_url_to_sandbox",
+    )
+)
+_POLICY_CONTROLLED_TOOLS = frozenset(
+    (*_READ_ONLY_TOOLS, *_ARTIFACT_AND_EXEC_TOOLS, "write_todos")
 )
 
 
@@ -455,12 +480,124 @@ class TeamRouterDelegationGuardMiddleware(AgentMiddleware):
         )
 
 
-class TextOnlyTaskGuardMiddleware(AgentMiddleware):
-    """Prevent text-delivery subagent tasks from turning into file projects.
+def _iter_current_turn_messages(state: Any) -> list[Any]:
+    if isinstance(state, dict):
+        messages = state.get("messages", [])
+    else:
+        messages = getattr(state, "messages", [])
+    messages = list(messages or [])
+    for index in range(len(messages) - 1, -1, -1):
+        if getattr(messages[index], "type", None) == "human":
+            return messages[index:]
+    return messages
 
-    This is a soft guard: the first artifact-producing tool call is replaced
-    with a reminder. If the model intentionally retries, the call is allowed so
-    explicit file/export tasks and necessary fallbacks are not blocked.
+
+def _joined_message_text(messages: list[Any]) -> str:
+    parts = []
+    for message in messages:
+        content = getattr(message, "content", "")
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    text = block.get("text")
+                    if isinstance(text, str):
+                        parts.append(text)
+    return "\n".join(parts)
+
+
+def _messages_contain(messages: list[Any], needle: str) -> bool:
+    for message in messages:
+        content = getattr(message, "content", "")
+        if isinstance(content, str) and needle in content:
+            return True
+    return False
+
+
+def _extract_task_policy(text: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for match in _TASK_POLICY_FIELD_PATTERN.finditer(text or ""):
+        key = " ".join(match.group(1).lower().split())
+        fields[key] = match.group(2).strip()
+    return fields
+
+
+def _first_policy_token(value: str | None) -> str:
+    if not value:
+        return ""
+    return re.split(r"\s+|[|,/;]", value.strip(), maxsplit=1)[0].strip().upper()
+
+
+def _looks_like_text_only_assignment(text: str, fields: dict[str, str]) -> bool:
+    lowered = text.lower()
+    if any(marker in lowered for marker in _ARTIFACT_TASK_MARKERS):
+        return False
+    if any(hint.lower() in lowered for hint in _ARTIFACT_REQUEST_HINTS):
+        return False
+    task_type = _first_policy_token(fields.get("task type"))
+    delivery_mode = _first_policy_token(fields.get("delivery mode"))
+    if task_type == "TEXT_ONLY" or delivery_mode == "RETURN_TEXT":
+        return True
+    return any(hint.lower() in lowered for hint in _TEXT_ONLY_REQUEST_HINTS)
+
+
+class TaskDelegationEnvelopeMiddleware(AgentMiddleware):
+    """Ask team routers to send structured policy envelopes to subagents."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def awrap_tool_call(
+        self,
+        request: Any,
+        handler: Callable[[Any], Awaitable[Any]],
+    ) -> Any:
+        tool_name = request.tool_call.get("name", "")
+        if tool_name != _TEAM_ROUTER_TASK_TOOL:
+            return await handler(request)
+
+        messages = _iter_current_turn_messages(request.state)
+        if _messages_contain(messages, _TASK_ENVELOPE_NUDGE):
+            return await handler(request)
+
+        description = self._task_description(request.tool_call.get("args", {}))
+        fields = _extract_task_policy(description)
+        missing = [field for field in _TASK_ENVELOPE_REQUIRED_FIELDS if field not in fields]
+        if not missing:
+            return await handler(request)
+
+        return ToolMessage(
+            content=(
+                f"{_TASK_ENVELOPE_NUDGE}. Rewrite the `task` call with a compact "
+                "task execution envelope before the objective. Required fields: "
+                "Task type, Delivery mode, Reference policy, Tool policy, "
+                "Max tool calls, Artifact intent, Target member, Context source, "
+                "Allowed tools, Forbidden actions, Objective, Fixed inputs, "
+                "and Output format. For complete text briefs use Tool policy: NO_TOOLS "
+                "and Reference policy: USER_PROVIDED_ONLY."
+            ),
+            tool_call_id=request.tool_call.get("id", ""),
+            name=tool_name,
+        )
+
+    @staticmethod
+    def _task_description(args: Any) -> str:
+        if not isinstance(args, dict):
+            return str(args or "")
+        for key in ("description", "prompt", "task", "input", "instructions"):
+            value = args.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+        return _joined_message_text([])
+
+
+class SubagentExecutionPolicyMiddleware(AgentMiddleware):
+    """Enforce structured task execution policy for team subagents.
+
+    The policy is intentionally soft: the first out-of-policy tool call returns
+    a corrective ToolMessage, and an intentional retry is allowed. This keeps
+    fallback behavior available while preventing accidental file/package flows.
     """
 
     def __init__(self) -> None:
@@ -472,76 +609,102 @@ class TextOnlyTaskGuardMiddleware(AgentMiddleware):
         handler: Callable[[Any], Awaitable[Any]],
     ) -> Any:
         tool_name = request.tool_call.get("name", "")
-        if tool_name not in _TEXT_ONLY_ARTIFACT_TOOLS:
+        if tool_name not in _POLICY_CONTROLLED_TOOLS:
             return await handler(request)
 
-        messages = self._iter_current_turn_messages(request.state)
-        if not self._looks_like_text_only_task(messages):
+        messages = _iter_current_turn_messages(request.state)
+        if _messages_contain(messages, _EXECUTION_POLICY_NUDGE):
             return await handler(request)
 
-        if self._messages_contain(messages, _TEXT_ONLY_TASK_NUDGE):
+        text = _joined_message_text(messages)
+        fields = _extract_task_policy(text)
+        decision = self._policy_decision(tool_name, text, fields)
+        if decision is None:
             return await handler(request)
 
         return ToolMessage(
-            content=(
-                f"{_TEXT_ONLY_TASK_NUDGE}. The current assignment appears to ask for "
-                "content to be returned in the response, not for files, folders, scripts, "
-                "exports, or reveal links. Answer directly in text. Retry this tool call "
-                "only if the user explicitly requested saving/exporting/packaging files "
-                "or if a tool is strictly necessary to complete the assignment."
-            ),
+            content=decision,
             tool_call_id=request.tool_call.get("id", ""),
             name=tool_name,
         )
 
     @staticmethod
+    def _policy_decision(tool_name: str, text: str, fields: dict[str, str]) -> str | None:
+        task_type = _first_policy_token(fields.get("task type"))
+        delivery_mode = _first_policy_token(fields.get("delivery mode"))
+        reference_policy = _first_policy_token(fields.get("reference policy"))
+        tool_policy = _first_policy_token(fields.get("tool policy"))
+        artifact_intent = (fields.get("artifact intent") or "").strip().lower()
+
+        artifact_requested = (
+            task_type in {"FILE_ARTIFACT", "CODE_CHANGE"}
+            or delivery_mode in {"CREATE_FILES", "MODIFY_CODE"}
+            or tool_policy in {"ARTIFACT_ALLOWED", "CODE_ALLOWED"}
+            or artifact_intent in {"true", "yes", "1"}
+        )
+        if artifact_requested:
+            return None
+
+        text_only = _looks_like_text_only_assignment(text, fields)
+        if not text_only:
+            return None
+
+        if tool_policy == "NO_TOOLS" or reference_policy == "USER_PROVIDED_ONLY":
+            if tool_name in _POLICY_CONTROLLED_TOOLS:
+                return SubagentExecutionPolicyMiddleware._nudge(
+                    "This assignment is TEXT_ONLY / RETURN_TEXT with user-provided context. "
+                    "Do not read files, list directories, search templates, create folders, "
+                    "write files, run scripts, export packages, reveal artifacts, or infer "
+                    "missing upstream files. Return the requested content directly in text."
+                )
+
+        if tool_policy == "READ_ONLY" or reference_policy in {"READ_ONLY_ALLOWED", "LOOKUP_REQUIRED"}:
+            if tool_name in _ARTIFACT_AND_EXEC_TOOLS:
+                return SubagentExecutionPolicyMiddleware._nudge(
+                    "This assignment allows reference lookup only. Do not create folders, "
+                    "write files, run scripts, export packages, reveal artifacts, or transfer "
+                    "files unless the user explicitly changes the delivery mode."
+                )
+
+        if tool_name in _TEXT_ONLY_ARTIFACT_TOOLS:
+            return SubagentExecutionPolicyMiddleware._nudge(
+                f"{_TEXT_ONLY_TASK_NUDGE}. The current assignment appears to ask for "
+                "content to be returned in text, not for files, folders, scripts, "
+                "exports, or reveal links. Answer directly in text."
+            )
+        return None
+
+    @staticmethod
+    def _nudge(detail: str) -> str:
+        return (
+            f"{_EXECUTION_POLICY_NUDGE}. {detail} Retry this tool call only if the "
+            "current assignment explicitly permits it or the tool is strictly necessary."
+        )
+
+
+class TextOnlyTaskGuardMiddleware(SubagentExecutionPolicyMiddleware):
+    """Backward-compatible alias for the subagent execution policy guard.
+
+    Existing call sites use this name; the implementation now enforces the
+    broader structured task execution policy.
+    """
+
+    @staticmethod
     def _looks_like_text_only_task(messages: list[Any]) -> bool:
-        text = TextOnlyTaskGuardMiddleware._joined_message_text(messages)
-        if not text:
-            return False
-        lowered = text.lower()
-        if any(marker in lowered for marker in _ARTIFACT_TASK_MARKERS):
-            return False
-        if any(marker in lowered for marker in _TEXT_ONLY_TASK_MARKERS):
-            return True
-        if any(hint.lower() in lowered for hint in _ARTIFACT_REQUEST_HINTS):
-            return False
-        return any(hint.lower() in lowered for hint in _TEXT_ONLY_REQUEST_HINTS)
+        text = _joined_message_text(messages)
+        return _looks_like_text_only_assignment(text, _extract_task_policy(text))
 
     @staticmethod
     def _joined_message_text(messages: list[Any]) -> str:
-        parts = []
-        for message in messages:
-            content = getattr(message, "content", "")
-            if isinstance(content, str):
-                parts.append(content)
-            elif isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict):
-                        text = block.get("text")
-                        if isinstance(text, str):
-                            parts.append(text)
-        return "\n".join(parts)
+        return _joined_message_text(messages)
 
     @staticmethod
     def _messages_contain(messages: list[Any], needle: str) -> bool:
-        for message in messages:
-            content = getattr(message, "content", "")
-            if isinstance(content, str) and needle in content:
-                return True
-        return False
+        return _messages_contain(messages, needle)
 
     @staticmethod
     def _iter_current_turn_messages(state: Any) -> list[Any]:
-        if isinstance(state, dict):
-            messages = state.get("messages", [])
-        else:
-            messages = getattr(state, "messages", [])
-        messages = list(messages or [])
-        for index in range(len(messages) - 1, -1, -1):
-            if getattr(messages[index], "type", None) == "human":
-                return messages[index:]
-        return messages
+        return _iter_current_turn_messages(state)
 
 
 # ---------------------------------------------------------------------------
