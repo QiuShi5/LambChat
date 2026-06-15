@@ -74,6 +74,8 @@ test("toTeamExportData keeps fields needed for importing teams later", () => {
         },
       ],
       team_instructions: "Coordinate analysis.",
+      router_tool_mode: "custom",
+      router_allowed_tools: ["image_generate"],
     },
   ]);
 
@@ -98,6 +100,8 @@ test("toTeamExportData keeps fields needed for importing teams later", () => {
       ],
       default_member_id: null,
       team_instructions: "Coordinate analysis.",
+      router_tool_mode: "custom",
+      router_allowed_tools: ["image_generate"],
       starter_prompts: [],
     },
   ]);

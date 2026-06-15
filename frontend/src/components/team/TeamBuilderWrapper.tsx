@@ -30,7 +30,12 @@ import {
   type TeamBuilderHandle,
   type TeamBuilderFooterState,
 } from "./TeamBuilder";
-import type { Team, TeamCreateRequest, TeamMember } from "../../types/team";
+import type {
+  Team,
+  TeamCreateRequest,
+  TeamMember,
+  TeamRouterToolMode,
+} from "../../types/team";
 import type { LocalizedText, PersonaStarterPrompt } from "../../types";
 import { EditorSidebar } from "../common/EditorSidebar";
 import { PanelHeader } from "../common/PanelHeader";
@@ -83,6 +88,27 @@ function normalizeImportedStarterPrompts(
   return prompts;
 }
 
+function normalizeImportedRouterToolMode(
+  value: unknown,
+): TeamRouterToolMode {
+  return value === "custom" || value === "all" || value === "delivery_only"
+    ? value
+    : "delivery_only";
+}
+
+function normalizeImportedRouterAllowedTools(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const tools: string[] = [];
+  for (const raw of value) {
+    const toolName = String(raw).trim();
+    if (!toolName || seen.has(toolName)) continue;
+    seen.add(toolName);
+    tools.push(toolName);
+  }
+  return tools;
+}
+
 function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
@@ -98,6 +124,10 @@ function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
       typeof item.team_instructions === "string"
         ? item.team_instructions
         : undefined,
+    router_tool_mode: normalizeImportedRouterToolMode(item.router_tool_mode),
+    router_allowed_tools: normalizeImportedRouterAllowedTools(
+      item.router_allowed_tools,
+    ),
     starter_prompts: normalizeImportedStarterPrompts(item.starter_prompts),
     default_member_id:
       typeof item.default_member_id === "string"

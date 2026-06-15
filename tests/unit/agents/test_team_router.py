@@ -1,12 +1,13 @@
 import pytest
 
 from src.agents.team_agent.prompt import (
+    build_router_tool_policy_section,
     build_team_member_subagent_type,
     build_team_members_description,
     build_team_router_system_prompt,
     build_team_subagent_display_names,
 )
-from src.kernel.schemas.team import TeamMemberResponse, TeamResponse
+from src.kernel.schemas.team import TeamMemberResponse, TeamResponse, TeamRouterToolMode
 
 
 def test_build_team_members_description():
@@ -134,7 +135,10 @@ def test_team_router_prompt_requires_subagent_delegation_for_work():
     assert "call the `task` tool for at least one team member" in prompt
     assert "Team members are preferred executors" in prompt
     assert "The team router may perform work directly only for coordination" in prompt
-    assert "artifact delivery tools (`reveal_file`, `reveal_project`, `transfer_file`, `transfer_path`)" in prompt
+    assert (
+        "artifact delivery tools (`reveal_file`, `reveal_project`, `transfer_file`, `transfer_path`)"
+        in prompt
+    )
     assert "Do not use external upload services for artifact delivery" in prompt
     assert "Image generation is executable artifact work" in prompt
 
@@ -175,7 +179,29 @@ def test_team_router_prompt_includes_structured_delegation_helper():
     assert "deliver them with the appropriate reveal/transfer tool" in prompt
     assert "do not run stored multi-stage team pipelines" in prompt
     assert "The current user request is authoritative" in prompt
-    assert "Do not send vague references such as \"based on the upstream brief\"" in prompt
+    assert 'Do not send vague references such as "based on the upstream brief"' in prompt
+
+
+def test_router_tool_policy_section_describes_custom_allowed_tools():
+    section = build_router_tool_policy_section(
+        TeamRouterToolMode.CUSTOM,
+        router_allowed_tools=["image_generate", "write_file"],
+    )
+
+    assert "`reveal_file`" in section
+    assert "`image_generate`" in section
+    assert "Custom router tools are explicitly allowed" in section
+    assert "prefer delegation" in section
+
+
+def test_router_tool_policy_section_defaults_to_delivery_tools():
+    section = build_router_tool_policy_section(TeamRouterToolMode.DELIVERY_ONLY)
+
+    assert "`reveal_file`" in section
+    assert "`transfer_path`" in section
+    allowed_line = next(line for line in section.splitlines() if "may directly use" in line)
+    assert "`image_generate`" not in allowed_line
+    assert "image generation must be delegated" in section
 
 
 def test_team_router_prompt_includes_tool_progress_guidance():

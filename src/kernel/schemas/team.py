@@ -12,10 +12,41 @@ from src.kernel.schemas.persona_preset import PersonaStarterPrompt
 TEAM_TAGS_MAX = 20
 TEAM_MEMBERS_MAX = 20
 TEAM_STARTER_PROMPTS_MAX = 20
+TEAM_ROUTER_ALLOWED_TOOLS_MAX = 50
+
+TEAM_ROUTER_DELIVERY_TOOL_NAMES = frozenset(
+    (
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+    )
+)
 
 
 class TeamVisibility(str, Enum):
     PRIVATE = "private"
+
+
+class TeamRouterToolMode(str, Enum):
+    DELIVERY_ONLY = "delivery_only"
+    CUSTOM = "custom"
+    ALL = "all"
+
+
+def normalize_router_allowed_tools(values: list[str] | None) -> list[str]:
+    """Return a bounded, stable list of router tool names."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values or []:
+        item = value.strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+        if len(result) >= TEAM_ROUTER_ALLOWED_TOOLS_MAX:
+            break
+    return result
 
 
 class TeamMemberCreate(BaseModel):
@@ -72,6 +103,11 @@ class TeamCreate(BaseModel):
     members: list[TeamMemberCreate] = Field(default_factory=list, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: str = Field(default="", max_length=4000)
+    router_tool_mode: TeamRouterToolMode = TeamRouterToolMode.DELIVERY_ONLY
+    router_allowed_tools: list[str] = Field(
+        default_factory=list,
+        max_length=TEAM_ROUTER_ALLOWED_TOOLS_MAX,
+    )
     starter_prompts: list[PersonaStarterPrompt] = Field(
         default_factory=list,
         max_length=TEAM_STARTER_PROMPTS_MAX,
@@ -90,6 +126,11 @@ class TeamCreate(BaseModel):
             result.append(item)
         return result
 
+    @field_validator("router_allowed_tools")
+    @classmethod
+    def _dedupe_router_allowed_tools(cls, values: list[str]) -> list[str]:
+        return normalize_router_allowed_tools(values)
+
 
 class TeamUpdate(BaseModel):
     """Update team request."""
@@ -101,6 +142,11 @@ class TeamUpdate(BaseModel):
     members: Optional[list[TeamMemberCreate]] = Field(None, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: Optional[str] = Field(None, max_length=4000)
+    router_tool_mode: Optional[TeamRouterToolMode] = None
+    router_allowed_tools: Optional[list[str]] = Field(
+        None,
+        max_length=TEAM_ROUTER_ALLOWED_TOOLS_MAX,
+    )
     starter_prompts: Optional[list[PersonaStarterPrompt]] = Field(
         None,
         max_length=TEAM_STARTER_PROMPTS_MAX,
@@ -112,6 +158,13 @@ class TeamUpdate(BaseModel):
         if values is None:
             return None
         return TeamCreate._dedupe_tags(values)
+
+    @field_validator("router_allowed_tools")
+    @classmethod
+    def _dedupe_optional_router_allowed_tools(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        return normalize_router_allowed_tools(values)
 
 
 class TeamPreferenceUpdate(BaseModel):
@@ -135,6 +188,8 @@ class TeamResponse(BaseModel):
     members: list[TeamMemberResponse] = Field(default_factory=list, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: str = ""
+    router_tool_mode: TeamRouterToolMode = TeamRouterToolMode.DELIVERY_ONLY
+    router_allowed_tools: list[str] = Field(default_factory=list)
     starter_prompts: list[PersonaStarterPrompt] = Field(
         default_factory=list,
         max_length=TEAM_STARTER_PROMPTS_MAX,

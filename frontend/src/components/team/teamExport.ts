@@ -37,6 +37,8 @@ export function toTeamExportData(teams: Team[]) {
     members: team.members,
     default_member_id: team.default_member_id ?? null,
     team_instructions: team.team_instructions,
+    router_tool_mode: team.router_tool_mode ?? "delivery_only",
+    router_allowed_tools: team.router_allowed_tools ?? [],
     starter_prompts: team.starter_prompts ?? [],
   }));
 }

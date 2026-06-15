@@ -178,6 +178,8 @@ class TeamManager:
             members=members_data,
             default_member_id=team_data.default_member_id,
             team_instructions=team_data.team_instructions,
+            router_tool_mode=team_data.router_tool_mode.value,
+            router_allowed_tools=team_data.router_allowed_tools,
             starter_prompts=[
                 prompt.model_dump(mode="json") for prompt in team_data.starter_prompts
             ],
