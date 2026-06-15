@@ -145,6 +145,7 @@ _ARTIFACT_AND_EXEC_TOOLS = frozenset(
         "reveal_project",
         "transfer_file",
         "transfer_path",
+        "image_generate",
         "upload_url_to_sandbox",
     )
 )

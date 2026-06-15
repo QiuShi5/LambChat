@@ -83,6 +83,26 @@ from src.kernel.schemas.model import ModelConfig
 
 logger = get_logger(__name__)
 
+_TEAM_ROUTER_DELIVERY_TOOL_NAMES = frozenset(
+    (
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+    )
+)
+
+
+def _filter_team_router_delivery_tools(tools: list[Any] | None) -> list[Any]:
+    """Expose only artifact delivery tools to explicit team routers."""
+    if not tools:
+        return []
+    return [
+        tool
+        for tool in tools
+        if getattr(tool, "name", str(tool)) in _TEAM_ROUTER_DELIVERY_TOOL_NAMES
+    ]
+
 
 # ============================================================================
 # 节点函数
@@ -483,7 +503,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         filtered_tools.append(search_tool)
 
     subagent_tools = filtered_tools
-    router_tools = [] if team else filtered_tools
+    router_tools = _filter_team_router_delivery_tools(filtered_tools) if team else filtered_tools
 
     # 创建内层 graph (deep agent)
     checkpointer_start = time.time()
