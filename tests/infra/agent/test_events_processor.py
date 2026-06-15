@@ -262,6 +262,61 @@ async def test_reasoning_content_chunk_emits_thinking_event() -> None:
         }
     )
 
+    assert presenter.emitted == []
+
+    await processor.flush()
+
+    assert presenter.emitted == [
+        {
+            "event": "thinking",
+            "data": {
+                "content": "step by step",
+                "thinking_id": "chunk-r",
+                "depth": 0,
+                "agent_id": None,
+            },
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_reasoning_chunks_are_buffered_until_flush() -> None:
+    presenter = FakePresenter()
+    processor = AgentEventProcessor(presenter)
+
+    await processor.process_event(
+        {
+            "event": "on_chat_model_stream",
+            "name": "chat_model",
+            "data": {
+                "chunk": SimpleNamespace(
+                    content="",
+                    id="chunk-r",
+                    additional_kwargs={"reasoning_content": "step "},
+                )
+            },
+            "metadata": {},
+        }
+    )
+    await processor.process_event(
+        {
+            "event": "on_chat_model_stream",
+            "name": "chat_model",
+            "data": {
+                "chunk": SimpleNamespace(
+                    content="",
+                    id="chunk-r",
+                    additional_kwargs={"reasoning_content": "by step"},
+                )
+            },
+            "metadata": {},
+        }
+    )
+
+    assert presenter.emitted == []
+
+    await processor.flush()
+
     assert presenter.emitted == [
         {
             "event": "thinking",

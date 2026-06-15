@@ -132,7 +132,40 @@ def test_team_router_prompt_requires_subagent_delegation_for_work():
     )
 
     assert "call the `task` tool for at least one team member" in prompt
-    assert "Do not complete role-specific work yourself" in prompt
+    assert "Team members are preferred executors" in prompt
+    assert "The team router may perform work directly only for coordination" in prompt
+
+
+def test_team_router_prompt_includes_structured_delegation_helper():
+    team = TeamResponse(
+        id="t1",
+        owner_user_id="u1",
+        name="Prompt Team",
+        members=[
+            TeamMemberResponse(
+                member_id="m1",
+                persona_preset_id="p1",
+                role_name="Prompt Engineer",
+                enabled=True,
+            ),
+        ],
+    )
+
+    prompt = build_team_router_system_prompt(
+        team,
+        default_role="team-m1-prompt-engineer",
+    )
+
+    assert "## Delegation Helper" in prompt
+    assert "Task type: TEXT_ONLY | FILE_ARTIFACT | RESEARCH | CODE_CHANGE | MULTI_STAGE" in prompt
+    assert "Delivery mode: RETURN_TEXT | CREATE_FILES | MODIFY_CODE | RESEARCH_SUMMARY" in prompt
+    assert "Fixed inputs:" in prompt
+    assert "Output format:" in prompt
+    assert "delegate directly to the best matching member" in prompt
+    assert "do not read files, create folders, write files, export packages" in prompt
+    assert "do not run stored multi-stage team pipelines" in prompt
+    assert "The current user request is authoritative" in prompt
+    assert "Do not send vague references such as \"based on the upstream brief\"" in prompt
 
 
 def test_team_router_prompt_includes_tool_progress_guidance():

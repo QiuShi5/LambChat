@@ -86,6 +86,13 @@ When a task needs tools, keep the user aware of what you are doing without addin
 - After tools return, answer from the actual results and mention the key evidence when it matters.
 """
 
+TEXT_DELIVERY_BOUNDARY_GUIDE = """
+### Text Delivery Boundary
+When the assignment asks you to output, list, write, or generate content in the response, treat it as a text-only delivery by default. Return the requested content directly in your final response.
+
+Do not create folders, write files, export projects, run scripts, or reveal artifacts unless the assignment explicitly asks to save/export/package files, create a素材包/project, or provide downloadable/revealed artifacts. Existing examples or reference packages are context to learn format from, not permission to create a new package.
+"""
+
 TODO_LIST_GUIDE = """
 ### Todo List State
 If you use a todo list, keep it synchronized with reality. Complete what can be completed, update finished items before ending the response, and do not leave an item in progress because you forgot to update it.
@@ -101,6 +108,7 @@ WORKFLOW_SECTION = (
     + SAFETY_AND_VERIFICATION_GUIDE
     + TOOL_DISCOVERY_GUIDE
     + TOOL_PROGRESS_GUIDE
+    + TEXT_DELIVERY_BOUNDARY_GUIDE
     + TODO_LIST_GUIDE
     + "\n"
 )
@@ -111,6 +119,7 @@ MAIN_AGENT_PROMPT_SECTIONS: tuple[str, ...] = (
     SAFETY_AND_VERIFICATION_GUIDE,
     TOOL_DISCOVERY_GUIDE,
     TOOL_PROGRESS_GUIDE,
+    TEXT_DELIVERY_BOUNDARY_GUIDE,
     TODO_LIST_GUIDE,
 )
 
@@ -163,6 +172,7 @@ DEFAULT_SUBAGENT_PROMPT = (
     + "\n"
     + TOOL_DISCOVERY_GUIDE
     + TOOL_PROGRESS_GUIDE
+    + TEXT_DELIVERY_BOUNDARY_GUIDE
     + """
 
 Stay within the assigned objective. Do not make final promises to the user; return evidence and handoff notes for the main agent to synthesize. Run relevant verification when you change files or make claims that can be checked.
@@ -201,6 +211,7 @@ Your activity (tool calls, results, reasoning) is automatically recorded. Comple
     + "\n"
     + TOOL_DISCOVERY_GUIDE
     + TOOL_PROGRESS_GUIDE
+    + TEXT_DELIVERY_BOUNDARY_GUIDE
     + """
 
 Work like a teammate handing off context to the main agent:

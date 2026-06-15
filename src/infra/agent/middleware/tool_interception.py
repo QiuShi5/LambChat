@@ -46,6 +46,87 @@ _BINARY_BLOCK_UPLOAD_MAX_BLOCKS = 4
 _READ_FILE_BINARY_UPLOAD_MAX_BYTES = 50 * 1024 * 1024
 _BASE64_DECODE_CHUNK_CHARS = 4 * 1024 * 1024
 
+_TEAM_ROUTER_TASK_TOOL = "task"
+_TEAM_ROUTER_BEFORE_DELEGATION_NUDGE = (
+    "Team routing policy: active team members should be used first"
+)
+_TEAM_ROUTER_AFTER_DELEGATION_NUDGE = (
+    "Team routing policy: a team member has already returned a result"
+)
+_TEAM_ROUTER_WORK_TOOLS = frozenset(
+    (
+        "write_todos",
+        "ls",
+        "read_file",
+        "write_file",
+        "edit_file",
+        "glob",
+        "grep",
+        "execute",
+    )
+)
+
+_TEXT_ONLY_TASK_NUDGE = "Text-only task policy: return the requested content in text"
+_TEXT_ONLY_ARTIFACT_TOOLS = frozenset(
+    (
+        "write_file",
+        "edit_file",
+        "execute",
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+    )
+)
+_TEXT_ONLY_REQUEST_HINTS = (
+    "输出",
+    "列出",
+    "生成提示词",
+    "提示词生成",
+    "给我",
+    "返回",
+    "写一段",
+    "写出",
+    "只输出",
+    "不要保存",
+    "不用保存",
+    "text only",
+    "return text",
+    "output text",
+    "prompt generation",
+    "generate prompts",
+)
+_ARTIFACT_REQUEST_HINTS = (
+    "创建文件",
+    "写入文件",
+    "保存到",
+    "保存为",
+    "生成文件",
+    "创建目录",
+    "创建文件夹",
+    "生成素材包",
+    "完整素材包",
+    "导出项目",
+    "打包",
+    "压缩包",
+    "reveal",
+    "create file",
+    "write file",
+    "save to",
+    "export",
+    "package",
+    "zip",
+)
+_TEXT_ONLY_TASK_MARKERS = (
+    "task type: text_only",
+    "delivery mode: return_text",
+)
+_ARTIFACT_TASK_MARKERS = (
+    "task type: file_artifact",
+    "delivery mode: create_files",
+    "delivery mode: modify_code",
+)
+
 
 # MCP content block types that may carry binary data
 _BINARY_BLOCK_TYPES = frozenset(("image", "file"))
@@ -265,6 +346,202 @@ class MCPQuotaMiddleware(AgentMiddleware):
             tool_call_id=request.tool_call.get("id", ""),
             name=tool_name,
         )
+
+
+class TeamRouterDelegationGuardMiddleware(AgentMiddleware):
+    """Encourage explicit team routers to delegate before doing work directly.
+
+    The router remains allowed to use built-in work tools as a fallback. This
+    guard only intercepts the first direct work-tool attempt so the model has a
+    chance to route suitable work to a member, or to make an intentional fallback
+    call on the next step.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def awrap_tool_call(
+        self,
+        request: Any,
+        handler: Callable[[Any], Awaitable[Any]],
+    ) -> Any:
+        tool_name = request.tool_call.get("name", "")
+        if tool_name not in _TEAM_ROUTER_WORK_TOOLS:
+            return await handler(request)
+
+        messages = self._iter_current_turn_messages(request.state)
+        has_task_call = self._messages_have_tool_call(messages, _TEAM_ROUTER_TASK_TOOL)
+        has_task_result = self._messages_have_tool_result(messages, _TEAM_ROUTER_TASK_TOOL)
+
+        if not has_task_call and not self._messages_contain(
+            messages,
+            _TEAM_ROUTER_BEFORE_DELEGATION_NUDGE,
+        ):
+            return self._tool_message(
+                request,
+                f"{_TEAM_ROUTER_BEFORE_DELEGATION_NUDGE} for "
+                "substantive work they can handle. Call the `task` tool with the "
+                "appropriate member, or retry this same tool call only if this is "
+                "coordination, verification, packaging, or work no member is suitable for.",
+            )
+
+        if has_task_result and not self._messages_contain(
+            messages,
+            _TEAM_ROUTER_AFTER_DELEGATION_NUDGE,
+        ):
+            return self._tool_message(
+                request,
+                f"{_TEAM_ROUTER_AFTER_DELEGATION_NUDGE}. "
+                "Synthesize that result instead of redoing their work directly. Retry "
+                "this tool call only for necessary fallback, verification, packaging, "
+                "or clearly missing work.",
+            )
+
+        return await handler(request)
+
+    @staticmethod
+    def _messages_have_tool_call(messages: list[Any], tool_name: str) -> bool:
+        for message in messages:
+            for tool_call in getattr(message, "tool_calls", None) or []:
+                if isinstance(tool_call, dict) and tool_call.get("name") == tool_name:
+                    return True
+        return False
+
+    @staticmethod
+    def _messages_have_tool_result(messages: list[Any], tool_name: str) -> bool:
+        tool_call_ids = set()
+        for message in messages:
+            for tool_call in getattr(message, "tool_calls", None) or []:
+                if isinstance(tool_call, dict) and tool_call.get("name") == tool_name:
+                    tool_call_id = tool_call.get("id")
+                    if tool_call_id:
+                        tool_call_ids.add(tool_call_id)
+
+        for message in messages:
+            if getattr(message, "type", None) != "tool":
+                continue
+            if getattr(message, "name", None) == tool_name:
+                return True
+            if getattr(message, "tool_call_id", None) in tool_call_ids:
+                return True
+        return False
+
+    @staticmethod
+    def _messages_contain(messages: list[Any], needle: str) -> bool:
+        for message in messages:
+            content = getattr(message, "content", "")
+            if isinstance(content, str) and needle in content:
+                return True
+        return False
+
+    @staticmethod
+    def _iter_current_turn_messages(state: Any) -> list[Any]:
+        if isinstance(state, dict):
+            messages = state.get("messages", [])
+        else:
+            messages = getattr(state, "messages", [])
+        messages = list(messages or [])
+        for index in range(len(messages) - 1, -1, -1):
+            if getattr(messages[index], "type", None) == "human":
+                return messages[index:]
+        return messages
+
+    @staticmethod
+    def _tool_message(request: Any, content: str) -> ToolMessage:
+        return ToolMessage(
+            content=content,
+            tool_call_id=request.tool_call.get("id", ""),
+            name=request.tool_call.get("name", ""),
+        )
+
+
+class TextOnlyTaskGuardMiddleware(AgentMiddleware):
+    """Prevent text-delivery subagent tasks from turning into file projects.
+
+    This is a soft guard: the first artifact-producing tool call is replaced
+    with a reminder. If the model intentionally retries, the call is allowed so
+    explicit file/export tasks and necessary fallbacks are not blocked.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def awrap_tool_call(
+        self,
+        request: Any,
+        handler: Callable[[Any], Awaitable[Any]],
+    ) -> Any:
+        tool_name = request.tool_call.get("name", "")
+        if tool_name not in _TEXT_ONLY_ARTIFACT_TOOLS:
+            return await handler(request)
+
+        messages = self._iter_current_turn_messages(request.state)
+        if not self._looks_like_text_only_task(messages):
+            return await handler(request)
+
+        if self._messages_contain(messages, _TEXT_ONLY_TASK_NUDGE):
+            return await handler(request)
+
+        return ToolMessage(
+            content=(
+                f"{_TEXT_ONLY_TASK_NUDGE}. The current assignment appears to ask for "
+                "content to be returned in the response, not for files, folders, scripts, "
+                "exports, or reveal links. Answer directly in text. Retry this tool call "
+                "only if the user explicitly requested saving/exporting/packaging files "
+                "or if a tool is strictly necessary to complete the assignment."
+            ),
+            tool_call_id=request.tool_call.get("id", ""),
+            name=tool_name,
+        )
+
+    @staticmethod
+    def _looks_like_text_only_task(messages: list[Any]) -> bool:
+        text = TextOnlyTaskGuardMiddleware._joined_message_text(messages)
+        if not text:
+            return False
+        lowered = text.lower()
+        if any(marker in lowered for marker in _ARTIFACT_TASK_MARKERS):
+            return False
+        if any(marker in lowered for marker in _TEXT_ONLY_TASK_MARKERS):
+            return True
+        if any(hint.lower() in lowered for hint in _ARTIFACT_REQUEST_HINTS):
+            return False
+        return any(hint.lower() in lowered for hint in _TEXT_ONLY_REQUEST_HINTS)
+
+    @staticmethod
+    def _joined_message_text(messages: list[Any]) -> str:
+        parts = []
+        for message in messages:
+            content = getattr(message, "content", "")
+            if isinstance(content, str):
+                parts.append(content)
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        text = block.get("text")
+                        if isinstance(text, str):
+                            parts.append(text)
+        return "\n".join(parts)
+
+    @staticmethod
+    def _messages_contain(messages: list[Any], needle: str) -> bool:
+        for message in messages:
+            content = getattr(message, "content", "")
+            if isinstance(content, str) and needle in content:
+                return True
+        return False
+
+    @staticmethod
+    def _iter_current_turn_messages(state: Any) -> list[Any]:
+        if isinstance(state, dict):
+            messages = state.get("messages", [])
+        else:
+            messages = getattr(state, "messages", [])
+        messages = list(messages or [])
+        for index in range(len(messages) - 1, -1, -1):
+            if getattr(messages[index], "type", None) == "human":
+                return messages[index:]
+        return messages
 
 
 # ---------------------------------------------------------------------------
