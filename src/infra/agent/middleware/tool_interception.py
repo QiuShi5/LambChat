@@ -148,9 +148,7 @@ _ARTIFACT_AND_EXEC_TOOLS = frozenset(
         "upload_url_to_sandbox",
     )
 )
-_POLICY_CONTROLLED_TOOLS = frozenset(
-    (*_READ_ONLY_TOOLS, *_ARTIFACT_AND_EXEC_TOOLS, "write_todos")
-)
+_POLICY_CONTROLLED_TOOLS = frozenset((*_READ_ONLY_TOOLS, *_ARTIFACT_AND_EXEC_TOOLS, "write_todos"))
 
 
 # MCP content block types that may carry binary data
@@ -658,7 +656,10 @@ class SubagentExecutionPolicyMiddleware(AgentMiddleware):
                     "missing upstream files. Return the requested content directly in text."
                 )
 
-        if tool_policy == "READ_ONLY" or reference_policy in {"READ_ONLY_ALLOWED", "LOOKUP_REQUIRED"}:
+        if tool_policy == "READ_ONLY" or reference_policy in {
+            "READ_ONLY_ALLOWED",
+            "LOOKUP_REQUIRED",
+        }:
             if tool_name in _ARTIFACT_AND_EXEC_TOOLS:
                 return SubagentExecutionPolicyMiddleware._nudge(
                     "This assignment allows reference lookup only. Do not create folders, "
