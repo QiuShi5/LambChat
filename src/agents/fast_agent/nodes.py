@@ -377,4 +377,5 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
 
     return {
         "output": output_text,
+        "messages": [],
     }

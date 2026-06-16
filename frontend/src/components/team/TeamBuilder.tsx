@@ -9,7 +9,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Bot,
   Camera,
   ChevronDown,
   Cpu,
@@ -33,10 +32,8 @@ import type {
 } from "../../types/team";
 import { TeamMemberCard } from "./TeamMemberCard";
 import { teamApi } from "../../services/api/team";
-import { agentApi } from "../../services/api/agent";
 import { modelApi } from "../../services/api/model";
 import type { ModelOption } from "../../services/api/model";
-import type { AgentInfo } from "../../types/agent";
 import { personaPresetApi } from "../../services/api/personaPreset";
 import { ImageWithSkeleton } from "../chat/ChatMessage/ImageWithSkeleton";
 import { uploadApi } from "../../services/api";
@@ -149,6 +146,16 @@ const ROUTER_CUSTOM_TOOL_OPTIONS = [
     labelKey: "team.routerToolUploadUrl",
     label: "Upload URL",
   },
+  {
+    name: "copy_upload_file_to_workspace",
+    labelKey: "team.routerToolCopyUploadFile",
+    label: "Copy upload file",
+  },
+  {
+    name: "create_zip_from_path",
+    labelKey: "team.routerToolCreateZip",
+    label: "Create zip",
+  },
 ] as const;
 
 export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
@@ -163,7 +170,6 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     const [fallbackModels, setFallbackModels] = useState<ModelOption[] | null>(
       null,
     );
-    const [availableAgents, setAvailableAgents] = useState<AgentInfo[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
 
     const [teamName, setTeamName] = useState("");
@@ -240,25 +246,6 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
     }, [settingsContext?.availableModels]);
 
     useEffect(() => {
-      let cancelled = false;
-      agentApi
-        .list()
-        .then((res) => {
-          if (!cancelled) {
-            setAvailableAgents(
-              (res.agents ?? []).filter((agent) => agent.id !== "team"),
-            );
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setAvailableAgents([]);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, []);
-
-    useEffect(() => {
       if (!rolePickerOpen) return;
       const handleClick = (e: MouseEvent) => {
         if (
@@ -309,6 +296,7 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           persona_preset_id: preset.id,
           agent_id: null,
           model_id: null,
+          sandbox_enabled: false,
           role_name: preset.name,
           role_avatar: preset.avatar,
           role_tags: preset.tags,
@@ -363,11 +351,13 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
       [],
     );
 
-    const handleAgentChange = useCallback(
-      (memberId: string, agentId: string | null) => {
+    const handleSandboxChange = useCallback(
+      (memberId: string, sandboxEnabled: boolean) => {
         setMembers((prev) =>
           prev.map((m) =>
-            m.member_id === memberId ? { ...m, agent_id: agentId || null } : m,
+            m.member_id === memberId
+              ? { ...m, sandbox_enabled: sandboxEnabled }
+              : m,
           ),
         );
       },
@@ -400,8 +390,9 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           members: members.map((m, idx) => ({
             member_id: m.member_id,
             persona_preset_id: m.persona_preset_id,
-            agent_id: m.agent_id ?? null,
+            agent_id: null,
             model_id: m.model_id ?? null,
+            sandbox_enabled: Boolean(m.sandbox_enabled),
             role_name: m.role_name,
             role_avatar: m.role_avatar ?? null,
             role_tags: m.role_tags,
@@ -888,10 +879,6 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                   {t("team.configured", { count: configuredMemberCount })}
                 </span>
                 <span className="tmb-stat">
-                  <Bot size={11} />
-                  {t("team.memberModes", "成员模式")}
-                </span>
-                <span className="tmb-stat">
                   <Cpu size={11} />
                   {t("team.memberModels", "成员模型")}
                 </span>
@@ -992,9 +979,8 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
                     onModelChange={(modelId) =>
                       handleModelChange(member.member_id, modelId)
                     }
-                    availableAgents={availableAgents}
-                    onAgentChange={(agentId) =>
-                      handleAgentChange(member.member_id, agentId)
+                    onSandboxChange={(sandboxEnabled) =>
+                      handleSandboxChange(member.member_id, sandboxEnabled)
                     }
                   />
                 ))}

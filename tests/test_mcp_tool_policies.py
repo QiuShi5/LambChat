@@ -284,6 +284,60 @@ async def test_internal_image_generate_tool_infos_include_supported_parameters(
     assert "mask_url" not in params
 
 
+@pytest.mark.asyncio
+async def test_internal_copy_upload_file_to_workspace_tool_info_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import internal_registry
+    from src.infra.tool.upload_url_tool import get_copy_upload_file_to_workspace_tool
+
+    async def _empty_policies():
+        return {}
+
+    monkeypatch.setattr(internal_registry, "get_internal_tool_policies", _empty_policies)
+    monkeypatch.setattr(
+        internal_registry,
+        "build_internal_tools",
+        lambda: [get_copy_upload_file_to_workspace_tool()],
+    )
+
+    infos = await internal_registry.get_internal_tool_infos(
+        user_id="admin-1",
+        user_roles=["admin"],
+        is_admin=True,
+    )
+
+    assert infos[0].name == "copy_upload_file_to_workspace"
+    params = {param["name"]: param for param in infos[0].parameters}
+    assert {"upload_file", "file_path"} <= set(params)
+    assert "runtime" not in params
+
+
+@pytest.mark.asyncio
+async def test_internal_create_zip_from_path_tool_info_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.infra.tool import internal_registry
+    from src.infra.tool.archive_tool import get_archive_tools
+
+    async def _empty_policies():
+        return {}
+
+    monkeypatch.setattr(internal_registry, "get_internal_tool_policies", _empty_policies)
+    monkeypatch.setattr(internal_registry, "build_internal_tools", get_archive_tools)
+
+    infos = await internal_registry.get_internal_tool_infos(
+        user_id="admin-1",
+        user_roles=["admin"],
+        is_admin=True,
+    )
+
+    assert infos[0].name == "create_zip_from_path"
+    params = {param["name"]: param for param in infos[0].parameters}
+    assert {"source_dir", "zip_path"} <= set(params)
+    assert "runtime" not in params
+
+
 class _AsyncCursor:
     def __init__(self, docs: list[dict[str, Any]]) -> None:
         self._docs = docs

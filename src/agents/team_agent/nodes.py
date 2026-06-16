@@ -6,10 +6,23 @@ Team Agent 节点 - 团队路由，角色分派
 
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from typing import Any, Dict
 
 from deepagents import create_deep_agent
+from deepagents.middleware.filesystem import FilesystemMiddleware
+from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.subagents import CompiledSubAgent, SubAgent
+from deepagents.middleware.summarization import create_summarization_middleware
+from langchain.agents import create_agent
+from langchain.agents.middleware import TodoListMiddleware
+from langchain.agents.middleware.types import (
+    AgentMiddleware,
+    ContextT,
+    ModelRequest,
+    ModelResponse,
+    ResponseT,
+)
 from langchain_core.runnables import RunnableConfig
 
 from src.agents.core.base import get_presenter
@@ -32,9 +45,6 @@ from src.agents.core.subagent_prompts import (
 )
 from src.agents.core.thinking import build_thinking_config
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
-from src.agents.search_agent.prompt import (
-    DEFAULT_SYSTEM_PROMPT as SEARCH_DEFAULT_SYSTEM_PROMPT,
-)
 from src.agents.search_agent.prompt import (
     SANDBOX_RUNTIME_SECTION as SEARCH_SANDBOX_RUNTIME_SECTION,
 )
@@ -93,6 +103,90 @@ _TEAM_ROUTER_DELIVERY_TOOL_NAMES = frozenset(
     )
 )
 
+_TEAM_SANDBOX_TOOL_NAMES = frozenset(
+    (
+        "sandbox_mcp_add",
+        "sandbox_mcp_update",
+        "sandbox_mcp_remove",
+        "upload_url_to_sandbox",
+    )
+)
+
+
+class ScopedBackendMiddleware(AgentMiddleware):
+    """Temporarily bind a specific backend while one subagent is running."""
+
+    def __init__(self, *, backend: Any) -> None:
+        super().__init__()
+        self._backend = backend
+
+    def _swap_backend(self, runtime: Any) -> tuple[bool, Any, bool, Any]:
+        had_config_backend = False
+        previous_config_backend = None
+        had_attribute_backend = False
+        previous_attribute_backend = None
+        config = getattr(runtime, "config", None)
+        if isinstance(config, dict):
+            configurable = config.setdefault("configurable", {})
+            had_config_backend = "backend" in configurable
+            previous_config_backend = configurable.get("backend")
+            configurable["backend"] = self._backend
+        attributes = getattr(runtime, "attributes", None)
+        if isinstance(attributes, dict):
+            had_attribute_backend = "backend" in attributes
+            previous_attribute_backend = attributes.get("backend")
+            attributes["backend"] = self._backend
+        return (
+            had_config_backend,
+            previous_config_backend,
+            had_attribute_backend,
+            previous_attribute_backend,
+        )
+
+    @staticmethod
+    def _restore_backend(runtime: Any, previous: tuple[bool, Any, bool, Any]) -> None:
+        (
+            had_config_backend,
+            previous_config_backend,
+            had_attribute_backend,
+            previous_attribute_backend,
+        ) = previous
+        config = getattr(runtime, "config", None)
+        if isinstance(config, dict):
+            configurable = config.setdefault("configurable", {})
+            if not had_config_backend:
+                configurable.pop("backend", None)
+            else:
+                configurable["backend"] = previous_config_backend
+        attributes = getattr(runtime, "attributes", None)
+        if isinstance(attributes, dict):
+            if not had_attribute_backend:
+                attributes.pop("backend", None)
+            else:
+                attributes["backend"] = previous_attribute_backend
+
+    async def awrap_model_call(
+        self,
+        request: ModelRequest[ContextT],
+        handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
+    ) -> ModelResponse[ResponseT]:
+        previous = self._swap_backend(request.runtime)
+        try:
+            return await handler(request)
+        finally:
+            self._restore_backend(request.runtime, previous)
+
+    async def awrap_tool_call(
+        self,
+        request: Any,
+        handler: Callable[[Any], Awaitable[Any]],
+    ) -> Any:
+        previous = self._swap_backend(request.runtime)
+        try:
+            return await handler(request)
+        finally:
+            self._restore_backend(request.runtime, previous)
+
 
 def _filter_team_router_tools(tools: list[Any] | None, team: TeamResponse | None) -> list[Any]:
     """Expose router tools according to the team's router tool policy."""
@@ -106,6 +200,52 @@ def _filter_team_router_tools(tools: list[Any] | None, team: TeamResponse | None
         allowed_names.update(team.router_allowed_tools)
 
     return [tool for tool in tools if getattr(tool, "name", str(tool)) in allowed_names]
+
+
+def _filter_team_non_sandbox_tools(tools: list[Any] | None) -> list[Any]:
+    """Hide sandbox-only tools from the team router and non-sandbox members."""
+    if not tools:
+        return []
+    return [
+        tool for tool in tools if getattr(tool, "name", str(tool)) not in _TEAM_SANDBOX_TOOL_NAMES
+    ]
+
+
+def _compile_team_member_subagent(
+    *,
+    name: str,
+    description: str,
+    model: Any,
+    tools: list[Any],
+    middleware: list[AgentMiddleware],
+    backend: Any,
+) -> CompiledSubAgent:
+    """Build a member subagent whose built-in file tools use the member backend.
+
+    DeepAgents raw SubAgent specs inherit the parent backend for built-in tools
+    before custom middleware runs. Sandbox-enabled members need their filesystem
+    tools and LambChat delivery tools to resolve the same backend, so compile
+    those members explicitly.
+    """
+    member_middleware: list[Any] = [
+        TodoListMiddleware(),
+        FilesystemMiddleware(backend=backend),
+        create_summarization_middleware(model, backend),
+        PatchToolCallsMiddleware(),
+        *middleware,
+    ]
+    runnable = create_agent(
+        model,
+        system_prompt=SUBAGENT_PROMPT,
+        tools=tools or [],
+        middleware=member_middleware,
+        name=name,
+    )
+    return {
+        "name": name,
+        "description": description,
+        "runnable": runnable,
+    }
 
 
 # ============================================================================
@@ -209,80 +349,6 @@ async def resolve_team_member_model_config(
 
 def _safe_member_model_config_dict(model: ModelConfig) -> dict[str, Any]:
     return model.model_copy(update={"api_key": None}).model_dump(mode="json")
-
-
-async def resolve_team_member_agent_id(
-    member_agent_id: str | None,
-    *,
-    user_id: str | None = None,
-) -> str | None:
-    """Resolve and validate a team member agent mode override for runtime use."""
-    if not member_agent_id:
-        return None
-
-    if member_agent_id == "team":
-        raise ValueError("team_member_agent_unavailable")
-
-    from src.agents.core.base import AgentFactory
-
-    registered_agent_ids = {agent["id"] for agent in AgentFactory.list_agents()}
-    if member_agent_id not in registered_agent_ids:
-        raise ValueError("team_member_agent_unavailable")
-
-    role_ids: list[str] = []
-    role_agent_map: dict[str, list[str] | None] = {}
-    try:
-        if user_id:
-            from src.infra.agent.config_storage import get_agent_config_storage
-            from src.infra.role.manager import get_role_manager
-            from src.infra.user.storage import UserStorage
-
-            user = await UserStorage().get_by_id(user_id)
-            if not user:
-                raise ValueError("team_member_agent_not_allowed")
-
-            storage = get_agent_config_storage()
-            role_manager = get_role_manager()
-            for role_name in user.roles or []:
-                role = await role_manager.get_role_by_name(role_name)
-                if not role:
-                    continue
-                role_ids.append(role.id)
-                role_agent_map[role.id] = await storage.get_role_agents(role.id)
-
-        allowed_agents = await AgentFactory.get_filtered_agents(
-            user_roles=role_ids,
-            role_agent_map=role_agent_map,
-        )
-        allowed_agent_ids = {agent["id"] for agent in allowed_agents}
-        if member_agent_id not in allowed_agent_ids:
-            raise ValueError("team_member_agent_not_allowed")
-    except ValueError:
-        raise
-    except Exception as e:
-        logger.warning(
-            "[TeamAgent] Failed to validate member agent access %s: %s",
-            member_agent_id,
-            e,
-        )
-        raise ValueError("team_member_agent_unavailable") from e
-
-    return member_agent_id
-
-
-def _build_member_agent_mode_sections(
-    agent_id: str | None,
-    *,
-    sandbox_active: bool,
-) -> list[str]:
-    """Return mode-specific prompt sections for a team member subagent."""
-    if not agent_id:
-        return []
-    if agent_id == "fast":
-        return [FAST_SYSTEM_PROMPT]
-    if agent_id == "search":
-        return [SEARCH_SANDBOX_SYSTEM_PROMPT if sandbox_active else SEARCH_DEFAULT_SYSTEM_PROMPT]
-    return []
 
 
 async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str, Any]:
@@ -433,17 +499,25 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
 
     # 创建 backend
     backend_start = time.time()
+    backend_factory = create_persistent_backend_factory(
+        assistant_id=assistant_id, user_id=context.user_id
+    )
+    backend = backend_factory(None) if callable(backend_factory) else backend_factory
     sandbox_backend = None
     sandbox_work_dir = None
+    sandbox_backend_factory = None
+    router_delivery_backend = backend
+    sandbox_member_requested = bool(
+        team and any(member.sandbox_enabled for member in team.active_members)
+    )
 
-    if not settings.ENABLE_SANDBOX:
-        backend_factory = create_persistent_backend_factory(
-            assistant_id=assistant_id, user_id=context.user_id
-        )
+    if not sandbox_member_requested:
         logger.info(
-            f"[TeamAgent] Sandbox disabled, using PersistentBackend for assistant: {assistant_id}"
+            f"[TeamAgent] Using PersistentBackend for router and default members: {assistant_id}"
         )
     else:
+        if not settings.ENABLE_SANDBOX:
+            raise ValueError("team_member_sandbox_unavailable")
         if not context.user_id:
             raise ValueError("Sandbox requires authenticated user (user_id is required)")
 
@@ -467,18 +541,13 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             except Exception as e:
                 logger.warning(f"Failed to emit sandbox:ready event: {e}")
 
-            backend_factory = create_sandbox_backend_factory(
+            sandbox_backend_factory = create_sandbox_backend_factory(
                 sandbox_backend.default,
                 assistant_id,
                 user_id=context.user_id,
             )
-            if team:
-                system_prompt = f"{SEARCH_SANDBOX_SYSTEM_PROMPT}\n\n{system_prompt}"
-            else:
-                system_prompt = build_no_team_fallback_system_prompt(sandbox_active=True)
-            logger.info(
-                f"[TeamAgent] Sandbox enabled, using sandbox backend for assistant: {assistant_id}"
-            )
+            router_delivery_backend = sandbox_backend_factory(None)
+            logger.info(f"[TeamAgent] Sandbox enabled for opt-in team member(s): {assistant_id}")
         except Exception as e:
             try:
                 await presenter.emit_sandbox_error(f"沙箱初始化失败: {str(e)}")
@@ -486,7 +555,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 logger.warning(f"Failed to emit sandbox:error event: {emit_err}")
             raise
 
-    backend = backend_factory(None) if callable(backend_factory) else backend_factory
     backend_init_time = time.time() - backend_start
     logger.debug(f"[TeamAgent] Backend init: {backend_init_time * 1000:.3f}ms")
 
@@ -494,10 +562,9 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     store = await acreate_store()
 
     # 过滤工具（懒加载 MCP 工具）
-    filtered_tools = None
     if settings.ENABLE_MCP:
         await context.get_tools()
-    filtered_tools = context.filter_tools() or None
+    filtered_tools = context.filter_tools() or []
 
     if context.deferred_manager is not None and filtered_tools is not None:
         from src.infra.tool.tool_search_tool import ToolSearchTool
@@ -508,8 +575,12 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         )
         filtered_tools.append(search_tool)
 
-    subagent_tools = filtered_tools
-    router_tools = _filter_team_router_tools(filtered_tools, team) if team else filtered_tools
+    default_tools = _filter_team_non_sandbox_tools(filtered_tools)
+    subagent_tools = default_tools
+    router_source_tools = default_tools if team else filtered_tools
+    router_tools = (
+        _filter_team_router_tools(router_source_tools, team) if team else router_source_tools
+    )
 
     # 创建内层 graph (deep agent)
     checkpointer_start = time.time()
@@ -525,14 +596,18 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     def _build_subagent_middleware(
         subagent_type: str = "general-purpose",
         prompt_sections: list[str] | None = None,
+        member_backend: Any | None = None,
+        sandbox_active: bool = False,
         fallback_model: str | None = fallback_model_value,
         should_convert_image_url_to_base64: bool = image_url_to_base64,
     ) -> list:
         """Build the middleware stack for a single subagent."""
+        effective_backend = member_backend or backend
         mw = [
             *create_retry_middleware(fallback_model=fallback_model, thinking=thinking_config),
+            ScopedBackendMiddleware(backend=effective_backend),
             ToolResultBinaryMiddleware(base_url=subagent_base_url),
-            SubagentActivityMiddleware(backend=backend),
+            SubagentActivityMiddleware(backend=effective_backend),
         ]
         if team:
             mw.append(SubagentExecutionPolicyMiddleware())
@@ -540,7 +615,13 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             mw.append(ImageUrlToBase64Middleware())
         if prompt_sections:
             mw.append(SectionPromptMiddleware(sections=prompt_sections))
-        if sandbox_backend:
+        if sandbox_active:
+            mw.append(
+                SandboxMCPMiddleware(
+                    backend=effective_backend,
+                    user_id=context.user_id or "default",
+                )
+            )
             mw.append(EnvVarPromptMiddleware(user_id=context.user_id or "default"))
         if context.deferred_manager is not None:
             from src.infra.agent.middleware import ToolSearchMiddleware
@@ -560,11 +641,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     custom_subagents: list[SubAgent | CompiledSubAgent] = []
     subagent_display_names: dict[str, str] = {}
     subagent_avatars: dict[str, str] = {}
-    subagent_runtime_section = (
-        SEARCH_SANDBOX_RUNTIME_SECTION.format(work_dir=sandbox_work_dir)
-        if sandbox_backend and sandbox_work_dir
-        else None
-    )
 
     if team and team.active_members:
         # ── 多角色子代理 ──
@@ -575,10 +651,23 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             for member in team.active_members:
                 subagent_type = build_team_member_subagent_type(member)
                 role_name = member.role_name or subagent_type
-                member_agent_id = await resolve_team_member_agent_id(
-                    member.agent_id,
-                    user_id=context.user_id,
-                )
+                member_sandbox_active = bool(member.sandbox_enabled)
+                member_backend = backend
+                member_tools = subagent_tools
+                member_runtime_section = None
+                if member_sandbox_active:
+                    if sandbox_backend_factory is None or not sandbox_work_dir:
+                        raise ValueError("team_member_sandbox_unavailable")
+                    member_backend = sandbox_backend_factory(None)
+                    member_tools = filtered_tools
+                    member_runtime_section = SEARCH_SANDBOX_RUNTIME_SECTION.format(
+                        work_dir=sandbox_work_dir
+                    )
+                    logger.info(
+                        "[TeamAgent] Role subagent sandbox enabled: type=%s role=%s",
+                        subagent_type,
+                        role_name,
+                    )
                 member_model_config = await resolve_team_member_model_config(
                     member.model_id,
                     user_id=context.user_id,
@@ -620,14 +709,13 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                 role_prompt_sections = [
                     s
                     for s in (
-                        *_build_member_agent_mode_sections(
-                            member_agent_id,
-                            sandbox_active=bool(sandbox_backend),
-                        ),
+                        SEARCH_SANDBOX_SYSTEM_PROMPT
+                        if member_sandbox_active
+                        else FAST_SYSTEM_PROMPT,
                         role_section,
                         role_skill_prompts.get(member.member_id, skills_prompt),
                         memory_guide,
-                        subagent_runtime_section,
+                        member_runtime_section,
                     )
                     if s
                 ]
@@ -644,30 +732,41 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
                     and (member.role_instructions or "").strip() in role_section,
                     any("## Skills System" in s for s in role_prompt_sections),
                 )
-                if member_agent_id:
-                    logger.info(
-                        "[TeamAgent] Role subagent agent mode override: type=%s role=%s agent_id=%s",
-                        subagent_type,
-                        role_name,
-                        member_agent_id,
+
+                subagent_description = (
+                    f"Team member '{role_name}' "
+                    f"(member_id: {member.member_id}). "
+                    f"Dispatch tasks matching this role's expertise."
+                    + (f" {member.role_instructions}" if member.role_instructions else "")
+                )
+                subagent_middleware = _build_subagent_middleware(
+                    subagent_type,
+                    prompt_sections=role_prompt_sections,
+                    member_backend=member_backend,
+                    sandbox_active=member_sandbox_active,
+                    fallback_model=member_fallback_model,
+                    should_convert_image_url_to_base64=member_image_url_to_base64,
+                )
+                effective_member_model = member_model or llm
+                if member_sandbox_active:
+                    custom_subagents.append(
+                        _compile_team_member_subagent(
+                            name=subagent_type,
+                            description=subagent_description,
+                            model=effective_member_model,
+                            tools=member_tools or [],
+                            middleware=subagent_middleware,
+                            backend=member_backend,
+                        )
                     )
+                    continue
 
                 subagent_config: SubAgent = {
                     "name": subagent_type,
-                    "description": (
-                        f"Team member '{role_name}' "
-                        f"(member_id: {member.member_id}). "
-                        f"Dispatch tasks matching this role's expertise."
-                        + (f" {member.role_instructions}" if member.role_instructions else "")
-                    ),
+                    "description": subagent_description,
                     "system_prompt": SUBAGENT_PROMPT,
-                    "tools": subagent_tools or [],
-                    "middleware": _build_subagent_middleware(
-                        subagent_type,
-                        prompt_sections=role_prompt_sections,
-                        fallback_model=member_fallback_model,
-                        should_convert_image_url_to_base64=member_image_url_to_base64,
-                    ),
+                    "tools": member_tools or [],
+                    "middleware": subagent_middleware,
                 }
                 if member_model is not None:
                     subagent_config["model"] = member_model
@@ -678,8 +777,6 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             )
         except ValueError as e:
             if str(e) in {
-                "team_member_agent_unavailable",
-                "team_member_agent_not_allowed",
                 "team_member_model_unavailable",
                 "team_member_model_not_allowed",
             }:
@@ -693,9 +790,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     # Fallback: single general-purpose subagent
     if not custom_subagents:
         subagent_prompt_sections = [
-            s
-            for s in (*persona_sections, skills_prompt, memory_guide, subagent_runtime_section)
-            if s
+            s for s in (*persona_sections, skills_prompt, memory_guide) if s
         ]
         custom_subagents = [
             {
@@ -728,19 +823,12 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         )
         if s
     ]
-    if sandbox_backend and sandbox_work_dir:
-        _prompt_sections.append(SEARCH_SANDBOX_RUNTIME_SECTION.format(work_dir=sandbox_work_dir))
     active_goal = configurable.get("active_goal")
     goal_section = build_goal_prompt_section(active_goal)
     if goal_section:
         _prompt_sections.append(goal_section)
     if _prompt_sections:
         user_middleware.append(SectionPromptMiddleware(sections=_prompt_sections))
-    if sandbox_backend:
-        user_middleware.append(
-            SandboxMCPMiddleware(backend=sandbox_backend, user_id=context.user_id or "default")
-        )
-        user_middleware.append(EnvVarPromptMiddleware(user_id=context.user_id or "default"))
     if settings.ENABLE_MEMORY and settings.NATIVE_MEMORY_INDEX_ENABLED and context.user_id:
         from src.infra.agent.middleware import MemoryIndexMiddleware
 
@@ -786,6 +874,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             thread_id=state.get("session_id", str(uuid.uuid4())),
             checkpointer=inner_checkpointer,
             backend=backend,
+            delivery_backend=router_delivery_backend,
             context=context,
             disabled_skills=configurable.get("disabled_skills"),
             enabled_skills=runtime_enabled_skills,

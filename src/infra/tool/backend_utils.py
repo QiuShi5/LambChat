@@ -76,6 +76,13 @@ def get_backend_from_runtime(runtime: Any) -> Optional[SandboxBackendProtocol]:
             if isinstance(config, dict):
                 configurable = config.get("configurable", {})
                 if isinstance(configurable, dict):
+                    backend_or_factory = configurable.get("delivery_backend")
+                    if backend_or_factory is not None:
+                        if callable(backend_or_factory):
+                            logger.debug("Calling delivery_backend factory")
+                            return backend_or_factory(runtime)
+                        logger.debug("Got delivery_backend instance from runtime.config")
+                        return backend_or_factory
                     backend_or_factory = configurable.get("backend")
                     if backend_or_factory is not None:
                         # 如果是工厂函数，调用它获取 backend 实例
@@ -98,6 +105,12 @@ def get_backend_from_runtime(runtime: Any) -> Optional[SandboxBackendProtocol]:
 
         # 方式2: 从 runtime 的 attributes 中获取
         if hasattr(runtime, "attributes"):
+            backend_or_factory = runtime.attributes.get("delivery_backend")
+            if backend_or_factory is not None:
+                if callable(backend_or_factory):
+                    logger.debug("Calling delivery_backend factory from attributes")
+                    return backend_or_factory(runtime)
+                return backend_or_factory
             backend_or_factory = runtime.attributes.get("backend")
             if backend_or_factory is not None:
                 if callable(backend_or_factory):
@@ -110,6 +123,12 @@ def get_backend_from_runtime(runtime: Any) -> Optional[SandboxBackendProtocol]:
         if hasattr(runtime, "configurable"):
             configurable = runtime.configurable
             if isinstance(configurable, dict):
+                backend_or_factory = configurable.get("delivery_backend")
+                if backend_or_factory is not None:
+                    if callable(backend_or_factory):
+                        logger.debug("Calling delivery_backend factory from configurable")
+                        return backend_or_factory(runtime)
+                    return backend_or_factory
                 backend_or_factory = configurable.get("backend")
                 if backend_or_factory is not None:
                     if callable(backend_or_factory):

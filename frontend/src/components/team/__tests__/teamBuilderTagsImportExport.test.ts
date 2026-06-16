@@ -40,15 +40,21 @@ test("team editor persists member model overrides", () => {
   );
 });
 
-test("team editor persists member agent mode overrides", () => {
+test("team editor clears legacy member agent_id values", () => {
   assert.match(builderSource, /agent_id:\s*null/);
-  assert.match(builderSource, /agent_id:\s*m\.agent_id \?\? null/);
-  assert.match(builderSource, /handleAgentChange/);
-  assert.match(builderSource, /agentApi\s*\.\s*list\(\)/);
-  assert.match(wrapperSource, /record\.agent_id/);
+  assert.doesNotMatch(builderSource, /agentApi\s*\.\s*list\(\)/);
+  assert.doesNotMatch(builderSource, /handleAgentModeChange/);
+  assert.match(wrapperSource, /agent_id:\s*null/);
+});
+
+test("team editor persists member sandbox runtime preference", () => {
+  assert.match(builderSource, /sandbox_enabled:\s*false/);
+  assert.match(builderSource, /sandbox_enabled:\s*Boolean\(m\.sandbox_enabled\)/);
+  assert.match(builderSource, /handleSandboxChange/);
+  assert.match(wrapperSource, /record\.sandbox_enabled/);
   assert.match(
     wrapperSource,
-    /agent_id:\s*[\s\S]*record\.agent_id[\s\S]*:\s*null/,
+    /sandbox_enabled:\s*[\s\S]*record\.sandbox_enabled[\s\S]*:\s*false/,
   );
 });
 
@@ -66,6 +72,8 @@ test("team editor persists router tool policy", () => {
   );
   assert.match(builderSource, /ROUTER_DELIVERY_TOOL_NAMES/);
   assert.match(builderSource, /ROUTER_CUSTOM_TOOL_OPTIONS/);
+  assert.match(builderSource, /copy_upload_file_to_workspace/);
+  assert.match(builderSource, /create_zip_from_path/);
   assert.match(builderSource, /setRouterToolMode\("all"\)/);
 });
 

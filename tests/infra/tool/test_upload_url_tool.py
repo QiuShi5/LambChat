@@ -369,3 +369,183 @@ async def test_upload_url_to_sandbox_rejects_large_bytes_fallback(
 
     assert result["success"] is False
     assert "sandbox-side download" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_uses_internal_upload_storage_for_proxy_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    uploaded: list[tuple[str, bytes]] = []
+    png_bytes = b"\x89PNG\r\n\x1a\nimage-bytes"
+
+    class _FakeBackend:
+        async def aupload_files(self, files):
+            uploaded.extend(files)
+            return [SimpleNamespace(error=None)]
+
+    class _FakeStorage:
+        async def download_file(self, key: str) -> bytes:
+            assert key == "generated-images/a.png"
+            return png_bytes
+
+    class _FailHttpClient:
+        async def __aenter__(self):
+            raise AssertionError("internal upload proxy URLs should use storage directly")
+
+    async def fake_get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_url_tool, "get_or_init_storage", fake_get_or_init_storage)
+    monkeypatch.setattr(
+        upload_url_tool.httpx,
+        "AsyncClient",
+        lambda **_kwargs: _FailHttpClient(),
+    )
+
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file="/api/upload/file/generated-images/a.png",
+            file_path="/workspace/package/scene_01/image.png",
+            runtime=_Runtime(_FakeBackend()),
+        )
+    )
+
+    assert result == {
+        "success": True,
+        "path": "/workspace/package/scene_01/image.png",
+        "size": 19,
+        "content_type": "image/png",
+        "source": "upload_storage",
+        "key": "generated-images/a.png",
+    }
+    assert uploaded == [("/workspace/package/scene_01/image.png", png_bytes)]
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_uses_internal_upload_storage_for_absolute_proxy_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    uploaded: list[tuple[str, bytes]] = []
+    base_url = "https://app.example.com"
+
+    class _FakeBackend:
+        async def aupload_files(self, files):
+            uploaded.extend(files)
+            return [SimpleNamespace(error=None)]
+
+    class _FakeStorage:
+        async def download_file(self, key: str) -> bytes:
+            assert key == "generated-images/user/a.png"
+            return b"image-bytes"
+
+    class _FailHttpClient:
+        async def __aenter__(self):
+            raise AssertionError("upload proxy URLs should use storage directly")
+
+    async def fake_get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_url_tool, "get_or_init_storage", fake_get_or_init_storage)
+    monkeypatch.setattr(
+        upload_url_tool.httpx,
+        "AsyncClient",
+        lambda **_kwargs: _FailHttpClient(),
+    )
+
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file=f"{base_url}/api/upload/file/generated-images/user/a.png",
+            file_path="/workspace/package/scene_01/image.png",
+            runtime=_Runtime(_FakeBackend(), base_url=base_url),
+        )
+    )
+
+    assert result["success"] is True
+    assert result["source"] == "upload_storage"
+    assert result["key"] == "generated-images/user/a.png"
+    assert uploaded == [("/workspace/package/scene_01/image.png", b"image-bytes")]
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_supports_sync_upload_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    uploaded: list[tuple[str, bytes]] = []
+
+    class _FakeBackend:
+        def upload_files(self, files):
+            uploaded.extend(files)
+            return [SimpleNamespace(error=None)]
+
+    class _FakeStorage:
+        async def download_file(self, key: str) -> bytes:
+            assert key == "generated-images/sync.png"
+            return b"sync-image-bytes"
+
+    async def fake_get_or_init_storage():
+        return _FakeStorage()
+
+    monkeypatch.setattr(upload_url_tool, "get_or_init_storage", fake_get_or_init_storage)
+
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file="/api/upload/file/generated-images/sync.png",
+            file_path="/workspace/package/sync.png",
+            runtime=_Runtime(_FakeBackend()),
+        )
+    )
+
+    assert result["success"] is True
+    assert uploaded == [("/workspace/package/sync.png", b"sync-image-bytes")]
+
+
+def test_upload_key_from_url_accepts_dynamic_proxy_host() -> None:
+    key, error = upload_url_tool._upload_key_from_url(
+        "https://dynamic-host.invalid/api/upload/file/generated-images/user/a.png",
+        base_url="https://app.example.com",
+    )
+
+    assert error is None
+    assert key == "generated-images/user/a.png"
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_rejects_upload_key_traversal() -> None:
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file="/api/upload/file/generated-images/%2E%2E/secret.png",
+            file_path="/workspace/package/image.png",
+            runtime=_Runtime(object()),
+        )
+    )
+
+    assert result["success"] is False
+    assert "traversal" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_rejects_external_url() -> None:
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file="https://files.example.com/generated-images/a.png",
+            file_path="/workspace/package/scene_01/image.png",
+            runtime=_Runtime(object()),
+        )
+    )
+
+    assert result["success"] is False
+    assert "upload key" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_copy_upload_file_to_workspace_rejects_path_traversal() -> None:
+    result = json.loads(
+        await upload_url_tool.copy_upload_file_to_workspace.coroutine(
+            upload_file="https://files.example.com/a.png",
+            file_path="/workspace/package/../a.png",
+            runtime=_Runtime(object()),
+        )
+    )
+
+    assert result["success"] is False
+    assert "path traversal" in result["error"]

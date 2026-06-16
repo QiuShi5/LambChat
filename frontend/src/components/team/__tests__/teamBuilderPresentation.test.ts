@@ -37,9 +37,38 @@ function assertCssDeclaration(
 
 test("team selected member cards fill the team member picker width", () => {
   assertCssDeclaration(".team-form-selected__list", "width", "100%");
+  assertCssDeclaration(
+    ".team-form-selected__list",
+    "container-type",
+    "inline-size",
+  );
   assert.match(
     teamCss,
     /\.team-form-selected__list \.list-item-card\s*\{[\s\S]*?width:\s*100%;[\s\S]*?max-width:\s*none;/,
+  );
+  assert.match(
+    teamCss,
+    /\.team-form-selected__list \.list-item-card\s*\{[\s\S]*?min-width:\s*0;/,
+  );
+});
+
+test("team member cards adapt to narrow editor containers", () => {
+  assert.match(teamCss, /@container \(max-width:\s*420px\)/);
+  assert.match(
+    teamCss,
+    /@container \(max-width:\s*420px\) \{[\s\S]*?\.team-form-selected__list \.list-item-card__top\s*\{[\s\S]*?display:\s*grid;/,
+  );
+  assert.match(
+    teamCss,
+    /@container \(max-width:\s*420px\) \{[\s\S]*?grid-template-columns:\s*auto minmax\(0, 1fr\) auto auto;/,
+  );
+  assert.match(
+    teamCss,
+    /@container \(max-width:\s*420px\) \{[\s\S]*?\.team-form-selected__list \.list-item-card__identity\s*\{[\s\S]*?grid-column:\s*2 \/ -1;/,
+  );
+  assert.match(
+    teamCss,
+    /@container \(max-width:\s*420px\) \{[\s\S]*?\.team-form-selected__list \.list-item-card__actions\s*\{[\s\S]*?grid-row:\s*2;/,
   );
 });
 
@@ -177,12 +206,14 @@ test("team avatar image containers constrain absolute avatar images", () => {
   assertCssDeclaration(".team-toolbar-avatar", "height", "1\\.125rem");
 });
 
-test("team member card exposes collapsible member mode and model selectors", () => {
-  assert.match(memberCardSource, /availableAgents/);
-  assert.match(memberCardSource, /onAgentChange/);
-  assert.match(memberCardSource, /followTeamMode/);
-  assert.match(memberCardSource, /value=\{member\.agent_id \?\? ""\}/);
-  assert.match(memberCardSource, /onChange=\{\(v\) => onAgentChange\?\.\(v \|\| null\)\}/);
+test("team member card exposes collapsible sandbox and model controls", () => {
+  assert.doesNotMatch(memberCardSource, /availableAgents/);
+  assert.doesNotMatch(memberCardSource, /onAgentModeChange/);
+  assert.doesNotMatch(memberCardSource, /agentModeValue/);
+  assert.match(memberCardSource, /onSandboxChange/);
+  assert.match(memberCardSource, /memberSandbox/);
+  assert.match(memberCardSource, /team-member-card__field--sandbox/);
+  assert.match(memberCardSource, /member\.sandbox_enabled/);
   assert.match(memberCardSource, /availableModels/);
   assert.match(memberCardSource, /onModelChange/);
   assert.match(memberCardSource, /team-member-card__model/);
@@ -191,6 +222,16 @@ test("team member card exposes collapsible member mode and model selectors", () 
   assert.match(memberCardSource, /value=\{member\.model_id \?\? ""\}/);
   assert.match(memberCardSource, /onChange=\{\(v\) => onModelChange\?\.\(v \|\| null\)\}/);
   assert.match(teamCss, /\.team-member-card__model\s*\{/);
+  assertCssDeclaration(
+    ".team-member-card__field--sandbox",
+    "flex-direction",
+    "row",
+  );
+  assertCssDeclaration(
+    ".team-member-card__field--sandbox",
+    "align-items",
+    "center",
+  );
   assert.match(
     teamCss,
     /\.team-member-card__model span\s*\{[\s\S]*?text-overflow:\s*ellipsis;/,

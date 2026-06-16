@@ -10,7 +10,7 @@ import json
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Optional, Set
+from typing import TYPE_CHECKING, Any, Optional, Set, cast
 
 from langchain_core.tools import BaseTool
 
@@ -283,7 +283,7 @@ async def release_distributed_lock(lock_key: str, lock_value: str) -> bool:
         if hasattr(result, "__await__"):
             result = await result
 
-        released = int(result) == 1  # type: ignore[misc]
+        released = int(cast(Any, result)) == 1
         if released:
             logger.debug(f"[Global MCP] Released lock: {lock_key}")
         else:
@@ -301,7 +301,7 @@ async def renew_distributed_lock(lock_key: str, lock_value: str, ttl: int) -> bo
         result = redis_client.eval(RENEW_LOCK_SCRIPT, 1, lock_key, lock_value, str(int(ttl)))
         if hasattr(result, "__await__"):
             result = await result
-        return int(result) == 1  # type: ignore[misc]
+        return int(cast(Any, result)) == 1
     except Exception as e:
         logger.warning(f"[Global MCP] Failed to renew lock {lock_key}: {e}")
         return False

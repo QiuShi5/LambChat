@@ -145,6 +145,8 @@ _ARTIFACT_AND_EXEC_TOOLS = frozenset(
         "reveal_project",
         "transfer_file",
         "transfer_path",
+        "copy_upload_file_to_workspace",
+        "create_zip_from_path",
         "image_generate",
         "upload_url_to_sandbox",
     )

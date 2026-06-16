@@ -8,9 +8,12 @@ URL 文件上传到沙箱工具
 """
 
 import json
+import mimetypes
+import os
 import shlex
 from tempfile import SpooledTemporaryFile
 from typing import Annotated, Any
+from urllib.parse import unquote, urlsplit
 
 import httpx
 from langchain.tools import ToolRuntime, tool
@@ -18,6 +21,7 @@ from langchain_core.tools import BaseTool, InjectedToolArg
 
 from src.infra.async_utils import run_blocking_io
 from src.infra.logging import get_logger
+from src.infra.storage.s3.service import get_or_init_storage
 from src.infra.tool.backend_utils import get_backend_from_runtime, get_base_url_from_runtime
 
 logger = get_logger(__name__)
@@ -34,9 +38,73 @@ _SPOOL_MAX_MEMORY_BYTES = 2 * 1024 * 1024
 # Legacy fallback backends only accept bytes via aupload_files(); keep that path small.
 _FALLBACK_UPLOAD_MAX_BYTES = 2 * 1024 * 1024
 
+_UPLOAD_FILE_PREFIX = "/api/upload/file/"
+
 
 async def _json_dumps_result(data: dict[str, Any]) -> str:
     return await run_blocking_io(json.dumps, data, ensure_ascii=False)
+
+
+def _destination_path_error(file_path: str) -> str | None:
+    if not file_path.startswith("/"):
+        return "file_path must be an absolute path"
+    if ".." in file_path.replace("\\", "/").split("/"):
+        return "path traversal is not allowed"
+    normalized = os.path.normpath(file_path)
+    if ".." in normalized.split(os.sep):
+        return "path traversal is not allowed"
+    return None
+
+
+def _upload_key_error(key: str) -> str | None:
+    if not key:
+        return "upload file key is empty"
+    normalized = key.replace("\\", "/")
+    if normalized.startswith("/"):
+        return "upload file key must be relative"
+    if ".." in normalized.split("/"):
+        return "upload file key traversal is not allowed"
+    return None
+
+
+def _upload_key_from_url(url: str, *, base_url: str = "") -> tuple[str | None, str | None]:
+    del base_url
+    parsed = urlsplit(url)
+    path = unquote(parsed.path or "")
+
+    if not path.startswith(_UPLOAD_FILE_PREFIX):
+        return None, None
+
+    key = path[len(_UPLOAD_FILE_PREFIX) :]
+    if key_error := _upload_key_error(key):
+        return None, key_error
+    return key, None
+
+
+def _upload_key_from_reference(reference: str) -> tuple[str | None, str | None]:
+    key, key_error = _upload_key_from_url(reference)
+    if key or key_error:
+        return key, key_error
+    if urlsplit(reference).scheme or urlsplit(reference).netloc:
+        return None, "upload_file must be a LambChat upload key or /api/upload/file URL"
+    if key_error := _upload_key_error(reference):
+        return None, key_error
+    return reference, None
+
+
+async def _download_internal_upload_file(key: str) -> tuple[bytes, str]:
+    storage = await get_or_init_storage()
+    content = await storage.download_file(key)
+    content_type = mimetypes.guess_type(key)[0] or "application/octet-stream"
+    return content, content_type
+
+
+async def _upload_backend_file(backend: Any, file_path: str, content: bytes):
+    if hasattr(backend, "aupload_files"):
+        return await backend.aupload_files([(file_path, content)])
+    if hasattr(backend, "upload_files"):
+        return await run_blocking_io(backend.upload_files, [(file_path, content)])
+    raise RuntimeError("backend does not support upload_files")
 
 
 def _sandbox_download_command(url: str, file_path: str) -> str:
@@ -105,10 +173,8 @@ async def upload_url_to_sandbox(
     Use this tool to transfer external files (user uploads, web resources) into the sandbox
     so they can be accessed by shell commands and scripts.
     """
-    if not file_path.startswith("/"):
-        return await _json_dumps_result(
-            {"success": False, "error": "file_path must be an absolute path"}
-        )
+    if path_error := _destination_path_error(file_path):
+        return await _json_dumps_result({"success": False, "error": path_error})
 
     # 获取 backend
     backend = get_backend_from_runtime(runtime)
@@ -188,7 +254,7 @@ async def upload_url_to_sandbox(
 
     # 上传到沙箱
     try:
-        results = await backend.aupload_files([(file_path, content)])
+        results = await _upload_backend_file(backend, file_path, content)
         result = results[0]
         if result.error:
             return await _json_dumps_result(
@@ -205,6 +271,90 @@ async def upload_url_to_sandbox(
         return await _json_dumps_result({"success": False, "error": f"Upload failed: {e}"})
 
 
+@tool
+async def copy_upload_file_to_workspace(
+    upload_file: Annotated[
+        str,
+        "LambChat upload storage key or /api/upload/file proxy URL to copy",
+    ],
+    file_path: Annotated[str, "Absolute destination path in the current workspace"],
+    runtime: Annotated[ToolRuntime, InjectedToolArg],
+) -> str:
+    """Copy a LambChat upload-storage object into the active workspace/backend.
+
+    Use this after tools such as image_generate return an upload key or /api/upload/file URL
+    that must become a real file inside a package directory, for example
+    /workspace/scene_01/first_frame.png. This tool reads LambChat upload storage directly;
+    it does not fetch arbitrary external URLs.
+    """
+    if path_error := _destination_path_error(file_path):
+        return await _json_dumps_result({"success": False, "error": path_error})
+
+    backend = get_backend_from_runtime(runtime)
+    if backend is None:
+        return await _json_dumps_result({"success": False, "error": "No backend available"})
+
+    upload_key, upload_key_error = _upload_key_from_reference(upload_file)
+    if upload_key_error:
+        return await _json_dumps_result({"success": False, "error": upload_key_error})
+
+    try:
+        content, content_type = await _download_internal_upload_file(upload_key or "")
+        if len(content) > _MAX_FILE_SIZE:
+            return await _json_dumps_result(
+                {
+                    "success": False,
+                    "error": f"File too large: {len(content)} bytes (max {_MAX_FILE_SIZE})",
+                }
+            )
+
+        results = await _upload_backend_file(backend, file_path, content)
+        result = results[0]
+        if result.error:
+            return await _json_dumps_result(
+                {
+                    "success": False,
+                    "error": f"Upload failed: {result.error}",
+                    "path": file_path,
+                }
+            )
+        logger.info(
+            "[copy_upload_file_to_workspace] Copied upload storage key %s -> %s (%s bytes)",
+            upload_key,
+            file_path,
+            len(content),
+        )
+        return await _json_dumps_result(
+            {
+                "success": True,
+                "path": file_path,
+                "size": len(content),
+                "content_type": content_type,
+                "source": "upload_storage",
+                "key": upload_key,
+            }
+        )
+    except Exception as e:
+        logger.warning(
+            "[copy_upload_file_to_workspace] Failed to copy upload storage key %s: %s",
+            upload_key,
+            e,
+        )
+        return await _json_dumps_result(
+            {
+                "success": False,
+                "error": f"Upload storage copy failed: {e}",
+                "source": "upload_storage",
+                "key": upload_key,
+            }
+        )
+
+
 def get_upload_url_tool() -> BaseTool:
     """获取 upload_url_to_sandbox 工具实例"""
     return upload_url_to_sandbox
+
+
+def get_copy_upload_file_to_workspace_tool() -> BaseTool:
+    """Return the upload-storage-to-workspace copy tool."""
+    return copy_upload_file_to_workspace

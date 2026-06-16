@@ -253,7 +253,10 @@ async def _get_stored_config_hash(user_id: str) -> Optional[str]:
     try:
         redis_client = get_redis_client()
         key = f"{CONFIG_HASH_KEY_PREFIX}{user_id}"
-        return await redis_client.get(key)
+        stored = await redis_client.get(key)
+        if isinstance(stored, bytes):
+            return stored.decode()
+        return stored
     except Exception as e:
         logger.warning(f"[MCP Cache] Redis get hash failed for user {user_id}: {e}")
         return None

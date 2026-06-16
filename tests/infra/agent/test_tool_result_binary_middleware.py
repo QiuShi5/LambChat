@@ -154,7 +154,9 @@ async def test_text_only_guard_allows_explicit_file_artifact_request():
     request = SimpleNamespace(
         state={
             "messages": [
-                HumanMessage(content="生成提示词并保存到 /home/user/prompts.md，完成后 reveal 文件。")
+                HumanMessage(
+                    content="生成提示词并保存到 /home/user/prompts.md，完成后 reveal 文件。"
+                )
             ]
         },
         tool_call={"name": "write_file", "id": "call-4", "args": {"file_path": "/tmp/a"}},
@@ -395,6 +397,130 @@ async def test_subagent_policy_allows_image_generation_for_artifact_task():
     result = await middleware.awrap_tool_call(request, handler)
 
     assert result.content == "generated"
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_controls_copy_upload_file_to_workspace_by_assignment_type():
+    middleware = SubagentExecutionPolicyMiddleware()
+
+    async def handler(request):
+        return ToolMessage(
+            content="downloaded",
+            tool_call_id=request.tool_call["id"],
+            name=request.tool_call["name"],
+        )
+
+    text_request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: TEXT_ONLY\n"
+                        "Delivery mode: RETURN_TEXT\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: NO_TOOLS\n"
+                        "Artifact intent: false\n"
+                        "Objective: Generate four scene prompts."
+                    )
+                )
+            ]
+        },
+        tool_call={
+            "name": "copy_upload_file_to_workspace",
+            "id": "copy-text",
+            "args": {"upload_file": "/api/upload/file/a.png", "file_path": "/workspace/a.png"},
+        },
+    )
+    artifact_request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: FILE_ARTIFACT\n"
+                        "Delivery mode: CREATE_FILES\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: ARTIFACT_ALLOWED\n"
+                        "Artifact intent: true\n"
+                        "Allowed tools: image_generate, copy_upload_file_to_workspace, reveal_file\n"
+                        "Objective: Create a real image package."
+                    )
+                )
+            ]
+        },
+        tool_call={
+            "name": "copy_upload_file_to_workspace",
+            "id": "copy-artifact",
+            "args": {"upload_file": "/api/upload/file/a.png", "file_path": "/workspace/a.png"},
+        },
+    )
+
+    text_result = await middleware.awrap_tool_call(text_request, handler)
+    artifact_result = await middleware.awrap_tool_call(artifact_request, handler)
+
+    assert "outside the assigned policy" in text_result.content
+    assert artifact_result.content == "downloaded"
+
+
+@pytest.mark.asyncio
+async def test_subagent_policy_controls_create_zip_from_path_by_assignment_type():
+    middleware = SubagentExecutionPolicyMiddleware()
+
+    async def handler(request):
+        return ToolMessage(
+            content="zipped",
+            tool_call_id=request.tool_call["id"],
+            name=request.tool_call["name"],
+        )
+
+    text_request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: TEXT_ONLY\n"
+                        "Delivery mode: RETURN_TEXT\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: NO_TOOLS\n"
+                        "Artifact intent: false\n"
+                        "Objective: Generate four scene prompts."
+                    )
+                )
+            ]
+        },
+        tool_call={
+            "name": "create_zip_from_path",
+            "id": "zip-text",
+            "args": {"source_dir": "/workspace/pkg", "zip_path": "/workspace/pkg.zip"},
+        },
+    )
+    artifact_request = SimpleNamespace(
+        state={
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "Task type: FILE_ARTIFACT\n"
+                        "Delivery mode: CREATE_FILES\n"
+                        "Reference policy: USER_PROVIDED_ONLY\n"
+                        "Tool policy: ARTIFACT_ALLOWED\n"
+                        "Artifact intent: true\n"
+                        "Allowed tools: create_zip_from_path, reveal_file\n"
+                        "Objective: Create a zip package."
+                    )
+                )
+            ]
+        },
+        tool_call={
+            "name": "create_zip_from_path",
+            "id": "zip-artifact",
+            "args": {"source_dir": "/workspace/pkg", "zip_path": "/workspace/pkg.zip"},
+        },
+    )
+
+    text_result = await middleware.awrap_tool_call(text_request, handler)
+    artifact_result = await middleware.awrap_tool_call(artifact_request, handler)
+
+    assert "outside the assigned policy" in text_result.content
+    assert artifact_result.content == "zipped"
 
 
 @pytest.mark.asyncio

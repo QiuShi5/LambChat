@@ -19,6 +19,8 @@ _DEEPAGENTS_SUBMODULES = [
     "deepagents.backends.sandbox",
     "deepagents.backends.utils",
     "deepagents.middleware",
+    "deepagents.middleware.filesystem",
+    "deepagents.middleware.patch_tool_calls",
     "deepagents.middleware.subagents",
     "deepagents.middleware.summarization",
 ]

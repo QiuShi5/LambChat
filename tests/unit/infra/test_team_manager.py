@@ -120,6 +120,7 @@ async def test_create_team_preserves_member_display_metadata_for_api_response(
             "persona_preset_id": "preset-1",
             "agent_id": None,
             "model_id": None,
+            "sandbox_enabled": False,
             "role_name": "Designer",
             "role_avatar": "icon:palette",
             "role_tags": ["design"],
@@ -196,26 +197,9 @@ async def test_create_team_preserves_member_model_id(manager, mock_storage, monk
 
 
 @pytest.mark.asyncio
-async def test_create_team_preserves_member_agent_id(manager, mock_storage, monkeypatch):
+async def test_create_team_preserves_legacy_member_agent_id(manager, mock_storage):
     created = _make_team(name="Mode Team")
     mock_storage.create_team = AsyncMock(return_value=created)
-
-    import src.agents.core.base as agent_base
-
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "list_agents",
-        classmethod(lambda cls, default_agent_id=None: [{"id": "fast"}, {"id": "search"}]),
-    )
-
-    async def fake_filtered_agents(**_kwargs):
-        return [{"id": "fast"}, {"id": "search"}]
-
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "get_filtered_agents",
-        classmethod(lambda cls, **kwargs: fake_filtered_agents(**kwargs)),
-    )
 
     data = TeamCreate(
         name="Mode Team",
@@ -234,87 +218,26 @@ async def test_create_team_preserves_member_agent_id(manager, mock_storage, monk
 
 
 @pytest.mark.asyncio
-async def test_validate_member_agent_access_rejects_unknown_agent(manager, monkeypatch):
-    import src.agents.core.base as agent_base
+async def test_create_team_preserves_supported_member_sandbox_mode(manager, mock_storage):
+    created = _make_team(name="Sandbox Mode Team")
+    mock_storage.create_team = AsyncMock(return_value=created)
 
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "list_agents",
-        classmethod(lambda cls, default_agent_id=None: [{"id": "fast"}]),
+    data = TeamCreate(
+        name="Sandbox Mode Team",
+        members=[
+            {
+                "member_id": "m-analyst",
+                "persona_preset_id": "preset-1",
+                "agent_id": "search",
+                "sandbox_enabled": True,
+            }
+        ],
     )
+    await manager.create_team(data, owner_user_id="user-1")
 
-    with pytest.raises(ValueError, match="team_member_agent_unavailable"):
-        await manager.create_team(
-            TeamCreate(
-                name="Unknown Mode Team",
-                members=[{"persona_preset_id": "preset-1", "agent_id": "missing"}],
-            ),
-            owner_user_id="user-1",
-        )
-
-
-@pytest.mark.asyncio
-async def test_validate_member_agent_access_rejects_team_agent(manager, monkeypatch):
-    import src.agents.core.base as agent_base
-
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "list_agents",
-        classmethod(lambda cls, default_agent_id=None: [{"id": "fast"}, {"id": "team"}]),
-    )
-
-    with pytest.raises(ValueError, match="team_member_agent_unavailable"):
-        await manager.create_team(
-            TeamCreate(
-                name="Recursive Team",
-                members=[{"persona_preset_id": "preset-1", "agent_id": "team"}],
-            ),
-            owner_user_id="user-1",
-        )
-
-
-@pytest.mark.asyncio
-async def test_validate_member_agent_access_rejects_role_disallowed_agent(manager, monkeypatch):
-    import src.agents.core.base as agent_base
-
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "list_agents",
-        classmethod(lambda cls, default_agent_id=None: [{"id": "fast"}, {"id": "search"}]),
-    )
-
-    async def fake_filtered_agents(**_kwargs):
-        return [{"id": "fast"}]
-
-    monkeypatch.setattr(
-        agent_base.AgentFactory,
-        "get_filtered_agents",
-        classmethod(lambda cls, **kwargs: fake_filtered_agents(**kwargs)),
-    )
-
-    class _RoleManager:
-        async def get_role_by_name(self, role_name):
-            return MagicMock(id=f"role-{role_name}")
-
-    class _AgentConfigStorage:
-        async def get_role_agents(self, role_id):
-            return ["fast"]
-
-    import src.infra.agent.config_storage as config_storage
-    import src.infra.role.manager as role_manager
-
-    monkeypatch.setattr(config_storage, "get_agent_config_storage", lambda: _AgentConfigStorage())
-    monkeypatch.setattr(role_manager, "get_role_manager", lambda: _RoleManager())
-
-    with pytest.raises(ValueError, match="team_member_agent_not_allowed"):
-        await manager.create_team(
-            TeamCreate(
-                name="Forbidden Mode Team",
-                members=[{"persona_preset_id": "preset-1", "agent_id": "search"}],
-            ),
-            owner_user_id="user-1",
-            user=TokenPayload(sub="user-1", username="tester", roles=["user"], permissions=[]),
-        )
+    _, kwargs = mock_storage.create_team.await_args
+    assert kwargs["members"][0]["agent_id"] == "search"
+    assert kwargs["members"][0]["sandbox_enabled"] is True
 
 
 @pytest.mark.asyncio

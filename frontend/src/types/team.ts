@@ -8,6 +8,7 @@ export interface TeamMember {
   persona_preset_id: string;
   agent_id?: string | null;
   model_id?: string | null;
+  sandbox_enabled?: boolean;
   role_name: string;
   role_avatar?: string | null;
   role_tags: string[];
@@ -55,6 +56,7 @@ export interface TeamMemberCreateRequest {
   persona_preset_id: string;
   agent_id?: string | null;
   model_id?: string | null;
+  sandbox_enabled?: boolean;
   role_name?: string;
   role_avatar?: string | null;
   role_tags?: string[];

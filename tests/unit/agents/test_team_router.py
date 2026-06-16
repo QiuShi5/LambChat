@@ -141,6 +141,49 @@ def test_team_router_prompt_requires_subagent_delegation_for_work():
     )
     assert "Do not use external upload services for artifact delivery" in prompt
     assert "Image generation is executable artifact work" in prompt
+    assert "Team subagents are executors, not nested team routers" in prompt
+    assert "the team router must call `task` for each required member directly" in prompt
+
+
+def test_team_router_prompt_keeps_fixed_collaboration_sequence_router_owned():
+    team = TeamResponse(
+        id="t1",
+        owner_user_id="u1",
+        name="Video Package Team",
+        team_instructions=(
+            "Manager plans, copywriter writes scenes, prompt engineer writes prompts, "
+            "manager packages the zip."
+        ),
+        members=[
+            TeamMemberResponse(
+                member_id="manager",
+                persona_preset_id="p1",
+                role_name="Manager",
+                enabled=True,
+            ),
+            TeamMemberResponse(
+                member_id="writer",
+                persona_preset_id="p2",
+                role_name="Copywriter",
+                enabled=True,
+            ),
+            TeamMemberResponse(
+                member_id="prompt",
+                persona_preset_id="p3",
+                role_name="Prompt Engineer",
+                enabled=True,
+            ),
+        ],
+    )
+
+    prompt = build_team_router_system_prompt(
+        team,
+        default_role="team-manager-manager",
+    )
+
+    assert "If team instructions name a fixed collaboration sequence" in prompt
+    assert "execute that sequence as router-owned `task` calls" in prompt
+    assert "Pass each member's result forward in the next task's Fixed inputs" in prompt
 
 
 def test_team_router_prompt_includes_structured_delegation_helper():
@@ -176,7 +219,10 @@ def test_team_router_prompt_includes_structured_delegation_helper():
     assert "do not read files, list directories, search templates" in prompt
     assert "Reference policy: READ_ONLY_ALLOWED and Tool policy: READ_ONLY" in prompt
     assert "If the current user asks to receive files, archives, zip packages" in prompt
+    assert "`copy_upload_file_to_workspace`" in prompt
     assert "deliver them with the appropriate reveal/transfer tool" in prompt
+    assert "neither tool creates a zip archive" in prompt
+    assert "use `create_zip_from_path(source_dir, zip_path)`" in prompt
     assert "do not run stored multi-stage team pipelines" in prompt
     assert "The current user request is authoritative" in prompt
     assert 'Do not send vague references such as "based on the upstream brief"' in prompt
@@ -299,7 +345,7 @@ def test_build_team_subagent_display_names_maps_internal_types_to_roles():
 def test_team_agent_does_not_silently_fallback_when_role_subagents_fail():
     from pathlib import Path
 
-    source = Path("src/agents/team_agent/nodes.py").read_text()
+    source = Path("src/agents/team_agent/nodes.py").read_text(encoding="utf-8")
 
     assert "team_subagents_unavailable" in source
     assert "falling back to single" not in source

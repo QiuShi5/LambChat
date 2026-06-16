@@ -392,7 +392,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     output_text = event_processor.output_text
     event_processor.clear()
 
-    return {"output": output_text}
+    return {"output": output_text, "messages": []}
 
 
 async def _create_backend_and_prompt(

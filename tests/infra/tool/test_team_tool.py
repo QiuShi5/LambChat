@@ -60,8 +60,8 @@ def test_team_tool_descriptions_guide_llm_team_creation() -> None:
     assert "Optional existing Team id to update" in create_fields["team_id"].description
     assert "Always provide an emoji or avatar image URL" in create_fields["avatar"].description
     assert "Do not invent persona_preset_id values" in create_fields["members"].description
-    assert "agent_id" in create_fields["members"].description
-    assert "do not use 'team'" in create_fields["members"].description
+    assert "agent_id" not in create_fields["members"].description
+    assert "sandbox_enabled" in create_fields["members"].description
     assert "role_avatar" in create_fields["members"].description
     assert "emoji or avatar image URL" in create_fields["members"].description
     assert "Never use placeholder ids such as 'general-purpose'" in (
@@ -331,7 +331,7 @@ async def test_create_agent_team_passes_member_model_id_to_manager(
 
 
 @pytest.mark.asyncio
-async def test_create_agent_team_passes_member_agent_id_to_manager(
+async def test_create_agent_team_ignores_legacy_member_agent_id_and_sets_sandbox(
     monkeypatch: pytest.MonkeyPatch,
 ):
     from src.infra.tool import team_tool
@@ -344,7 +344,7 @@ async def test_create_agent_team_passes_member_agent_id_to_manager(
             TeamMemberResponse(
                 member_id="m-research",
                 persona_preset_id="preset-research",
-                agent_id="search",
+                sandbox_enabled=True,
                 role_name="Market Research Lead",
                 enabled=True,
             )
@@ -371,6 +371,7 @@ async def test_create_agent_team_passes_member_agent_id_to_manager(
                     "member_id": "m-research",
                     "persona_preset_id": "preset-research",
                     "agent_id": "search",
+                    "sandbox_enabled": True,
                     "role_name": "Market Research Lead",
                 }
             ],
@@ -380,7 +381,8 @@ async def test_create_agent_team_passes_member_agent_id_to_manager(
 
     assert result["success"] is True
     body = manager.create_team.await_args.args[0]
-    assert body.members[0].agent_id == "search"
+    assert body.members[0].agent_id is None
+    assert body.members[0].sandbox_enabled is True
     assert manager.create_team.await_args.kwargs["user"] is user
 
 

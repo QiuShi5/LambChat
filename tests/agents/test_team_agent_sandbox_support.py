@@ -9,6 +9,7 @@ import pytest
 class _FakeDeepAgent:
     def __init__(self) -> None:
         self.captured_create_kwargs = None
+        self.captured_stream_config = None
         self.aget_state_calls = 0
         self.state_messages = []
 
@@ -16,6 +17,7 @@ class _FakeDeepAgent:
         return self
 
     async def astream_events(self, _initial_state, _config, version="v2"):
+        self.captured_stream_config = _config
         if False:
             yield version
 
@@ -94,7 +96,7 @@ def _install_deepagents_shims(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_team_agent_node_uses_sandbox_backend_when_enabled(
+async def test_team_agent_node_keeps_router_persistent_when_global_sandbox_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_deepagents_shims(monkeypatch)
@@ -106,24 +108,22 @@ async def test_team_agent_node_uses_sandbox_backend_when_enabled(
     _patch_common(monkeypatch, team_nodes, fake_graph)
 
     monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", True)
-    monkeypatch.setattr(team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
 
-    sandbox_backend = object()
+    persistent_backend = object()
 
-    def sandbox_factory(_runtime):
-        return sandbox_backend
-
-    async def fake_get_or_create(**_kwargs):
-        return SimpleNamespace(default=sandbox_backend), "/home/user"
-
-    sandbox_manager = SimpleNamespace(get_or_create=fake_get_or_create)
+    def persistent_factory(_runtime):
+        return persistent_backend
 
     monkeypatch.setattr(
         team_nodes,
-        "create_sandbox_backend_factory",
-        lambda sandbox_backend, assistant_id, user_id=None: sandbox_factory,
+        "create_persistent_backend_factory",
+        lambda **_kwargs: persistent_factory,
     )
-    monkeypatch.setattr(team_nodes, "get_session_sandbox_manager", lambda: sandbox_manager)
+    monkeypatch.setattr(
+        team_nodes,
+        "get_session_sandbox_manager",
+        lambda: (_ for _ in ()).throw(AssertionError("sandbox manager should not be used")),
+    )
 
     emitted: list[tuple[str, tuple, dict]] = []
 
@@ -175,10 +175,11 @@ async def test_team_agent_node_uses_sandbox_backend_when_enabled(
     )
 
     assert fake_graph.captured_create_kwargs is not None
-    assert fake_graph.captured_create_kwargs["backend"] is sandbox_backend
-    assert "Storage Architecture (CRITICAL)" in fake_graph.captured_create_kwargs["system_prompt"]
-    assert emitted[0][0] == "starting"
-    assert emitted[1][0] == "ready"
+    assert fake_graph.captured_create_kwargs["backend"] is persistent_backend
+    assert (
+        "Storage Architecture (CRITICAL)" not in fake_graph.captured_create_kwargs["system_prompt"]
+    )
+    assert emitted == []
 
 
 @pytest.mark.asyncio
@@ -228,6 +229,159 @@ async def test_team_agent_node_uses_persistent_backend_when_sandbox_disabled(
 
     assert fake_graph.captured_create_kwargs is not None
     assert fake_graph.captured_create_kwargs["backend"] is persistent_backend
+
+
+@pytest.mark.asyncio
+async def test_team_member_sandbox_opt_in_uses_member_backend_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_deepagents_shims(monkeypatch)
+
+    from src.agents.team_agent import nodes as team_nodes
+    from src.kernel.schemas.team import TeamMemberResponse
+
+    fake_graph = _FakeDeepAgent()
+    _patch_common(monkeypatch, team_nodes, fake_graph)
+
+    persistent_backend = object()
+    sandbox_backend = object()
+
+    def persistent_factory(_runtime):
+        return persistent_backend
+
+    def sandbox_factory(_runtime):
+        return sandbox_backend
+
+    async def fake_get_or_create(**_kwargs):
+        return SimpleNamespace(default=sandbox_backend), "/home/user"
+
+    sandbox_manager = SimpleNamespace(get_or_create=fake_get_or_create)
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", True)
+    monkeypatch.setattr(
+        team_nodes,
+        "create_persistent_backend_factory",
+        lambda **_kwargs: persistent_factory,
+    )
+    monkeypatch.setattr(
+        team_nodes,
+        "create_sandbox_backend_factory",
+        lambda sandbox_backend, assistant_id, user_id=None: sandbox_factory,
+    )
+    monkeypatch.setattr(team_nodes, "get_session_sandbox_manager", lambda: sandbox_manager)
+    monkeypatch.setattr(
+        team_nodes,
+        "SectionPromptMiddleware",
+        lambda sections: {"sections": sections},
+    )
+    compiled_subagent_calls: list[dict] = []
+
+    def fake_create_agent(model, **kwargs):
+        compiled_subagent_calls.append({"model": model, **kwargs})
+        return {"compiled": kwargs["name"]}
+
+    monkeypatch.setattr(team_nodes, "create_agent", fake_create_agent)
+    monkeypatch.setattr(team_nodes, "TodoListMiddleware", lambda: "todo")
+    monkeypatch.setattr(
+        team_nodes,
+        "FilesystemMiddleware",
+        lambda **kwargs: {"filesystem_backend": kwargs["backend"]},
+    )
+    monkeypatch.setattr(
+        team_nodes,
+        "create_summarization_middleware",
+        lambda model, backend: {"summary_backend": backend},
+    )
+    monkeypatch.setattr(team_nodes, "PatchToolCallsMiddleware", lambda: "patch")
+
+    def tool(name: str):
+        return SimpleNamespace(name=name)
+
+    all_tools = [
+        tool("image_generate"),
+        tool("copy_upload_file_to_workspace"),
+        tool("create_zip_from_path"),
+        tool("sandbox_mcp_add"),
+        tool("upload_url_to_sandbox"),
+        tool("reveal_file"),
+    ]
+
+    async def fake_get_tools(self):
+        return all_tools
+
+    def fake_filter_tools(self):
+        return list(all_tools)
+
+    from src.agents.team_agent.context import TeamAgentContext
+
+    monkeypatch.setattr(team_nodes.settings, "ENABLE_MCP", True)
+    monkeypatch.setattr(TeamAgentContext, "get_tools", fake_get_tools)
+    monkeypatch.setattr(TeamAgentContext, "filter_tools", fake_filter_tools)
+
+    await _run_team_node_with_members(
+        monkeypatch,
+        team_nodes,
+        fake_graph,
+        [
+            TeamMemberResponse(
+                member_id="m-fast",
+                persona_preset_id="preset-1",
+                role_name="Fast Member",
+                enabled=True,
+            ),
+            TeamMemberResponse(
+                member_id="m-sandbox",
+                persona_preset_id="preset-2",
+                role_name="Sandbox Member",
+                sandbox_enabled=True,
+                enabled=True,
+            ),
+        ],
+        patch_backend=False,
+    )
+
+    assert fake_graph.captured_create_kwargs["backend"] is persistent_backend
+    assert fake_graph.captured_stream_config["configurable"]["delivery_backend"] is sandbox_backend
+    subagents = fake_graph.captured_create_kwargs["subagents"]
+    fast_middleware = subagents[0]["middleware"]
+    fast_tool_names = [tool.name for tool in subagents[0]["tools"]]
+    sandbox_compiled = subagents[1]
+    assert sandbox_compiled["runnable"] == {"compiled": "team-m-sandbox-sandbox-member"}
+    assert len(compiled_subagent_calls) == 1
+    sandbox_call = compiled_subagent_calls[0]
+    sandbox_tool_names = [tool.name for tool in sandbox_call["tools"]]
+    assert fast_tool_names == [
+        "image_generate",
+        "copy_upload_file_to_workspace",
+        "create_zip_from_path",
+        "reveal_file",
+    ]
+    assert sandbox_tool_names == [tool.name for tool in all_tools]
+    assert (
+        next(
+            item for item in fast_middleware if isinstance(item, team_nodes.ScopedBackendMiddleware)
+        )._backend
+        is persistent_backend
+    )
+    assert sandbox_call["middleware"][1] == {"filesystem_backend": sandbox_backend}
+    assert sandbox_call["middleware"][2] == {"summary_backend": sandbox_backend}
+    assert not any(isinstance(item, team_nodes.SandboxMCPMiddleware) for item in fast_middleware)
+    sandbox_mcp = next(
+        item
+        for item in sandbox_call["middleware"]
+        if isinstance(item, team_nodes.SandboxMCPMiddleware)
+    )
+    assert sandbox_mcp._backend is sandbox_backend
+    sandbox_sections = [
+        item["sections"]
+        for item in sandbox_call["middleware"]
+        if isinstance(item, dict) and "sections" in item
+    ]
+    assert any(
+        "Current sandbox work_dir" in section
+        for sections in sandbox_sections
+        for section in sections
+    )
 
 
 @pytest.mark.asyncio
@@ -282,6 +436,7 @@ async def _run_team_node_with_members(
     members,
     router_tool_mode=None,
     router_allowed_tools=None,
+    patch_backend=True,
 ) -> None:
     from src.agents.team_agent.context import TeamAgentContext
     from src.kernel.schemas.team import TeamResponse, TeamRouterToolMode
@@ -307,8 +462,11 @@ async def _run_team_node_with_members(
     import src.infra.persona_preset.manager as persona_manager
 
     monkeypatch.setattr(persona_manager, "get_persona_preset_manager", lambda: _PresetManager())
-    monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", False)
-    monkeypatch.setattr(team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object())
+    if patch_backend:
+        monkeypatch.setattr(team_nodes.settings, "ENABLE_SANDBOX", False)
+        monkeypatch.setattr(
+            team_nodes, "create_persistent_backend_factory", lambda **_kwargs: object()
+        )
 
     context = TeamAgentContext(session_id="session-1", user_id="user-1")
     config = {
@@ -498,6 +656,10 @@ async def test_explicit_team_router_delegates_work_to_subagents(
         tool("write_file"),
         tool("execute"),
         tool("image_generate"),
+        tool("copy_upload_file_to_workspace"),
+        tool("create_zip_from_path"),
+        tool("sandbox_mcp_add"),
+        tool("upload_url_to_sandbox"),
         tool("reveal_file"),
         tool("reveal_project"),
         tool("transfer_file"),
@@ -542,7 +704,21 @@ async def test_explicit_team_router_delegates_work_to_subagents(
     assert "write_file" not in router_tool_names
     assert "execute" not in router_tool_names
     assert "image_generate" not in router_tool_names
-    assert subagent_tool_names == [tool.name for tool in all_tools]
+    assert "copy_upload_file_to_workspace" not in router_tool_names
+    assert "create_zip_from_path" not in router_tool_names
+    assert subagent_tool_names == [
+        "write_file",
+        "execute",
+        "image_generate",
+        "copy_upload_file_to_workspace",
+        "create_zip_from_path",
+        "reveal_file",
+        "reveal_project",
+        "transfer_file",
+        "transfer_path",
+    ]
+    assert "sandbox_mcp_add" not in subagent_tool_names
+    assert "upload_url_to_sandbox" not in subagent_tool_names
     assert any(
         type(middleware).__name__ == "TeamRouterDelegationGuardMiddleware"
         for middleware in fake_graph.captured_create_kwargs["middleware"]
@@ -650,7 +826,7 @@ async def test_team_member_model_unavailable_is_not_silently_fallbacked(
 
 
 @pytest.mark.asyncio
-async def test_team_member_agent_mode_override_injects_search_prompt(
+async def test_team_member_legacy_agent_id_is_ignored(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_deepagents_shims(monkeypatch)
@@ -660,12 +836,6 @@ async def test_team_member_agent_mode_override_injects_search_prompt(
 
     fake_graph = _FakeDeepAgent()
     _patch_common(monkeypatch, team_nodes, fake_graph)
-
-    async def fake_member_agent(member_agent_id, **_kwargs):
-        assert member_agent_id == "search"
-        return "search"
-
-    monkeypatch.setattr(team_nodes, "resolve_team_member_agent_id", fake_member_agent)
     monkeypatch.setattr(
         team_nodes,
         "SectionPromptMiddleware",
@@ -691,44 +861,9 @@ async def test_team_member_agent_mode_override_injects_search_prompt(
     section_middleware = next(
         item for item in subagent["middleware"] if isinstance(item, dict) and "sections" in item
     )
-    assert any(
-        "virtual storage, not a real filesystem" in section
-        for section in section_middleware["sections"]
-    )
-
-
-@pytest.mark.asyncio
-async def test_team_member_agent_unavailable_is_not_silently_fallbacked(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _install_deepagents_shims(monkeypatch)
-
-    from src.agents.team_agent import nodes as team_nodes
-    from src.kernel.schemas.team import TeamMemberResponse
-
-    fake_graph = _FakeDeepAgent()
-    _patch_common(monkeypatch, team_nodes, fake_graph)
-
-    async def fake_member_agent(*_args, **_kwargs):
-        raise ValueError("team_member_agent_unavailable")
-
-    monkeypatch.setattr(team_nodes, "resolve_team_member_agent_id", fake_member_agent)
-
-    with pytest.raises(ValueError, match="team_member_agent_unavailable"):
-        await _run_team_node_with_members(
-            monkeypatch,
-            team_nodes,
-            fake_graph,
-            [
-                TeamMemberResponse(
-                    member_id="m-research",
-                    persona_preset_id="preset-1",
-                    agent_id="deleted-agent",
-                    role_name="Researcher",
-                    enabled=True,
-                )
-            ],
-        )
+    sections = section_middleware["sections"]
+    assert any("## File System" in section for section in sections)
+    assert not any("virtual storage, not a real filesystem" in section for section in sections)
 
 
 @pytest.mark.asyncio

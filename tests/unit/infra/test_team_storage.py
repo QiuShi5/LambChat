@@ -313,6 +313,28 @@ async def test_create_and_get_team_preserves_member_agent_id(storage):
 
 
 @pytest.mark.asyncio
+async def test_create_and_get_team_preserves_member_sandbox_enabled(storage):
+    s, store, users = storage
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Sandbox Team",
+        members=[
+            {
+                "member_id": "m-builder",
+                "persona_preset_id": "preset-1",
+                "sandbox_enabled": True,
+            },
+        ],
+    )
+
+    fetched = await s.get_team(team.id, owner_user_id="user-1")
+
+    assert fetched is not None
+    assert fetched.members[0].sandbox_enabled is True
+    assert store[0]["members"][0]["sandbox_enabled"] is True
+
+
+@pytest.mark.asyncio
 async def test_create_and_update_team_preserves_router_tool_policy(storage):
     s, store, users = storage
     team = await s.create_team(
@@ -385,6 +407,22 @@ async def test_old_team_member_without_agent_id_returns_none(storage):
 
     assert fetched is not None
     assert fetched.members[0].agent_id is None
+
+
+@pytest.mark.asyncio
+async def test_old_team_member_without_sandbox_enabled_returns_false(storage):
+    s, store, users = storage
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Legacy Team",
+        members=[{"member_id": "m-legacy", "persona_preset_id": "preset-1"}],
+    )
+    del store[0]["members"][0]["sandbox_enabled"]
+
+    fetched = await s.get_team(team.id, owner_user_id="user-1")
+
+    assert fetched is not None
+    assert fetched.members[0].sandbox_enabled is False
 
 
 @pytest.mark.asyncio
@@ -834,6 +872,26 @@ async def test_clone_team_preserves_member_agent_id(storage):
 
 
 @pytest.mark.asyncio
+async def test_clone_team_preserves_member_sandbox_enabled(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        members=[
+            {
+                "persona_preset_id": "preset-1",
+                "sandbox_enabled": True,
+            },
+        ],
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert cloned.members[0].sandbox_enabled is True
+
+
+@pytest.mark.asyncio
 async def test_clone_team_preserves_router_tool_policy(storage):
     s, store, users = storage
     original = await s.create_team(
@@ -934,6 +992,33 @@ async def test_update_team_preserves_member_agent_id(storage):
 
     assert updated is not None
     assert updated.members[0].agent_id == "search"
+
+
+@pytest.mark.asyncio
+async def test_update_team_preserves_member_sandbox_enabled(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        members=[{"member_id": "m-alpha", "persona_preset_id": "preset-1"}],
+    )
+
+    updated = await s.update_team(
+        original.id,
+        owner_user_id="user-1",
+        update={
+            "members": [
+                {
+                    "member_id": "m-alpha",
+                    "persona_preset_id": "preset-1",
+                    "sandbox_enabled": True,
+                },
+            ],
+        },
+    )
+
+    assert updated is not None
+    assert updated.members[0].sandbox_enabled is True
 
 
 @pytest.mark.asyncio

@@ -56,6 +56,7 @@ class TeamMemberCreate(BaseModel):
     persona_preset_id: str = Field(..., min_length=1)
     agent_id: Optional[str] = Field(None, min_length=1)
     model_id: Optional[str] = Field(None, min_length=1)
+    sandbox_enabled: bool = False
     role_name: str = Field(default="", max_length=80)
     role_avatar: Optional[str] = None
     role_tags: list[str] = Field(default_factory=list, max_length=TEAM_TAGS_MAX)
@@ -70,6 +71,7 @@ class TeamMemberUpdate(BaseModel):
     persona_preset_id: Optional[str] = Field(None, min_length=1)
     agent_id: Optional[str] = Field(None, min_length=1)
     model_id: Optional[str] = Field(None, min_length=1)
+    sandbox_enabled: Optional[bool] = None
     role_name: Optional[str] = Field(None, max_length=80)
     role_avatar: Optional[str] = None
     role_tags: Optional[list[str]] = Field(None, max_length=TEAM_TAGS_MAX)
@@ -85,6 +87,7 @@ class TeamMemberResponse(BaseModel):
     persona_preset_id: str
     agent_id: Optional[str] = None
     model_id: Optional[str] = None
+    sandbox_enabled: bool = False
     role_name: str = ""
     role_avatar: Optional[str] = None
     role_tags: list[str] = Field(default_factory=list)
