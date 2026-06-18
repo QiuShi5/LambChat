@@ -16,9 +16,13 @@ import type {
   PersonaPreset,
   PersonaPresetSnapshot,
 } from "../../../types";
-import type { ActiveGoalSpec } from "../../../hooks/useAgent/types";
+import type {
+  ActiveGoalSpec,
+  SendMessageOptions,
+} from "../../../hooks/useAgent/types";
 import type { RevealPreviewRequest } from "../../chat/ChatMessage/items/revealPreviewData";
 import type { ExternalNavigationTargetFile } from "./externalNavigationState";
+import type { PluginRuntimeContributionStates } from "../../../extensions/coreContributions";
 
 // ---------------------------------------------------------------------------
 // Hooks
@@ -170,7 +174,7 @@ export interface ChatViewProps {
   onSendMessage: (
     content: string,
     attachments?: MessageAttachment[],
-    runOptions?: { enabledSkills?: string[] },
+    options?: SendMessageOptions,
   ) => void;
   onStopGeneration: () => void;
   activeGoal: ActiveGoalSpec | null;
@@ -187,6 +191,7 @@ export interface ChatViewProps {
   externalNavigationTargetRunPending?: boolean;
   externalScrollToBottom?: boolean;
   outlineToggleRef?: React.RefObject<(() => void) | null>;
+  runtimePlugins?: PluginRuntimeContributionStates;
 }
 
 export { useCurrentTeam, resolveChatAssistantIdentity };
