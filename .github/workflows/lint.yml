@@ -16,7 +16,7 @@ on:
       - 'main.py'
       - 'run.py'
   pull_request:
-    branches: [main]
+    branches: [main, feat/plugin-architecture]
     paths:
       - 'src/**'
       - 'tests/**'
