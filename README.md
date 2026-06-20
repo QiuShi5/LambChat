@@ -326,6 +326,8 @@ pnpm run docs:build
 
 ## Star History
 
+<div align="center">
+
 <a href="https://star-history.com/#Yanyutin753/LambChat&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Yanyutin753/LambChat&type=Date&theme=dark" />
@@ -334,32 +336,73 @@ pnpm run docs:build
  </picture>
 </a>
 
+</div>
+
+## Contributors
+
+<div align="center">
+
+<a href="https://github.com/Yanyutin753/LambChat/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Yanyutin753/LambChat" alt="Contributors">
+</a>
+
+</div>
+
 ## License
 
-[MIT](LICENSE) — Project name "LambChat" and its logo may not be changed or removed.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+> **Note** — The project name **"LambChat"** and its logo may not be changed or removed.
 
 ---
 
 <div align="center">
 
-<sub><strong>LambChat</strong> is built for people who want AI agents that can actually do the work.</sub>
+<h3>🐑 LambChat</h3>
+
+<p><em>Built for people who want AI agents that can actually do the work.</em></p>
 
 <br>
 
-<strong>Created by <a href="https://github.com/Yanyutin753">Clivia</a></strong>
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Yanyutin753/LambChat">
+        <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"><br>
+        <sub>Repository</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="mailto:3254822118@qq.com">
+        <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email"><br>
+        <sub>Contact</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://yanyutin753.github.io/LambChat/en/">
+        <img src="https://img.shields.io/badge/Docs-0080FF?style=for-the-badge&logo=gitbook&logoColor=white" alt="Docs"><br>
+        <sub>Documentation</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="README_CN.md">
+        <img src="https://img.shields.io/badge/中文-README-ED1C24?style=for-the-badge&logo=readme&logoColor=white" alt="中文 README"><br>
+        <sub>中文 README</sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 <br>
-
-<a href="https://github.com/Yanyutin753">GitHub</a> · <a href="mailto:3254822118@qq.com">Email</a> · <a href="README_CN.md">中文 README</a>
-
-<br><br>
 
 <img src=".github/images/wechat-qr.webp" width="160" alt="WeChat QR Code">
 
 <br>
 
-<sub>WeChat for deployment help, product feedback, and collaboration</sub>
+<sub>💬 WeChat for deployment help, product feedback, and collaboration</sub>
+
+<br>
+
+<sub>Powered by <a href="https://linux.do/">LINUX DO</a> — A New Ideal Community</sub>
 
 </div>
-
-<sub><a href="https://linux.do/">LINUX DO - A New Ideal Community</a></sub>

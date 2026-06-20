@@ -326,6 +326,8 @@ pnpm run docs:build
 
 ## Star History
 
+<div align="center">
+
 <a href="https://star-history.com/#Yanyutin753/LambChat&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Yanyutin753/LambChat&type=Date&theme=dark" />
@@ -334,30 +336,73 @@ pnpm run docs:build
  </picture>
 </a>
 
+</div>
+
+## 贡献者
+
+<div align="center">
+
+<a href="https://github.com/Yanyutin753/LambChat/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Yanyutin753/LambChat" alt="Contributors">
+</a>
+
+</div>
+
 ## 许可证
 
-[MIT](LICENSE) — 项目名称 "LambChat" 及其标志不得被更改或移除。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+> **注意** — 项目名称 **"LambChat"** 及其标志不得被更改或移除。
 
 ---
 
 <div align="center">
 
-<sub><strong>LambChat</strong> 想做的，不只是能聊天的 AI，而是真正能把事情做完的 Agent。</sub>
+<h3>🐑 LambChat</h3>
+
+<p><em>想做的，不只是能聊天的 AI，而是真正能把事情做完的 Agent。</em></p>
 
 <br>
 
-<strong>Created by <a href="https://github.com/Yanyutin753">Clivia</a></strong>
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Yanyutin753/LambChat">
+        <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"><br>
+        <sub>代码仓库</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="mailto:3254822118@qq.com">
+        <img src="https://img.shields.io/badge/邮箱-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email"><br>
+        <sub>联系作者</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://yanyutin753.github.io/LambChat/zh/">
+        <img src="https://img.shields.io/badge/文档-0080FF?style=for-the-badge&logo=gitbook&logoColor=white" alt="Docs"><br>
+        <sub>使用文档</sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="README.md">
+        <img src="https://img.shields.io/badge/English-README-ED1C24?style=for-the-badge&logo=readme&logoColor=white" alt="English README"><br>
+        <sub>English README</sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 <br>
-
-<a href="https://github.com/Yanyutin753">GitHub</a> · <a href="mailto:3254822118@qq.com">邮箱</a> · <a href="README.md">English README</a>
-
-<br><br>
 
 <img src=".github/images/wechat-qr.webp" width="160" alt="WeChat QR Code">
 
 <br>
 
-<sub>欢迎交流部署、产品想法和合作，添加时备注 <strong>LambChat</strong></sub>
+<sub>💬 欢迎交流部署、产品想法和合作，添加时备注 <strong>LambChat</strong></sub>
+
+<br>
+
+<sub>Powered by <a href="https://linux.do/">LINUX DO</a> — 新的理想型社区</sub>
 
 </div>
