@@ -535,9 +535,17 @@
     "title": "Channels"
   },
   "chat": {
+    "addMoreFiles": "Add more files",
     "assistant": "Assistant",
     "attachFile": "Attach file",
     "cancelled": "Cancelled",
+    "commands": {
+      "runSkillsCount": "{{count}} skills for next message",
+      "tools": "Tools",
+      "team": "Team",
+      "persona": "Persona",
+      "agent": "Agent"
+    },
     "dropFilesHere": "Drop files here to upload",
     "enterToSend": "to send",
     "errorPrefix": "Error: {{error}}",
@@ -558,7 +566,8 @@
       "required": "Enter a goal",
       "running": "Running",
       "runningStatus": "Running",
-      "startedAt": "Started"
+      "startedAt": "Started",
+      "description": "Set conversation goal"
     },
     "goodAfternoon": "Good afternoon, {{name}}",
     "goodEvening": "Good evening, {{name}}",
@@ -745,7 +754,11 @@
     "waitingForUpload": "Please wait for file upload to complete",
     "welcomeRefresh": "Refresh",
     "welcomeSubtitle": "What can I do for you?",
-    "welcomeSuggestions": "Suggestions"
+    "welcomeSuggestions": "Suggestions",
+    "slashCommands": {
+      "commands": "Commands",
+      "skills": "Skills"
+    }
   },
   "common": {
     "about": "About",
@@ -2488,7 +2501,7 @@
     "noSkills": "No skills available",
     "selectAll": "Select all",
     "selected": "{{enabled}} of {{total}} selected",
-    "skillsEnabled": "skills enabled",
+    "skillsEnabled": "{{enabled}}/{{total}} skills enabled",
     "sources": {
       "${cat}": "{{cat}}",
       "github": "GitHub",

@@ -43,7 +43,7 @@ import {
   type SSEConnectionContext,
 } from "./useAgent/sseConnection";
 import { createOptimisticMessagesForSend } from "./useAgent/optimisticMessages";
-import { resolvePersonaEnabledSkills } from "./useAgent/personaRequestConfig";
+import { resolveRunEnabledSkills } from "./useAgent/runSkillOverrides";
 import { planGoalSubmission } from "./useAgent/goalCommands";
 import { translateBackendError } from "../utils/backendErrors";
 import { dispatchSessionTitleUpdated } from "../utils/sessionTitleEvents";
@@ -532,6 +532,7 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
       content: string,
       agentOptions?: Record<string, boolean | string | number>,
       attachments?: MessageAttachment[],
+      runOptions?: { enabledSkills?: string[] },
     ) => {
       if (!content.trim()) return;
       loadHistoryRequestIdRef.current += 1;
@@ -590,10 +591,11 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
         // 获取当前禁用的 skills 和 mcp_tools
         const personaPresetId = options?.getPersonaPresetId?.() || null;
         const disabledSkills = options?.getDisabledSkills?.() || [];
-        const enabledSkills = resolvePersonaEnabledSkills(
+        const enabledSkills = resolveRunEnabledSkills({
           personaPresetId,
-          options?.getEnabledSkills?.(),
-        );
+          personaEnabledSkills: options?.getEnabledSkills?.(),
+          runEnabledSkills: runOptions?.enabledSkills,
+        });
         const disabledMcpTools = options?.getDisabledMcpTools?.() || [];
 
         // Merge session-level agent options (e.g. model) with ChatInput values

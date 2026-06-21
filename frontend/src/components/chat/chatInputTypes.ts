@@ -17,6 +17,7 @@ export interface ChatInputProps {
     message: string,
     options?: Record<string, boolean | string | number>,
     attachments?: MessageAttachment[],
+    runOptions?: { enabledSkills?: string[] },
   ) => void;
   onStop: () => void;
   isLoading: boolean;

@@ -522,9 +522,17 @@
     "title": "Каналы"
   },
   "chat": {
+    "addMoreFiles": "[TODO]chat.addMoreFiles",
     "assistant": "Ассистент",
     "attachFile": "Прикрепить файл",
     "cancelled": "Отменено",
+    "commands": {
+      "runSkillsCount": "[TODO]chat.commands.runSkillsCount",
+      "tools": "Инструменты",
+      "team": "Команда",
+      "persona": "Персона",
+      "agent": "Агент"
+    },
     "dropFilesHere": "Перетащите файлы сюда для загрузки",
     "enterToSend": "для отправки",
     "errorPrefix": "Ошибка: {{error}}",
@@ -545,7 +553,8 @@
       "required": "Введите цель",
       "running": "Выполнение",
       "runningStatus": "Выполняется",
-      "startedAt": "Начало"
+      "startedAt": "Начало",
+      "description": "Установить цель беседы"
     },
     "goodAfternoon": "Добрый день, {{name}}",
     "goodEvening": "Добрый вечер, {{name}}",
@@ -734,7 +743,11 @@
     "waitingForUpload": "Пожалуйста, дождитесь завершения загрузки файла",
     "welcomeRefresh": "Обновить",
     "welcomeSubtitle": "Чем могу помочь?",
-    "welcomeSuggestions": "Предложения"
+    "welcomeSuggestions": "Предложения",
+    "slashCommands": {
+      "commands": "Команды",
+      "skills": "Навыки"
+    }
   },
   "common": {
     "about": "О программе",

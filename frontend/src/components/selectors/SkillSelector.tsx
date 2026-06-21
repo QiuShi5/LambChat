@@ -43,6 +43,7 @@ interface SkillSelectorProps {
   controlledByPersonaName?: string | null;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  toastOnToggle?: boolean;
 }
 
 const sourceIcons: Record<SkillSource, typeof FileCode> = {
@@ -67,6 +68,7 @@ export function SkillSelector({
   controlledByPersonaName,
   isOpen: externalIsOpen,
   onOpenChange: externalOnOpenChange,
+  toastOnToggle = true,
 }: SkillSelectorProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -131,6 +133,7 @@ export function SkillSelector({
     count: number,
     ok: boolean,
   ) => {
+    if (!toastOnToggle) return;
     if (ok) {
       toast.success(
         enabled
@@ -143,6 +146,7 @@ export function SkillSelector({
   };
 
   const showSingleToggleToast = (enabled: boolean, ok: boolean) => {
+    if (!toastOnToggle) return;
     if (ok) {
       toast.success(
         enabled
@@ -236,7 +240,7 @@ export function SkillSelector({
         <div className="border-b border-blue-200/70 bg-blue-50/80 px-4 py-3 text-xs leading-relaxed text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200 sm:px-5">
           {t(
             "personaPresets.skillsControlledHint",
-            "当前角色「{{name}}」正在控制可用 Skills。要调整本次对话的技能，请先清除当前角色，或编辑该角色预设。",
+            'The current persona "{{name}}" is controlling available Skills. To adjust skills for this conversation, clear the current persona or edit the persona preset.',
             { name: controlledByPersonaName },
           )}
         </div>
@@ -496,9 +500,11 @@ export function SkillSelector({
           setIsOpen(true);
         }}
         className="chat-tool-btn"
-        title={`${enabledCount}/${totalCount} ${t(
-          "skillSelector.skillsEnabled",
-        )}`}
+        title={t("skillSelector.skillsEnabled", {
+          enabled: enabledCount,
+          total: totalCount,
+          defaultValue: "{{enabled}}/{{total}} skills enabled",
+        })}
       >
         <Sparkles size={18} />
       </button>

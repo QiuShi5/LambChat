@@ -167,7 +167,11 @@ export interface ChatViewProps {
     approved: boolean,
   ) => void;
   approvalLoading: boolean;
-  onSendMessage: (content: string, attachments?: MessageAttachment[]) => void;
+  onSendMessage: (
+    content: string,
+    attachments?: MessageAttachment[],
+    runOptions?: { enabledSkills?: string[] },
+  ) => void;
   onStopGeneration: () => void;
   activeGoal: ActiveGoalSpec | null;
   goalsByRunId: Record<string, ActiveGoalSpec>;

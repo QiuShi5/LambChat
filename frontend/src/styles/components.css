@@ -1298,6 +1298,33 @@
   color: var(--theme-text-secondary);
 }
 
+/* Attachment card entrance animation */
+@keyframes attachment-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.attachment-card-enter {
+  animation: attachment-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Drag-over input overlay pulse */
+@keyframes drag-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 /* Attachment scrollbar — always reserves space, thumb visible on hover */
 .attachment-scroll {
   scrollbar-width: thin;

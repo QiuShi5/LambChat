@@ -387,7 +387,8 @@ export function ChatView({
       content: string,
       _options?: Record<string, boolean | string | number>,
       sendAttachments?: MessageAttachment[],
-    ) => onSendMessage(content, sendAttachments),
+      runOptions?: { enabledSkills?: string[] },
+    ) => onSendMessage(content, sendAttachments, runOptions),
     onStop: onStopGeneration,
     isLoading: sessionRunning,
     canSend: canSendMessage,
@@ -450,16 +451,14 @@ export function ChatView({
           ) : (
             <WelcomePage
               greeting={greeting}
-              subtitle={
-                t("chat.welcomeSubtitle") ?? "How can I help you today?"
-              }
-              refreshLabel={t("chat.welcomeRefresh") ?? "Refresh"}
-              personasLabel={t("personaPresets.title", "角色")}
+              subtitle={t("chat.welcomeSubtitle", "How can I help you today?")}
+              refreshLabel={t("chat.welcomeRefresh", "Refresh")}
+              personasLabel={t("personaPresets.title", "Personas")}
               starterPromptsLabel={t(
                 "personaPresets.starterPrompts",
-                "开始对话",
+                "Start a conversation",
               )}
-              changePersonaLabel={t("personaPresets.change", "更换角色")}
+              changePersonaLabel={t("personaPresets.change", "Change persona")}
               personaPresets={personaPresets}
               hasMorePersonaPresets={hasMorePersonaPresets}
               isLoadingMorePersonaPresets={isLoadingMorePersonaPresets}
@@ -575,9 +574,9 @@ export function ChatView({
             {...chatInputProps}
             activeGoal={visibleActiveGoal}
             onClearActiveGoal={onClearActiveGoal}
-            goalLabel={t("chat.goal.active", "目标")}
-            goalDurationLabel={t("chat.goal.running", "运行")}
-            goalClearLabel={t("chat.goal.clear", "清除目标")}
+            goalLabel={t("chat.goal.active", "Goal")}
+            goalDurationLabel={t("chat.goal.running", "Running")}
+            goalClearLabel={t("chat.goal.clear", "Clear goal")}
             showHelpMenu
             helpMenuClassName="hidden sm:block"
           />

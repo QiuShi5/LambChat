@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import toast from "react-hot-toast";
-import { Ban, Target } from "lucide-react";
+import { Ban, Check, Sparkles, UploadCloud } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ImageViewer } from "../common";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -20,12 +20,16 @@ import { ChatInputToolbar } from "./ChatInputToolbar";
 import { ChatInputSelectors } from "./ChatInputSelectors";
 import { ChatInputHelpMenu } from "./ChatInputHelpMenu";
 import { ChatInputAttachments } from "./ChatInputAttachments";
+import { SkillSelector } from "../selectors/SkillSelector";
 import { getMentionPopupFixedPlacement } from "./chatInputViewport";
+import { getCategoryIcon, nameToGradient } from "../common/cardUtils";
 import { FILE_CATEGORY_PERMISSIONS } from "./chatInputConstants";
 import {
   applySlashCommandSelection,
-  getMatchingSlashCommands,
-  type ChatInputSlashCommand,
+  clearSlashCommandInput,
+  getMatchingSlashDropdownItems,
+  getSlashDropdownSections,
+  type SlashDropdownItem,
 } from "./chatInputSlashCommands";
 import {
   consumePendingSelectionActionPrompt,
@@ -119,6 +123,10 @@ export const ChatInput = memo(function ChatInput({
   }, [pendingInput, onPendingInputConsumed]);
 
   const [activePanel, setActivePanel] = useState<FeaturePanel>(null);
+  const [runSkillSelectorOpen, setRunSkillSelectorOpen] = useState(false);
+  const [runEnabledSkillNames, setRunEnabledSkillNames] = useState<
+    string[] | null
+  >(null);
   const [internalAttachments, setInternalAttachments] = useState<
     MessageAttachment[]
   >([]);
@@ -346,14 +354,199 @@ export const ChatInput = memo(function ChatInput({
     };
   }, [selectedPersonaPresetId, personaPresets]);
 
-  const matchingSlashCommands = useMemo(
-    () => getMatchingSlashCommands(input, cursorPosition),
-    [input, cursorPosition],
+  const availableRunSkills = useMemo(
+    () => (enableSkills ? skills.filter((skill) => skill.enabled) : []),
+    [skills, enableSkills],
   );
-  const slashCommandOpen = matchingSlashCommands.length > 0;
 
-  const applySlashCommand = useCallback(
-    (command: ChatInputSlashCommand) => {
+  const slashDropdownItems = useMemo(
+    () =>
+      getMatchingSlashDropdownItems(
+        input,
+        cursorPosition,
+        enableSkills ? availableRunSkills : undefined,
+      ),
+    [input, cursorPosition, enableSkills, availableRunSkills],
+  );
+  const slashCommandOpen = slashDropdownItems.length > 0;
+  const slashDropdownSections = useMemo(
+    () => getSlashDropdownSections(slashDropdownItems),
+    [slashDropdownItems],
+  );
+
+  const renderSlashDropdownSections = () =>
+    slashDropdownSections.map((section) => {
+      let sectionStart = 0;
+      for (const prev of slashDropdownSections) {
+        if (prev === section) break;
+        sectionStart += prev.items.length;
+      }
+
+      return (
+        <div key={section.kind}>
+          {slashDropdownSections.length > 1 && (
+            <div
+              className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+              style={{ color: "var(--theme-text-secondary)" }}
+            >
+              {t(section.labelKey, section.fallbackLabel)}
+            </div>
+          )}
+          {section.items.map((item, idx) => {
+            const globalIndex = sectionStart + idx;
+            const isHighlighted = globalIndex === slashHighlightIndex;
+
+            return (
+              <button
+                key={
+                  item.type === "command"
+                    ? `cmd-${item.command.id}`
+                    : `skill-${item.skill.name}`
+                }
+                data-slash-idx={globalIndex}
+                type="button"
+                role="option"
+                aria-selected={isHighlighted}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  applySlashDropdownSelection(item);
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] transition-colors"
+                style={{
+                  backgroundColor: isHighlighted
+                    ? "var(--theme-bg-hover, rgba(128,128,128,0.08))"
+                    : "transparent",
+                }}
+                onMouseEnter={() => setSlashHighlightIndex(globalIndex)}
+              >
+                {item.type === "command" ? (
+                  <>
+                    <item.command.icon
+                      size={14}
+                      className="shrink-0"
+                      style={{ color: "var(--theme-text-secondary)" }}
+                    />
+                    <span className="font-medium shrink-0">
+                      {t(item.command.labelKey, item.command.fallbackLabel)}
+                    </span>
+                    {item.command.fallbackDescription && (
+                      <span
+                        className="min-w-0 flex-1 truncate"
+                        style={{ color: "var(--theme-text-secondary)" }}
+                      >
+                        {t(
+                          item.command.descriptionKey ?? "",
+                          item.command.fallbackDescription,
+                        )}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  (() => {
+                    const SkillIcon = item.skill.tags[0]
+                      ? getCategoryIcon(item.skill.tags[0])
+                      : Sparkles;
+                    const gradient = nameToGradient(item.skill.name);
+                    const isSelected = runSkillNameSet.has(item.skill.name);
+                    return (
+                      <>
+                        <div
+                          className="shrink-0 flex items-center justify-center size-6 rounded-md"
+                          style={{
+                            background: `linear-gradient(135deg, ${gradient[0]}66, ${gradient[1]}66)`,
+                            opacity: isSelected ? 1 : 0.5,
+                          }}
+                        >
+                          <SkillIcon size={12} className="text-white" />
+                        </div>
+                        <span className="min-w-0 flex-1 truncate">
+                          {item.skill.name}
+                        </span>
+                        {isSelected && (
+                          <Check
+                            size={14}
+                            className="shrink-0"
+                            style={{ color: "var(--theme-primary)" }}
+                          />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+              </button>
+            );
+          })}
+        </div>
+      );
+    });
+
+  const [slashHighlightIndex, setSlashHighlightIndex] = useState(0);
+
+  useEffect(() => {
+    setSlashHighlightIndex(0);
+  }, [slashDropdownItems.length]);
+
+  // Scroll highlighted item into view when navigating with arrow keys
+  useEffect(() => {
+    if (!slashCommandOpen) return;
+    const el = containerRef.current?.querySelector(
+      `[data-slash-idx="${slashHighlightIndex}"]`,
+    );
+    if (el) {
+      el.scrollIntoView({ block: "nearest" });
+    }
+  }, [slashCommandOpen, slashHighlightIndex]);
+
+  const applySlashDropdownSelection = useCallback(
+    (item: SlashDropdownItem) => {
+      // ── Skill selection: toggle in runEnabledSkillNames ──
+      if (item.type === "skill") {
+        setRunEnabledSkillNames((current) => {
+          const base = new Set(
+            current ?? availableRunSkills.map((s) => s.name),
+          );
+          if (base.has(item.skill.name)) {
+            base.delete(item.skill.name);
+          } else {
+            base.add(item.skill.name);
+          }
+          return Array.from(base);
+        });
+        const cleared = clearSlashCommandInput(input, cursorPosition);
+        setInput(cleared.input);
+        setCursorPosition(cleared.cursorPosition);
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) return;
+          textarea.focus();
+          scheduleTextareaResize();
+        });
+        return;
+      }
+
+      // ── Built-in command handling ──
+      const command = item.command;
+      if (command.kind === "panel") {
+        setInput("");
+        setCursorPosition(0);
+        if (command.id === "tools") {
+          setActivePanel("tools");
+        } else if (command.id === "persona") {
+          setActivePanel("persona");
+        } else if (command.id === "team") {
+          setActivePanel("team");
+        } else if (command.id === "agent") {
+          setActivePanel("agent");
+        }
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) return;
+          textarea.focus();
+          scheduleTextareaResize();
+        });
+        return;
+      }
+      // kind: "insert" (e.g. /goal)
       const next = applySlashCommandSelection(input, cursorPosition, command);
       setInput(next.input);
       setCursorPosition(next.cursorPosition);
@@ -417,9 +610,13 @@ export const ChatInput = memo(function ChatInput({
     if (!canSend) return;
     if (input.trim() && canSubmit) {
       const trimmed = input.trim();
-      onSend(trimmed, agentOptionValues, attachments);
+      const runOptions = runEnabledSkillNames
+        ? { enabledSkills: runEnabledSkillNames }
+        : undefined;
+      onSend(trimmed, agentOptionValues, attachments, runOptions);
       pushHistory(trimmed);
       setInput("");
+      setRunEnabledSkillNames(null);
       setAttachments([]);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
@@ -431,9 +628,24 @@ export const ChatInput = memo(function ChatInput({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (slashCommandOpen) {
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const len = slashDropdownItems.length;
+        setSlashHighlightIndex((prev) => (prev - 1 + len) % len);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const len = slashDropdownItems.length;
+        setSlashHighlightIndex((prev) => (prev + 1) % len);
+        return;
+      }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        applySlashCommand(matchingSlashCommands[0]);
+        const highlighted = slashDropdownItems[slashHighlightIndex];
+        if (highlighted) {
+          applySlashDropdownSelection(highlighted);
+        }
         return;
       }
       if (e.key === "Escape") {
@@ -573,6 +785,34 @@ export const ChatInput = memo(function ChatInput({
         })[0]
     : undefined;
 
+  const runSkillNameSet = useMemo(() => {
+    const initialNames =
+      runEnabledSkillNames ?? availableRunSkills.map((skill) => skill.name);
+    return new Set(initialNames);
+  }, [availableRunSkills, runEnabledSkillNames]);
+  const runSkillSelectorSkills = useMemo(
+    () =>
+      availableRunSkills.map((skill) => ({
+        ...skill,
+        enabled: runSkillNameSet.has(skill.name),
+      })),
+    [availableRunSkills, runSkillNameSet],
+  );
+  const runSkillEnabledCount = runSkillSelectorSkills.filter(
+    (skill) => skill.enabled,
+  ).length;
+  const updateRunSkillSelection = useCallback(
+    (updater: (current: Set<string>) => Set<string>) => {
+      setRunEnabledSkillNames((current) => {
+        const base = new Set(
+          current ?? availableRunSkills.map((skill) => skill.name),
+        );
+        return Array.from(updater(base));
+      });
+    },
+    [availableRunSkills],
+  );
+
   return (
     <div
       className="chat-input-shell sm:px-4 pb-3 sm:pb-5"
@@ -590,7 +830,7 @@ export const ChatInput = memo(function ChatInput({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={`chat-input-container flex flex-col relative w-full rounded-3xl px-1 border transition-all duration-300 ${
-            isDraggingOver ? "border-dashed shadow-lg border-2" : ""
+            isDraggingOver ? "border-dashed border-2 scale-[1.01]" : ""
           }`}
           data-mention-active={mention.isActive || undefined}
           style={{
@@ -599,10 +839,40 @@ export const ChatInput = memo(function ChatInput({
               ? "var(--theme-primary)"
               : "var(--theme-border)",
             boxShadow: isDraggingOver
-              ? undefined
+              ? "0 0 0 3px color-mix(in srgb, var(--theme-primary) 15%, transparent), 0 4px 20px rgba(0,0,0,0.08)"
               : "0 2px 12px rgba(0,0,0,0.06)",
           }}
         >
+          {/* Drag-over overlay */}
+          {isDraggingOver && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl pointer-events-none">
+              <div
+                className="flex flex-col items-center gap-2 rounded-2xl px-10 py-8 transition-all"
+                style={{
+                  backgroundColor:
+                    "color-mix(in srgb, var(--theme-primary) 6%, transparent)",
+                }}
+              >
+                <UploadCloud
+                  size={28}
+                  className="animate-bounce"
+                  style={{
+                    color: "var(--theme-primary)",
+                    opacity: 0.7,
+                  }}
+                />
+                <span
+                  className="text-sm font-medium"
+                  style={{
+                    color: "var(--theme-primary)",
+                    opacity: 0.7,
+                  }}
+                >
+                  {t("chat.dropFilesHere", "Drop files here to upload")}
+                </span>
+              </div>
+            </div>
+          )}
           <ActiveGoalBar
             goal={activeGoal ?? null}
             label={goalLabel}
@@ -612,6 +882,34 @@ export const ChatInput = memo(function ChatInput({
             disabled={isLoading || !canSend}
             embedded
           />
+          {runEnabledSkillNames && (
+            <div className="flex items-center gap-2 border-b px-3 py-2 text-xs sm:px-4">
+              <Sparkles
+                size={14}
+                className="shrink-0"
+                style={{ color: "var(--theme-primary)" }}
+              />
+              <button
+                type="button"
+                className="min-w-0 flex-1 truncate text-left"
+                style={{ color: "var(--theme-text-secondary)" }}
+                onClick={() => setRunSkillSelectorOpen(true)}
+              >
+                {t("chat.commands.runSkillsCount", {
+                  count: runEnabledSkillNames.length,
+                  defaultValue: "{{count}} skills for next message",
+                })}
+              </button>
+              <button
+                type="button"
+                className="rounded-md px-2 py-1 transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
+                style={{ color: "var(--theme-text-secondary)" }}
+                onClick={() => setRunEnabledSkillNames(null)}
+              >
+                {t("common.clear", "Clear")}
+              </button>
+            </div>
+          )}
           {mention.isActive &&
             !onMentionQueryChange &&
             mentionMode === "persona" && (
@@ -649,6 +947,7 @@ export const ChatInput = memo(function ChatInput({
             onAttachmentsChange={setAttachments}
             onCancelUpload={cancelUpload}
             onImageViewerOpen={(url) => setImageViewerSrc(url)}
+            maxFiles={uploadLimits?.maxFiles}
           />
 
           <div className="px-2.5 pt-1">
@@ -686,51 +985,54 @@ export const ChatInput = memo(function ChatInput({
               />
             </div>
           </div>
-          {slashCommandOpen && (
-            <div
-              role="listbox"
-              className="absolute bottom-full left-1 z-30 mb-2 w-56 overflow-hidden rounded-xl border shadow-lg"
-              style={{
-                backgroundColor: "var(--theme-bg-card)",
-                borderColor: "var(--theme-border)",
-                color: "var(--theme-text)",
-              }}
-            >
-              {matchingSlashCommands.map((command) => (
-                <button
-                  key={command.id}
-                  type="button"
-                  role="option"
-                  aria-selected="true"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applySlashCommand(command);
-                  }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--theme-bg-hover, rgba(128,128,128,0.08))";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
+          {slashCommandOpen &&
+            (() => {
+              const placement = getMentionPopupFixedPlacement({
+                inputRect:
+                  containerRef.current?.getBoundingClientRect() ?? null,
+                viewportHeight:
+                  window.visualViewport?.height ?? window.innerHeight,
+              });
+              // Fallback to absolute positioning when placement unavailable
+              if (!placement) {
+                return (
+                  <div
+                    role="listbox"
+                    className="absolute bottom-full left-1 z-30 mb-2 w-72 sm:w-80 overflow-hidden rounded-xl border shadow-lg"
+                    style={{
+                      backgroundColor: "var(--theme-bg-card)",
+                      borderColor: "var(--theme-border)",
+                      color: "var(--theme-text)",
+                      maxHeight: 320,
+                    }}
+                  >
+                    {renderSlashDropdownSections()}
+                  </div>
+                );
+              }
+              return (
+                <div
+                  role="listbox"
+                  className="fixed z-[100] overflow-hidden rounded-xl border shadow-lg"
+                  style={{
+                    left: placement.left,
+                    width: Math.min(placement.width, 320),
+                    bottom: placement.bottom,
+                    maxHeight: placement.maxHeight,
+                    backgroundColor: "var(--theme-bg-card)",
+                    borderColor: "var(--theme-border)",
+                    color: "var(--theme-text)",
                   }}
                 >
-                  <Target
-                    size={15}
-                    className="shrink-0"
-                    style={{ color: "var(--theme-primary)" }}
-                  />
-                  <span className="font-mono text-xs">{command.command}</span>
-                  <span
-                    className="min-w-0 flex-1 truncate"
-                    style={{ color: "var(--theme-text-secondary)" }}
+                  <div
+                    className="overflow-y-auto"
+                    style={{ maxHeight: placement.maxHeight }}
                   >
-                    {t(command.labelKey, command.fallbackLabel)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+                    {renderSlashDropdownSections()}
+                  </div>
+                </div>
+              );
+            })()}
 
           <ChatInputToolbar
             activePanel={activePanel}
@@ -818,6 +1120,46 @@ export const ChatInput = memo(function ChatInput({
         agentOptionValues={agentOptionValues}
         onToggleAgentOption={onToggleAgentOption}
       />
+
+      {enableSkills && (
+        <SkillSelector
+          skills={runSkillSelectorSkills}
+          onToggleSkill={async (name) => {
+            updateRunSkillSelection((current) => {
+              if (current.has(name)) {
+                current.delete(name);
+              } else {
+                current.add(name);
+              }
+              return current;
+            });
+            return true;
+          }}
+          onToggleCategory={async (category, enabled) => {
+            updateRunSkillSelection((current) => {
+              availableRunSkills
+                .filter((skill) => skill.source === category)
+                .forEach((skill) => {
+                  if (enabled) current.add(skill.name);
+                  else current.delete(skill.name);
+                });
+              return current;
+            });
+            return true;
+          }}
+          onToggleAll={async (enabled) => {
+            setRunEnabledSkillNames(
+              enabled ? availableRunSkills.map((skill) => skill.name) : [],
+            );
+            return true;
+          }}
+          enabledCount={runSkillEnabledCount}
+          totalCount={availableRunSkills.length}
+          isOpen={runSkillSelectorOpen}
+          onOpenChange={setRunSkillSelectorOpen}
+          toastOnToggle={false}
+        />
+      )}
 
       {showHelpMenu && <ChatInputHelpMenu className={helpMenuClassName} />}
 

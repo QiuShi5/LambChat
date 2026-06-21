@@ -522,9 +522,17 @@
     "title": "チャンネル"
   },
   "chat": {
+    "addMoreFiles": "[TODO]chat.addMoreFiles",
     "assistant": "アシスタント",
     "attachFile": "ファイルを添付",
     "cancelled": "キャンセル済み",
+    "commands": {
+      "runSkillsCount": "[TODO]chat.commands.runSkillsCount",
+      "tools": "ツール",
+      "team": "チーム",
+      "persona": "ペルソナ",
+      "agent": "エージェント"
+    },
     "dropFilesHere": "ファイルをここにドロップしてアップロード",
     "enterToSend": "で送信",
     "errorPrefix": "エラー：{{error}}",
@@ -545,7 +553,8 @@
       "required": "目標を入力してください",
       "running": "実行中",
       "runningStatus": "実行中",
-      "startedAt": "開始時間"
+      "startedAt": "開始時間",
+      "description": "会話の目標を設定"
     },
     "goodAfternoon": "こんにちは、{{name}}",
     "goodEvening": "こんばんは、{{name}}",
@@ -732,7 +741,11 @@
     "waitingForUpload": "ファイルのアップロードが完了するまでお待ちください",
     "welcomeRefresh": "更新",
     "welcomeSubtitle": "何かお手伝いできることはありますか？",
-    "welcomeSuggestions": "おすすめ"
+    "welcomeSuggestions": "おすすめ",
+    "slashCommands": {
+      "commands": "コマンド",
+      "skills": "スキル"
+    }
   },
   "common": {
     "about": "について",

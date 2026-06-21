@@ -522,9 +522,17 @@
     "title": "채널"
   },
   "chat": {
+    "addMoreFiles": "[TODO]chat.addMoreFiles",
     "assistant": "어시스턴트",
     "attachFile": "파일 첨부",
     "cancelled": "취소됨",
+    "commands": {
+      "runSkillsCount": "[TODO]chat.commands.runSkillsCount",
+      "tools": "도구",
+      "team": "팀",
+      "persona": "페르소나",
+      "agent": "에이전트"
+    },
     "dropFilesHere": "파일을 여기에 드래그하여 업로드",
     "enterToSend": "로 전송",
     "errorPrefix": "오류: {{error}}",
@@ -545,7 +553,8 @@
       "required": "목표를 입력하세요",
       "running": "실행",
       "runningStatus": "실행 중",
-      "startedAt": "시작 시간"
+      "startedAt": "시작 시간",
+      "description": "대화 목표 설정"
     },
     "goodAfternoon": "좋은 오후에요, {{name}}",
     "goodEvening": "좋은 저녁이에요, {{name}}",
@@ -732,7 +741,11 @@
     "waitingForUpload": "파일 업로드가 완료될 때까지 기다려 주세요",
     "welcomeRefresh": "새로고침",
     "welcomeSubtitle": "무엇을 도와드릴까요?",
-    "welcomeSuggestions": "추천"
+    "welcomeSuggestions": "추천",
+    "slashCommands": {
+      "commands": "명령어",
+      "skills": "스킬"
+    }
   },
   "common": {
     "about": "정보",

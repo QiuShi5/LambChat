@@ -535,9 +535,17 @@
     "title": "渠道管理"
   },
   "chat": {
+    "addMoreFiles": "添加更多文件",
     "assistant": "助手",
     "attachFile": "附件",
     "cancelled": "已取消",
+    "commands": {
+      "runSkillsCount": "下条消息启用 {{count}} 个技能",
+      "tools": "工具",
+      "team": "团队",
+      "persona": "人设",
+      "agent": "智能体"
+    },
     "dropFilesHere": "拖放文件到此处上传",
     "enterToSend": "发送",
     "errorPrefix": "错误：{{error}}",
@@ -558,7 +566,8 @@
       "required": "请输入目标内容",
       "running": "运行",
       "runningStatus": "运行中",
-      "startedAt": "开始时间"
+      "startedAt": "开始时间",
+      "description": "设置对话目标"
     },
     "goodAfternoon": "下午好，{{name}}",
     "goodEvening": "晚上好，{{name}}",
@@ -745,7 +754,11 @@
     "waitingForUpload": "请等待文件上传完成",
     "welcomeRefresh": "换一批",
     "welcomeSubtitle": "✨ 我能为你做什么？",
-    "welcomeSuggestions": "建议"
+    "welcomeSuggestions": "建议",
+    "slashCommands": {
+      "commands": "命令",
+      "skills": "技能"
+    }
   },
   "common": {
     "about": "关于",
@@ -2488,7 +2501,7 @@
     "noSkills": "暂无可用技能",
     "selectAll": "全选",
     "selected": "已选择 {{enabled}}/{{total}}",
-    "skillsEnabled": "个技能已启用",
+    "skillsEnabled": "{{enabled}}/{{total}} 个技能已启用",
     "sources": {
       "${cat}": "{{cat}}",
       "github": "GitHub",
