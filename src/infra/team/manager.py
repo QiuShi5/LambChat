@@ -178,6 +178,7 @@ class TeamManager:
             members=members_data,
             default_member_id=team_data.default_member_id,
             team_instructions=team_data.team_instructions,
+            run_in_sandbox=team_data.run_in_sandbox,
             starter_prompts=[
                 prompt.model_dump(mode="json") for prompt in team_data.starter_prompts
             ],

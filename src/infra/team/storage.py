@@ -174,6 +174,7 @@ class TeamStorage:
         result.setdefault("tags", [])
         result.setdefault("default_member_id", None)
         result.setdefault("team_instructions", "")
+        result.setdefault("run_in_sandbox", False)
         result.setdefault("starter_prompts", [])
         result.setdefault("visibility", TeamVisibility.PRIVATE.value)
         result.setdefault("is_favorite", False)
@@ -316,6 +317,7 @@ class TeamStorage:
         members: list[dict[str, Any]] | None = None,
         default_member_id: str | None = None,
         team_instructions: str = "",
+        run_in_sandbox: bool = False,
         starter_prompts: list[dict[str, Any]] | None = None,
     ) -> TeamResponse:
         """Create a new team."""
@@ -333,6 +335,7 @@ class TeamStorage:
                 default_member_id,
             ),
             "team_instructions": team_instructions,
+            "run_in_sandbox": bool(run_in_sandbox),
             "starter_prompts": self._starter_prompt_docs(starter_prompts),
             "visibility": TeamVisibility.PRIVATE.value,
             "created_at": now,
@@ -531,5 +534,6 @@ class TeamStorage:
             members=members_data,
             default_member_id=None,
             team_instructions=original.team_instructions,
+            run_in_sandbox=original.run_in_sandbox,
             starter_prompts=[prompt.model_dump(mode="json") for prompt in original.starter_prompts],
         )

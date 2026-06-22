@@ -98,6 +98,7 @@ function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
       typeof item.team_instructions === "string"
         ? item.team_instructions
         : undefined,
+    run_in_sandbox: item.run_in_sandbox === true,
     starter_prompts: normalizeImportedStarterPrompts(item.starter_prompts),
     default_member_id:
       typeof item.default_member_id === "string"
@@ -116,10 +117,7 @@ function normalizeImportedTeam(value: unknown): TeamCreateRequest | null {
                   ? record.member_id
                   : undefined,
               persona_preset_id: personaPresetId,
-              agent_id:
-                typeof record.agent_id === "string" && record.agent_id
-                  ? record.agent_id
-                  : null,
+              agent_id: null,
               model_id:
                 typeof record.model_id === "string" && record.model_id
                   ? record.model_id

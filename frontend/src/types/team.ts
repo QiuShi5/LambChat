@@ -24,6 +24,7 @@ export interface Team {
   members: TeamMember[];
   default_member_id?: string | null;
   team_instructions: string;
+  run_in_sandbox: boolean;
   starter_prompts?: PersonaStarterPrompt[];
   visibility: "private";
   is_favorite?: boolean;
@@ -41,6 +42,7 @@ export interface TeamCreateRequest {
   members?: TeamMemberCreateRequest[];
   default_member_id?: string | null;
   team_instructions?: string;
+  run_in_sandbox?: boolean;
   starter_prompts?: PersonaStarterPrompt[];
 }
 
@@ -65,6 +67,7 @@ export interface TeamUpdateRequest {
   members?: TeamMemberCreateRequest[];
   default_member_id?: string | null;
   team_instructions?: string;
+  run_in_sandbox?: boolean;
   starter_prompts?: PersonaStarterPrompt[];
 }
 
