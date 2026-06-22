@@ -14,7 +14,6 @@ export type CoreTabType =
   | "files"
   | "notifications"
   | "memory"
-  | "team"
   | "scheduled-tasks"
   | "usage";
 
