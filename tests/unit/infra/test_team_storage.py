@@ -260,7 +260,36 @@ async def test_create_team(storage):
     assert team.members[0].member_id.startswith("m-")
     assert team.members[0].agent_id is None
     assert team.members[0].model_id is None
+    assert team.run_in_sandbox is False
     assert team.visibility.value == "private"
+
+
+@pytest.mark.asyncio
+async def test_create_and_get_team_preserves_run_in_sandbox(storage):
+    s, store, users = storage
+    team = await s.create_team(
+        owner_user_id="user-1",
+        name="Sandbox Team",
+        run_in_sandbox=True,
+    )
+
+    fetched = await s.get_team(team.id, owner_user_id="user-1")
+
+    assert fetched is not None
+    assert fetched.run_in_sandbox is True
+    assert store[0]["run_in_sandbox"] is True
+
+
+@pytest.mark.asyncio
+async def test_old_team_without_run_in_sandbox_defaults_false(storage):
+    s, store, users = storage
+    team = await s.create_team(owner_user_id="user-1", name="Legacy Team")
+    del store[0]["run_in_sandbox"]
+
+    fetched = await s.get_team(team.id, owner_user_id="user-1")
+
+    assert fetched is not None
+    assert fetched.run_in_sandbox is False
 
 
 @pytest.mark.asyncio
@@ -969,6 +998,21 @@ async def test_clone_team_preserves_tags(storage):
 
     assert cloned is not None
     assert cloned.tags == ["research", "review"]
+
+
+@pytest.mark.asyncio
+async def test_clone_team_preserves_run_in_sandbox(storage):
+    s, store, users = storage
+    original = await s.create_team(
+        owner_user_id="user-1",
+        name="Original",
+        run_in_sandbox=True,
+    )
+
+    cloned = await s.clone_team(original.id, owner_user_id="user-1")
+
+    assert cloned is not None
+    assert cloned.run_in_sandbox is True
 
 
 @pytest.mark.asyncio

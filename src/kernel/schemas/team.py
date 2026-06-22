@@ -72,6 +72,7 @@ class TeamCreate(BaseModel):
     members: list[TeamMemberCreate] = Field(default_factory=list, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: str = Field(default="", max_length=4000)
+    run_in_sandbox: bool = False
     starter_prompts: list[PersonaStarterPrompt] = Field(
         default_factory=list,
         max_length=TEAM_STARTER_PROMPTS_MAX,
@@ -101,6 +102,7 @@ class TeamUpdate(BaseModel):
     members: Optional[list[TeamMemberCreate]] = Field(None, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: Optional[str] = Field(None, max_length=4000)
+    run_in_sandbox: Optional[bool] = None
     starter_prompts: Optional[list[PersonaStarterPrompt]] = Field(
         None,
         max_length=TEAM_STARTER_PROMPTS_MAX,
@@ -135,6 +137,7 @@ class TeamResponse(BaseModel):
     members: list[TeamMemberResponse] = Field(default_factory=list, max_length=TEAM_MEMBERS_MAX)
     default_member_id: Optional[str] = None
     team_instructions: str = ""
+    run_in_sandbox: bool = False
     starter_prompts: list[PersonaStarterPrompt] = Field(
         default_factory=list,
         max_length=TEAM_STARTER_PROMPTS_MAX,

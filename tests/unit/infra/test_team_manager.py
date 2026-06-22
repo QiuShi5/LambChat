@@ -143,6 +143,18 @@ async def test_create_team_delegates_tags_to_storage(manager, mock_storage):
 
 
 @pytest.mark.asyncio
+async def test_create_team_preserves_run_in_sandbox(manager, mock_storage):
+    created = _make_team(name="Sandbox Team")
+    mock_storage.create_team = AsyncMock(return_value=created)
+
+    data = TeamCreate(name="Sandbox Team", run_in_sandbox=True)
+    await manager.create_team(data, owner_user_id="user-1")
+
+    _, kwargs = mock_storage.create_team.await_args
+    assert kwargs["run_in_sandbox"] is True
+
+
+@pytest.mark.asyncio
 async def test_create_team_preserves_member_model_id(manager, mock_storage, monkeypatch):
     created = _make_team(name="Model Team")
     mock_storage.create_team = AsyncMock(return_value=created)
