@@ -92,7 +92,6 @@ class TeamStorage:
         return {
             "member_id": member.get("member_id") or f"m-{uuid.uuid4().hex[:12]}",
             "persona_preset_id": member.get("persona_preset_id", ""),
-            "agent_id": member.get("agent_id"),
             "model_id": member.get("model_id"),
             "role_name": member.get("role_name", ""),
             "role_avatar": member.get("role_avatar"),
@@ -153,12 +152,14 @@ class TeamStorage:
 
         members_raw = result.pop("members", [])
         members = []
+        compatibility_warnings: set[str] = set(result.get("compatibility_warnings") or [])
         for m in members_raw:
+            if "agent_id" in m:
+                compatibility_warnings.add("legacy_member_agent_id_ignored")
             members.append(
                 TeamMemberResponse(
                     member_id=m.get("member_id", ""),
                     persona_preset_id=m.get("persona_preset_id", ""),
-                    agent_id=m.get("agent_id"),
                     model_id=m.get("model_id"),
                     role_name=m.get("role_name", ""),
                     role_avatar=m.get("role_avatar"),
@@ -179,6 +180,7 @@ class TeamStorage:
         result.setdefault("visibility", TeamVisibility.PRIVATE.value)
         result.setdefault("is_favorite", False)
         result.setdefault("is_pinned", False)
+        result["compatibility_warnings"] = sorted(compatibility_warnings)
         result.setdefault("last_used_at", None)
         return TeamResponse(**result)
 
@@ -514,7 +516,6 @@ class TeamStorage:
             members_data.append(
                 {
                     "persona_preset_id": m.persona_preset_id,
-                    "agent_id": m.agent_id,
                     "model_id": m.model_id,
                     "role_name": m.role_name,
                     "role_avatar": m.role_avatar,

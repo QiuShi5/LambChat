@@ -53,6 +53,9 @@ from src.infra.agent.middleware import (
     PromptCachingMiddleware,
     SandboxMCPMiddleware,
     SectionPromptMiddleware,
+    SubagentExecutionPolicyMiddleware,
+    TaskDelegationEnvelopeMiddleware,
+    TeamRouterDelegationGuardMiddleware,
     ToolResultBinaryMiddleware,
     create_retry_middleware,
 )
@@ -432,6 +435,8 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             ToolResultBinaryMiddleware(base_url=subagent_base_url),
             SubagentActivityMiddleware(backend=backend),
         ]
+        if team:
+            mw.append(SubagentExecutionPolicyMiddleware())
         if should_convert_image_url_to_base64:
             mw.append(ImageUrlToBase64Middleware())
         if prompt_sections:
@@ -589,6 +594,9 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     user_middleware = create_retry_middleware(
         fallback_model=fallback_model_value, thinking=thinking_config
     )
+    if team:
+        user_middleware.append(TeamRouterDelegationGuardMiddleware())
+        user_middleware.append(TaskDelegationEnvelopeMiddleware())
     user_middleware.append(ToolResultBinaryMiddleware(base_url=subagent_base_url))
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())

@@ -219,6 +219,14 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           setStarterPromptRows(starterPromptsToDraftRows(team.starter_prompts));
           setMembers(team.members);
           setDefaultMemberId(team.default_member_id ?? null);
+          if (team.compatibility_warnings?.includes("legacy_member_agent_id_ignored")) {
+            toast(
+              t(
+                "team.legacyMemberAgentIgnored",
+                "This team contains legacy member agent mode data. Re-save the team to clean it up.",
+              ),
+            );
+          }
         });
       } else {
         setExistingTeamId(null);
@@ -239,7 +247,6 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
         const newMember: TeamMember = {
           member_id: generateMemberId(),
           persona_preset_id: preset.id,
-          agent_id: null,
           model_id: null,
           role_name: preset.name,
           role_avatar: preset.avatar,
@@ -311,7 +318,6 @@ export const TeamBuilder = forwardRef<TeamBuilderHandle, TeamBuilderProps>(
           members: members.map((m, idx) => ({
             member_id: m.member_id,
             persona_preset_id: m.persona_preset_id,
-            agent_id: null,
             model_id: m.model_id ?? null,
             role_name: m.role_name,
             role_avatar: m.role_avatar ?? null,
