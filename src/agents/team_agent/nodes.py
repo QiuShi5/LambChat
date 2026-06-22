@@ -33,9 +33,6 @@ from src.agents.core.subagent_prompts import (
 from src.agents.core.thinking import build_thinking_config
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
 from src.agents.search_agent.prompt import (
-    DEFAULT_SYSTEM_PROMPT as SEARCH_DEFAULT_SYSTEM_PROMPT,
-)
-from src.agents.search_agent.prompt import (
     SANDBOX_RUNTIME_SECTION as SEARCH_SANDBOX_RUNTIME_SECTION,
 )
 from src.agents.search_agent.prompt import (

@@ -5,7 +5,6 @@ from src.infra.logging.context import TraceContext
 from src.infra.logging.filter import TraceFilter
 from src.kernel.config import settings
 
-
 DEFAULT_LOG_FORMAT = type(settings).model_fields["LOG_FORMAT"].default
 
 
