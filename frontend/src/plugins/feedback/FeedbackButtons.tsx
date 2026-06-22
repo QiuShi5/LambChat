@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { clsx } from "clsx";
 import toast from "react-hot-toast";
-import { feedbackApi } from "../../../services/api/feedback";
-import type { RatingValue } from "../../../types/feedback";
+import { feedbackApi } from "./api";
+import type { RatingValue } from "./types";
 import { useTranslation } from "react-i18next";
 import { FeedbackDialog } from "./FeedbackDialog";
 

@@ -77,6 +77,11 @@ export type {
   SkillCreate,
   MarketplaceSkillResponse,
   MarketplaceCreateRequest,
+  ExtensionInstallState,
+  ExtensionMarketplaceCompatibility,
+  ExtensionMarketplaceEntry,
+  ExtensionMarketplaceItem,
+  ExtensionMarketplaceType,
   MarketplaceSkillFilesResponse,
   MarketplaceSkillFileResponse,
   MarketplaceInstallResponse,
@@ -180,6 +185,46 @@ export type {
 } from "./tool";
 
 // ============================================
+// Plugin Runtime Types
+// ============================================
+export type {
+  ArchivedPluginPackage,
+  ArchivedPluginPackagesResponse,
+  ExtensionHostSlotsResponse,
+  ExtensionScopedOption,
+  ExtensionScopedOptionsResponse,
+  PluginDataResponse,
+  PluginDryRunResource,
+  PluginExportResponse,
+  PluginImportResponse,
+  PluginPackageDescriptor,
+  PluginPackageExportResponse,
+  PluginPackageImportResponse,
+  PluginPackageIntegrity,
+  PluginPackageReviewResponse,
+  PluginPackageRestoreResponse,
+  PluginPackagesResponse,
+  PluginRuntimeContributionState,
+  PluginRuntimeContributionStatesResponse,
+  PluginRuntimeAuditRecord,
+  PluginRuntimeAuditResponse,
+  PluginResourceRecord,
+  PluginResourcesResponse,
+  PluginRuntimeFrontend,
+  PluginRuntimeIssue,
+  PluginRuntimeListResponse,
+  PluginRuntimePlugin,
+  PluginRuntimePackage,
+  PluginRuntimeRoute,
+  PluginSettingItem,
+  PluginSettingsResponse,
+  PluginRuntimeSideEffect,
+  PluginRuntimeTool,
+  PluginUninstallDryRunResponse,
+  PluginUninstallResponse,
+} from "./pluginRuntime";
+
+// ============================================
 // Settings Types
 // ============================================
 export type {
@@ -246,6 +291,7 @@ export interface Project {
   type: "favorites" | "custom" | "channel";
   icon?: string;
   sort_order: number;
+  metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -255,12 +301,14 @@ export interface ProjectCreate {
   type?: "custom";
   icon?: string;
   sort_order?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProjectUpdate {
   name?: string;
   icon?: string;
   sort_order?: number;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================
