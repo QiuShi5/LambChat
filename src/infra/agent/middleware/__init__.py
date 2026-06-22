@@ -17,6 +17,10 @@ from src.infra.agent.middleware.retry import (
 )
 from src.infra.agent.middleware.tool_interception import (
     MCPQuotaMiddleware,
+    SubagentExecutionPolicyMiddleware,
+    TaskDelegationEnvelopeMiddleware,
+    TeamRouterDelegationGuardMiddleware,
+    TextOnlyTaskGuardMiddleware,
     ToolResultBinaryMiddleware,
     ToolSearchMiddleware,
 )
@@ -33,6 +37,10 @@ __all__ = [
     "PromptCachingMiddleware",
     "SandboxMCPMiddleware",
     "SectionPromptMiddleware",
+    "SubagentExecutionPolicyMiddleware",
+    "TaskDelegationEnvelopeMiddleware",
+    "TeamRouterDelegationGuardMiddleware",
+    "TextOnlyTaskGuardMiddleware",
     "ToolResultBinaryMiddleware",
     "ToolSearchMiddleware",
     "_is_empty_content",
