@@ -1,26 +1,27 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from src.infra.extensions import InMemoryPluginSettingsStorage, PluginSettingsService
 from src.api.routes.chat import (
     CHAT_SSE_DATA_MAX_BYTES,
-    apply_declared_plugin_session_options,
-    apply_agent_team_plugin_session_option,
-    apply_project_agent_team_default,
-    apply_project_plugin_session_defaults,
     _execute_agent_stream,
     _format_sse_event,
+    apply_agent_team_plugin_session_option,
+    apply_declared_plugin_session_options,
+    apply_existing_session_plugin_options,
+    apply_project_agent_team_default,
+    apply_project_plugin_session_defaults,
     build_conversation_config,
-    ensure_chat_agent_executable,
     ensure_agent_team_executable,
+    ensure_chat_agent_executable,
     ensure_plugin_agent_executable,
     resolve_goal_for_request,
     session_stream,
 )
+from src.infra.extensions import InMemoryPluginSettingsStorage, PluginSettingsService
 from src.kernel.extensions import PluginManifest, PluginRuntime
 from src.kernel.extensions.builtin_plugins import build_agent_team_plugin_manifest
 from src.kernel.extensions.plugin_options import selected_agent_team_id_from_metadata
@@ -179,6 +180,50 @@ def test_apply_agent_team_plugin_session_option_prefers_plugin_namespace() -> No
     apply_agent_team_plugin_session_option(request, agent_id="team")
 
     assert request.team_id == "plugin-team"
+
+
+def test_apply_existing_session_plugin_options_restores_agent_team_selection() -> None:
+    request = AgentRequest(message="continue", session_id="session-1")
+
+    apply_existing_session_plugin_options(
+        request,
+        agent_id="team",
+        existing_metadata={
+            "plugin_options": {
+                "agent_team": {"SELECTED_TEAM_ID": "saved-team"}
+            }
+        },
+        plugin_runtime=PluginRuntime([build_agent_team_plugin_manifest()]),
+    )
+
+    assert request.team_id == "saved-team"
+    assert request.plugin_options == {
+        "agent_team": {"SELECTED_TEAM_ID": "saved-team"}
+    }
+
+
+def test_apply_existing_session_plugin_options_keeps_explicit_agent_team_selection() -> None:
+    request = AgentRequest(
+        message="continue",
+        session_id="session-1",
+        plugin_options={"agent_team": {"SELECTED_TEAM_ID": "current-team"}},
+    )
+
+    apply_existing_session_plugin_options(
+        request,
+        agent_id="team",
+        existing_metadata={
+            "plugin_options": {
+                "agent_team": {"SELECTED_TEAM_ID": "saved-team"}
+            }
+        },
+        plugin_runtime=PluginRuntime([build_agent_team_plugin_manifest()]),
+    )
+
+    assert request.team_id == "current-team"
+    assert request.plugin_options == {
+        "agent_team": {"SELECTED_TEAM_ID": "current-team"}
+    }
 
 
 def test_apply_declared_plugin_session_options_imports_manifest_legacy_payload() -> None:

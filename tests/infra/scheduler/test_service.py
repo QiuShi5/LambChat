@@ -11,19 +11,19 @@ import pytest
 from src.infra.extensions import InMemoryPluginSettingsStorage, PluginSettingsService
 from src.infra.scheduler import service as service_module
 from src.infra.scheduler.service import ScheduledTaskService
-from src.kernel.schemas.scheduled_task import (
-    ScheduledTask,
-    ScheduledTaskCreate,
-    ScheduledTaskStatus,
-    ScheduledTaskUpdate,
-    TriggerType,
-)
 from src.kernel.extensions import (
     AGENT_TEAM_PLUGIN_ID,
     PluginManifest,
     PluginRuntime,
     PluginUnavailableError,
     build_agent_team_plugin_manifest,
+)
+from src.kernel.schemas.scheduled_task import (
+    ScheduledTask,
+    ScheduledTaskCreate,
+    ScheduledTaskStatus,
+    ScheduledTaskUpdate,
+    TriggerType,
 )
 
 

@@ -99,33 +99,33 @@ def build_agent_team_plugin_manifest() -> PluginManifest:
         ],
         tools=[
             {
-                "name": "agent_team.search_persona_presets",
+                "name": "search_persona_presets",
                 "module": "src.infra.tool.team_tool",
                 "required_permissions": [
                     Permission.TEAM_READ.value,
                     Permission.PERSONA_PRESET_READ.value,
                     Permission.CHAT_WRITE.value,
                 ],
-                "legacy_ids": ["search_persona_presets"],
+                "legacy_ids": ["search_persona_presets", "agent_team.search_persona_presets"],
             },
             {
-                "name": "agent_team.create_agent_team",
+                "name": "create_agent_team",
                 "module": "src.infra.tool.team_tool",
                 "required_permissions": [
                     Permission.TEAM_WRITE.value,
                     Permission.CHAT_WRITE.value,
                 ],
-                "legacy_ids": ["create_agent_team"],
+                "legacy_ids": ["create_agent_team", "agent_team.create_agent_team"],
             },
         ],
         frontend={
             "app_tabs": [
                 {
-                    "id": "agent_team:team-tab",
-                    "tab": "team",
-                    "path": "/team",
+                    "id": "agent_team:agent-team-tab",
+                    "tab": "agent-team",
+                    "path": "/agent-team",
                     "label": "nav.team",
-                    "panel": "agent_team:team-panel",
+                    "panel": "agent_team:agent-team-panel",
                     "insert_after": "agents",
                     "order": 420,
                     "permissions": [Permission.TEAM_READ.value],
@@ -135,15 +135,15 @@ def build_agent_team_plugin_manifest() -> PluginManifest:
             ],
             "app_panels": [
                 {
-                    "id": "agent_team:team-panel",
-                    "tab": "team",
+                    "id": "agent_team:agent-team-panel",
+                    "tab": "agent-team",
                     "renderer": "agent_team.TeamBuilderPanel",
                 }
             ],
             "sidebar_items": [
                 {
-                    "id": "agent_team:team-nav",
-                    "path": "/team",
+                    "id": "agent_team:agent-team-nav",
+                    "path": "/agent-team",
                     "label": "nav.team",
                     "icon": "Users",
                     "order": 20,
@@ -174,8 +174,8 @@ def build_agent_team_plugin_manifest() -> PluginManifest:
                 {
                     "id": "agent_team:team-picker",
                     "renderer": "agent_team.TeamPickerModal",
-                    "create_path": "/team",
-                    "manage_path": "/team",
+                    "create_path": "/agent-team",
+                    "manage_path": "/agent-team",
                     "option_binding": {
                         "plugin_id": "agent_team",
                         "key": AGENT_TEAM_SELECTED_TEAM_OPTION,
