@@ -10,7 +10,6 @@ import { isEmojiAvatar, getEmojiAvatarUrl } from "../persona/personaAvatar";
 import { teamApi } from "../../services/api/team";
 import type { AgentOption, FileCategory } from "../../types";
 import type { Team } from "../../types/team";
-import type { UploadLimits } from "../../hooks/useFileUpload";
 import { TeamAvatar } from "../team/TeamAvatar";
 import {
   getTeamFallbackAvatar,
@@ -39,7 +38,6 @@ export interface ChatInputToolbarProps {
   thinkingLabel?: string;
   thinkingLevel?: string;
   uploadCategories: FileCategory[];
-  uploadLimits: UploadLimits | null;
   uploadFiles: (files: FileList | File[], category?: FileCategory) => void;
   selectedPersonaName?: string | null;
   personaAvatar: { avatar?: string; primaryTag: string } | null;
@@ -65,6 +63,13 @@ const FILE_CATEGORY_ACCEPT: Record<FileCategory, string> = {
     ".pdf,.doc,.docx,.dot,.dotx,.docm,.xls,.xlsx,.xlsm,.csv,.xlt,.ods,.ppt,.pptx,.potx,.ppsx,.pptm,.odp,.txt,.md,.csv,.rtf,.odt,.epub,.dxf,.dwg,.log,.json,.xml,.html,.htm,.yaml,.yml,.toml,.ini,.cfg,.tex,.diff,.patch,.py,.js,.ts,.jsx,.tsx,.vue,.svelte,.go,.rs,.rb,.php,.java,.c,.cpp,.h,.cs,.swift,.kt,.scala,.dart,.lua,.r,.pl,.sql,.sh,.bash,.zsh,.fish,.ps1,.bat,.cmd,.properties,.gradle,.cmake,.env,.graphql,.proto,.zip,.rar,.7z,.tar,.gz,.bz2,.xz,.tgz",
 };
 
+const FILE_ACCEPT_ALL = Object.values(FILE_CATEGORY_ACCEPT).join(",");
+
+function getFileAccept(categories: FileCategory[]): string {
+  if (categories.length === 0) return FILE_ACCEPT_ALL;
+  return categories.map((category) => FILE_CATEGORY_ACCEPT[category]).join(",");
+}
+
 export function ChatInputToolbar({
   activePanel,
   onActivePanelChange,
@@ -85,7 +90,6 @@ export function ChatInputToolbar({
   thinkingLabel,
   thinkingLevel,
   uploadCategories,
-  uploadLimits,
   uploadFiles,
   selectedPersonaName,
   personaAvatar,
@@ -101,8 +105,6 @@ export function ChatInputToolbar({
 }: ChatInputToolbarProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFileCategory, setSelectedFileCategory] =
-    useState<FileCategory | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [totalTeamCount, setTotalTeamCount] = useState(0);
 
@@ -132,22 +134,21 @@ export function ChatInputToolbar({
       )
     : undefined;
 
-  const handleFileCategorySelect = useCallback((category: FileCategory) => {
-    setSelectedFileCategory(category);
+  const handleUploadFiles = useCallback(() => {
     if (fileInputRef.current) {
-      fileInputRef.current.accept = FILE_CATEGORY_ACCEPT[category];
+      fileInputRef.current.accept = getFileAccept(uploadCategories);
       fileInputRef.current.click();
     }
-  }, []);
+  }, [uploadCategories]);
 
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
-      uploadFiles(files, selectedFileCategory || undefined);
+      uploadFiles(files);
       e.target.value = "";
     },
-    [uploadFiles, selectedFileCategory],
+    [uploadFiles],
   );
   const selectedTeamName = selectedTeam?.name ?? null;
 
@@ -176,8 +177,7 @@ export function ChatInputToolbar({
           agentName={agentName}
           hasThinkingOption={hasThinkingOption}
           uploadCategories={uploadCategories}
-          uploadLimits={uploadLimits}
-          onFileCategorySelect={handleFileCategorySelect}
+          onUploadFiles={handleUploadFiles}
           thinkingLabel={thinkingLabel}
           thinkingLevel={thinkingLevel}
           booleanAgentOptions={booleanAgentOptions}

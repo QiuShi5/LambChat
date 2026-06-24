@@ -137,13 +137,13 @@ export function TeamPickerModal({
             <button
               type="button"
               onClick={handleCreateNew}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+              className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors"
               style={{
                 background: "var(--theme-primary)",
                 color: "var(--theme-bg)",
               }}
             >
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex h-full items-center justify-center gap-1.5">
                 <Plus size={13} />
                 {t("common.new", "新建")}
               </span>
@@ -168,13 +168,13 @@ export function TeamPickerModal({
                   onClose();
                   onManageTeams();
                 }}
-                className="ml-auto rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
+                className="ml-auto inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors hover:border-[var(--theme-text-secondary)]"
                 style={{
                   borderColor: "var(--theme-border)",
                   color: "var(--theme-text-secondary)",
                 }}
               >
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex h-full items-center justify-center gap-1.5">
                   <Settings2 size={13} />
                   {t("team.manage", "管理")}
                 </span>

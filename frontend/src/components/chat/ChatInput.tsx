@@ -32,6 +32,7 @@ import {
   getSlashDropdownSections,
   type SlashDropdownItem,
 } from "./chatInputSlashCommands";
+import { updateRunSkillNamesForSlashSelection } from "./runSkillSelection";
 import {
   consumePendingSelectionActionPrompt,
   SELECTION_ACTION_EVENT,
@@ -379,18 +380,14 @@ export const ChatInput = memo(function ChatInput({
 
   const applySlashDropdownSelection = useCallback(
     (item: SlashDropdownItem) => {
-      // ── Skill selection: toggle in runEnabledSkillNames ──
+      // ── Skill selection: require this skill for the next message ──
       if (item.type === "skill") {
         setRunEnabledSkillNames((current) => {
-          const base = new Set(
-            current ?? availableRunSkills.map((s) => s.name),
-          );
-          if (base.has(item.skill.name)) {
-            base.delete(item.skill.name);
-          } else {
-            base.add(item.skill.name);
-          }
-          return Array.from(base);
+          return updateRunSkillNamesForSlashSelection({
+            currentRunSkillNames: current,
+            availableSkillNames: availableRunSkills.map((s) => s.name),
+            selectedSkillName: item.skill.name,
+          });
         });
         const cleared = clearSlashCommandInput(input, cursorPosition);
         setInput(cleared.input);
@@ -827,7 +824,6 @@ export const ChatInput = memo(function ChatInput({
             thinkingLabel={thinkingLabel}
             thinkingLevel={thinkingLevel}
             uploadCategories={uploadCategories}
-            uploadLimits={uploadLimits}
             uploadFiles={uploadFiles}
             selectedPersonaName={selectedPersonaName}
             personaAvatar={personaAvatar}

@@ -14,10 +14,6 @@ import {
   Bot,
   Brain,
   Plus,
-  Image,
-  Video,
-  Music,
-  FileText,
   UserRound,
   UsersRound,
   ChevronDown,
@@ -29,7 +25,6 @@ import {
 import { THINKING_LEVEL_COLOR } from "../chat/chatInputConstants";
 
 import type { AgentOption, FileCategory } from "../../types";
-import type { UploadLimits } from "../../hooks/useFileUpload";
 
 export type FeaturePanel =
   | "persona"
@@ -39,13 +34,6 @@ export type FeaturePanel =
   | "agent"
   | "thinking"
   | null;
-
-const FILE_CATEGORY_ICONS: Record<FileCategory, React.ElementType> = {
-  image: Image,
-  video: Video,
-  audio: Music,
-  document: FileText,
-};
 
 interface FeatureMenuProps {
   activePanel: FeaturePanel;
@@ -68,8 +56,7 @@ interface FeatureMenuProps {
   onToggleAgentOption?: (key: string, value: boolean | string | number) => void;
   // File upload
   uploadCategories: FileCategory[];
-  uploadLimits?: UploadLimits | null;
-  onFileCategorySelect: (category: FileCategory) => void;
+  onUploadFiles: () => void;
 }
 
 function MenuGroup({
@@ -173,8 +160,7 @@ export const FeatureMenu = memo(function FeatureMenu({
   agentOptionValues = {},
   onToggleAgentOption,
   uploadCategories,
-  uploadLimits,
-  onFileCategorySelect,
+  onUploadFiles,
 }: FeatureMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -254,38 +240,14 @@ export const FeatureMenu = memo(function FeatureMenu({
             }}
           >
             {uploadCategories.length > 0 && (
-              <MenuGroup
-                label={t("featureMenu.upload", "上传")}
+              <MenuItem
                 icon={<Upload size={18} />}
-                defaultExpanded
-              >
-                {uploadCategories.map((category) => {
-                  const Icon = FILE_CATEGORY_ICONS[category];
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => {
-                        onFileCategorySelect(category);
-                        setIsOpen(false);
-                      }}
-                      className="feature-menu-item"
-                    >
-                      <span className="feature-menu-item-icon">
-                        <Icon size={18} />
-                      </span>
-                      <span className="flex-1 text-left truncate">
-                        {t(`fileUpload.categories.${category}`)}
-                      </span>
-                      {uploadLimits && (
-                        <span className="feature-menu-item-badge">
-                          {uploadLimits[category]}MB
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </MenuGroup>
+                label={t("featureMenu.upload", "上传")}
+                onClick={() => {
+                  onUploadFiles();
+                  setIsOpen(false);
+                }}
+              />
             )}
             {(hasPersonaSelector ||
               hasTeamSelector ||
