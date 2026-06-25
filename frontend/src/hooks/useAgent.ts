@@ -845,6 +845,10 @@ export function useAgent(options?: UseAgentOptions): UseAgentReturn {
     loadHistoryRequestIdRef.current += 1;
     streamVersionRef.current += 1;
     setMessages([]);
+    setIsLoading(false);
+    setIsLoadingHistory(false);
+    isLoadingHistoryRef.current = false;
+    isSendingRef.current = false;
     setSessionId(null);
     setError(null);
     setCurrentRunId(null);

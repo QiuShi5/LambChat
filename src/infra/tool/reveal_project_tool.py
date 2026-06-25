@@ -45,6 +45,7 @@ from src.infra.revealed_file.storage import get_revealed_file_storage
 from src.infra.tool.backend_utils import (
     get_backend_from_runtime,
     get_base_url_from_runtime,
+    get_session_id_from_runtime,
     get_trace_id_from_runtime,
     get_user_id_from_runtime,
 )
@@ -645,7 +646,7 @@ async def reveal_project(
         try:
             ctx = TraceContext.get_request_context()
             user_id = ctx.user_id or get_user_id_from_runtime(runtime) or ""
-            session_id = ctx.session_id or ""
+            session_id = ctx.session_id or get_session_id_from_runtime(runtime) or ""
             trace_id = (
                 ctx.trace_id
                 or TraceContext.get().trace_id

@@ -394,6 +394,7 @@ class BaseGraphAgent(ABC):
             config: RunnableConfig = {
                 "configurable": {
                     "thread_id": session_id,
+                    "session_id": session_id,
                     "presenter": presenter,
                     "trace_id": presenter.trace_id,
                     **kwargs,
