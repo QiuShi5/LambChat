@@ -18,23 +18,9 @@ import {
   startVirtuosoScrollToBottom,
   type ScrollToBottomTimingMode,
 } from "./messageScrollUtils";
-import { createMessageAnchorId } from "./messageOutline";
 import { useMessageScrollHistorySettling } from "./useMessageScroll.historySettling";
 import { getMessageScrollViewportState } from "./useMessageScroll.viewport";
-import {
-  createExternalNavigationElementResolver,
-  ensureSubagentPanelsOpen,
-  findExternalNavigationMatchForRunId,
-  findMessageIndexForExternalNavigation,
-  findMessageIndexForRunId,
-  findRevealPartMatchInMessage,
-  focusElementForExternalNavigation,
-  highlightElementForExternalNavigation,
-  scrollElementIntoViewWithRetries,
-  shouldDeferExternalNavigationScroll,
-  shouldKeepExternalNavigationPending,
-  shouldScrollExternalNavigationFallbackToMessage,
-} from "./useMessageScroll.externalNavigation";
+import { useMessageScrollExternalNavigationEffect } from "./useMessageScroll.externalNavigationEffect";
 import {
   createMessageScrollFollowState,
   getMessageScrollSessionResetState,
@@ -740,242 +726,26 @@ export function useMessageScroll(
     isLoadingHistory,
   ]);
 
-  useEffect(() => {
-    if (externalNavigationToken) {
-      pendingExternalNavigationRef.current = {
-        token: externalNavigationToken,
-        targetFile: externalNavigationTargetFile ?? null,
-        scrollToBottom: externalScrollToBottom,
-        targetRunId: externalNavigationTargetRunId ?? null,
-      };
-    }
-  }, [
+  useMessageScrollExternalNavigationEffect({
+    messages,
+    isLoadingHistory,
     externalNavigationToken,
     externalNavigationTargetFile,
     externalNavigationTargetRunId,
-    externalScrollToBottom,
-  ]);
-
-  useEffect(() => {
-    const pendingExternalNavigation = pendingExternalNavigationRef.current;
-    if (!pendingExternalNavigation || messages.length === 0) {
-      return;
-    }
-
-    if (!virtuosoRef.current || !virtuosoScrollerRef.current) {
-      return;
-    }
-
-    if (pendingExternalNavigation.targetFile) {
-      if (
-        pendingExternalNavigation.targetFile.traceId &&
-        externalNavigationTargetRunPending &&
-        !externalNavigationTargetRunId
-      ) {
-        return;
-      }
-
-      const runMatch = findExternalNavigationMatchForRunId(
-        messages,
-        externalNavigationTargetRunId,
-        pendingExternalNavigation.targetFile,
-      );
-      const runMessageIndex = findMessageIndexForRunId(
-        messages,
-        externalNavigationTargetRunId,
-      );
-      const contentMatch =
-        !runMatch && runMessageIndex === -1 && !externalNavigationTargetRunId
-          ? findMessageIndexForExternalNavigation(
-              messages,
-              pendingExternalNavigation.targetFile,
-            )
-          : null;
-
-      if (runMessageIndex === -1 && !contentMatch) {
-        if (!isLoadingHistory) {
-          pendingExternalNavigationRef.current = null;
-        }
-        return;
-      }
-
-      userScrolledUpRef.current = true;
-      autoScrollActiveRef.current = false;
-      streamLockActiveRef.current = false;
-      pendingHistoryScrollRef.current = false;
-      ignoreProgrammaticScrollUntilRef.current = Date.now() + 120;
-      anchorScrollCleanupRef.current?.();
-
-      const resolvedMessageIndex =
-        runMatch?.messageIndex ??
-        (runMessageIndex !== -1
-          ? runMessageIndex
-          : contentMatch?.messageIndex ?? -1);
-      const resolvedMatch =
-        runMatch ??
-        (runMessageIndex !== -1
-          ? findRevealPartMatchInMessage(
-              messages[resolvedMessageIndex],
-              pendingExternalNavigation.targetFile,
-            )
-          : contentMatch);
-      const matchedPartIndex = resolvedMatch?.partIndex ?? -1;
-      const shouldKeepPending = shouldKeepExternalNavigationPending({
-        runMessageIndex,
-        matchedPartIndex,
-      });
-      const shouldDeferScroll = shouldDeferExternalNavigationScroll({
-        runMessageIndex,
-        matchedPartIndex,
-      });
-      const shouldFallbackToMessage =
-        shouldScrollExternalNavigationFallbackToMessage({
-          runMessageIndex,
-          matchedPartIndex,
-        });
-
-      if (!shouldKeepPending) {
-        pendingExternalNavigationRef.current = null;
-      }
-      const fallbackMessageAnchorId = createMessageAnchorId(
-        messages[resolvedMessageIndex]!.id,
-      );
-      const exactAnchorId = resolvedMatch?.anchorId;
-      const subagentChain = resolvedMatch?.subagentChain;
-      const shouldTargetExactElement =
-        matchedPartIndex !== -1 && typeof exactAnchorId === "string";
-      let hasAnimatedToMessage = false;
-      let lastHighlightedElement: HTMLElement | null = null;
-      const resolveTargetElement = createExternalNavigationElementResolver({
-        shouldTargetExactElement:
-          shouldTargetExactElement && !shouldFallbackToMessage,
-        scrollToMessageIndex: () => {
-          virtuosoRef.current?.scrollToIndex({
-            index: resolvedMessageIndex,
-            align: "center",
-            behavior: hasAnimatedToMessage ? "auto" : "smooth",
-          });
-          hasAnimatedToMessage = true;
-        },
-        getExactElement: () =>
-          exactAnchorId ? document.getElementById(exactAnchorId) : null,
-        getFallbackElement: () =>
-          document.getElementById(fallbackMessageAnchorId),
-      });
-
-      anchorScrollCleanupRef.current = scrollElementIntoViewWithRetries({
-        getElement: () => {
-          ensureSubagentPanelsOpen(subagentChain);
-          const element = resolveTargetElement();
-          if (element && element !== lastHighlightedElement) {
-            highlightCleanupRef.current?.();
-            highlightCleanupRef.current = highlightElementForExternalNavigation(
-              {
-                element,
-              },
-            );
-            focusElementForExternalNavigation({
-              element,
-            });
-            lastHighlightedElement = element;
-          }
-          return element;
-        },
-        getScroller:
-          shouldTargetExactElement && !subagentChain?.length
-            ? () => virtuosoScrollerRef.current
-            : undefined,
-        topOffsetPx: 20,
-        tolerancePx: 4,
-        settleAttempts: 3,
-        maxAttempts: subagentChain?.length ? 36 : 24,
-        behavior: "smooth",
-        align: "center",
-      });
-
-      if (shouldDeferScroll) {
-        return;
-      }
-      return;
-    }
-
-    if (pendingExternalNavigation.targetRunId) {
-      const runMessageIndex = findMessageIndexForRunId(
-        messages,
-        pendingExternalNavigation.targetRunId,
-      );
-
-      if (runMessageIndex === -1) {
-        if (!isLoadingHistory) {
-          pendingExternalNavigationRef.current = null;
-        }
-        return;
-      }
-
-      pendingExternalNavigationRef.current = null;
-      userScrolledUpRef.current = true;
-      autoScrollActiveRef.current = false;
-      streamLockActiveRef.current = false;
-      pendingHistoryScrollRef.current = false;
-      ignoreProgrammaticScrollUntilRef.current = Date.now() + 120;
-      anchorScrollCleanupRef.current?.();
-
-      const messageAnchorId = createMessageAnchorId(
-        messages[runMessageIndex]!.id,
-      );
-      let hasAnimatedToMessage = false;
-      let lastHighlightedElement: HTMLElement | null = null;
-
-      anchorScrollCleanupRef.current = scrollElementIntoViewWithRetries({
-        getElement: () => {
-          if (!hasAnimatedToMessage) {
-            virtuosoRef.current?.scrollToIndex({
-              index: runMessageIndex,
-              align: "center",
-              behavior: "smooth",
-            });
-            hasAnimatedToMessage = true;
-          }
-          const element = document.getElementById(messageAnchorId);
-          if (element && element !== lastHighlightedElement) {
-            highlightCleanupRef.current?.();
-            highlightCleanupRef.current = highlightElementForExternalNavigation(
-              {
-                element,
-              },
-            );
-            focusElementForExternalNavigation({
-              element,
-            });
-            lastHighlightedElement = element;
-          }
-          return element;
-        },
-        topOffsetPx: 20,
-        tolerancePx: 4,
-        settleAttempts: 3,
-        maxAttempts: 24,
-        behavior: "smooth",
-        align: "center",
-      });
-      return;
-    }
-
-    if (pendingExternalNavigation.scrollToBottom) {
-      if (isLoadingHistory) {
-        return;
-      }
-      pendingExternalNavigationRef.current = null;
-      requestScrollToBottom("default");
-    }
-  }, [
-    messages,
-    requestScrollToBottom,
-    isLoadingHistory,
-    externalNavigationTargetRunId,
     externalNavigationTargetRunPending,
-    externalNavigationTargetFile,
-  ]);
+    externalScrollToBottom,
+    virtuosoRef,
+    virtuosoScrollerRef,
+    pendingExternalNavigationRef,
+    userScrolledUpRef,
+    autoScrollActiveRef,
+    streamLockActiveRef,
+    pendingHistoryScrollRef,
+    ignoreProgrammaticScrollUntilRef,
+    anchorScrollCleanupRef,
+    highlightCleanupRef,
+    requestScrollToBottom,
+  });
 
   useEffect(() => {
     return () => {
