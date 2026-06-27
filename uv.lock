@@ -875,22 +875,15 @@ wheels = [
 [[package]]
 name = "cubesandbox"
 version = "0.3.0"
-source = { directory = "../CubeSandbox/sdk/python" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "requests" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
-    { name = "requests", specifier = ">=2" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+sdist = { url = "https://files.pythonhosted.org/packages/c9/8c/792422689811b08813f246c36b3b85b437d21f1e35998195433121e50601/cubesandbox-0.3.0.tar.gz", hash = "sha256:bdc4fa7f46b443585503cd1bf7dbe98ed68157f46d12a8b296bb817bc4dc5787", size = 42123, upload-time = "2026-06-16T03:06:51.585Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/90/5bdbe5f7a9edd80e2f6e0ef3db24f87885f9acce902b8c9ec71d6cde5771/cubesandbox-0.3.0-py3-none-any.whl", hash = "sha256:7cfff7b03430bff75bed4ddb8ca8357294d194ccfbd403f361a11f4b9f703b74", size = 27197, upload-time = "2026-06-16T03:06:50.099Z" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "daytona"
@@ -1801,7 +1794,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.35.0" },
     { name = "botocore", specifier = ">=1.35.0" },
     { name = "colorama", specifier = ">=0.4.6" },
-    { name = "cubesandbox", directory = "../CubeSandbox/sdk/python" },
+    { name = "cubesandbox", specifier = ">=0.3.0" },
     { name = "daytona", specifier = ">=0.153.0" },
     { name = "deepagents", specifier = ">=0.6.5" },
     { name = "deepagents-backends", specifier = ">=0.2.0" },
