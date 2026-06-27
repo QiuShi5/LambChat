@@ -30,6 +30,7 @@ from src.infra.async_utils import run_blocking_io
 from src.infra.backend.daytona import DaytonaBackend
 from src.infra.backend.skills_store import create_skills_backend
 from src.infra.logging import get_logger
+from src.infra.tool.sandbox_mcp_rebuild import ensure_sandbox_mcp
 from src.infra.utils.datetime import utc_now_iso
 from src.kernel.config import settings
 
@@ -53,7 +54,12 @@ from ._e2b_helpers import _E2BMixin
 logger = get_logger(__name__)
 
 # Re-export for backward compatibility (tests access sandbox_module.BINDING_COLLECTION)
-__all__ = ["SessionSandboxManager", "get_session_sandbox_manager", "close_session_sandbox_manager"]
+__all__ = [
+    "SessionSandboxManager",
+    "close_session_sandbox_manager",
+    "ensure_sandbox_mcp",
+    "get_session_sandbox_manager",
+]
 
 
 class SessionSandboxManager(_DaytonaMixin, _E2BMixin, _CubeSandboxMixin):

@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from deepagents.backends import CompositeBackend
 
-from src.infra.async_utils import run_blocking_io
+from src.infra.async_utils import run_blocking_io as _run_blocking_io
 from src.infra.backend.skills_store import create_skills_backend
 from src.infra.logging import get_logger
-from src.infra.tool.sandbox_mcp_rebuild import ensure_sandbox_mcp
+from src.infra.tool.sandbox_mcp_rebuild import ensure_sandbox_mcp as _ensure_sandbox_mcp
 
 if TYPE_CHECKING:
     from cubesandbox import Sandbox as CubeSandbox
@@ -21,6 +21,18 @@ if TYPE_CHECKING:
     from ._adapters import CubeSandboxAdapter
 
 logger = get_logger(__name__)
+
+
+def run_blocking_io(*args, **kwargs):
+    from src.infra.sandbox import session_manager
+
+    return getattr(session_manager, "run_blocking_io", _run_blocking_io)(*args, **kwargs)
+
+
+def ensure_sandbox_mcp(*args, **kwargs):
+    from src.infra.sandbox import session_manager
+
+    return getattr(session_manager, "ensure_sandbox_mcp", _ensure_sandbox_mcp)(*args, **kwargs)
 
 
 class _CubeSandboxMixin:
