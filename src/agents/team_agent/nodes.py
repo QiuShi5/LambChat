@@ -51,6 +51,7 @@ from src.agents.team_agent.prompt import (
 )
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    ArtifactDeliveryMiddleware,
     EnvVarPromptMiddleware,
     ImageUrlToBase64Middleware,
     PromptCachingMiddleware,
@@ -504,6 +505,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         mw = [
             *create_retry_middleware(fallback_model=fallback_model, thinking=thinking_config),
             ToolResultBinaryMiddleware(base_url=subagent_base_url),
+            ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir),
             SubagentActivityMiddleware(backend=backend),
         ]
         if should_convert_image_url_to_base64:
@@ -682,6 +684,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         fallback_model=fallback_model_value, thinking=thinking_config
     )
     user_middleware.append(ToolResultBinaryMiddleware(base_url=subagent_base_url))
+    user_middleware.append(ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir))
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())
     _prompt_sections = [

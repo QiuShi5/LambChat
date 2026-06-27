@@ -39,6 +39,7 @@ from src.agents.search_agent.prompt import (
 )
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    ArtifactDeliveryMiddleware,
     EnvVarPromptMiddleware,
     ImageUrlToBase64Middleware,
     MCPQuotaMiddleware,
@@ -202,6 +203,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
         *create_retry_middleware(fallback_model=fallback_model_value, thinking=thinking_config),
         MCPQuotaMiddleware(user_id=context.user_id),
         ToolResultBinaryMiddleware(base_url=search_base_url),
+        ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir),
         SubagentActivityMiddleware(backend=backend),
     ]
     if image_url_to_base64:
@@ -240,6 +242,7 @@ async def agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict[str,
     )
     user_middleware.append(MCPQuotaMiddleware(user_id=context.user_id))
     user_middleware.append(ToolResultBinaryMiddleware(base_url=search_base_url))
+    user_middleware.append(ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir))
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())
     # Prompt sections: one SectionPromptMiddleware instance, multiple ordered blocks.

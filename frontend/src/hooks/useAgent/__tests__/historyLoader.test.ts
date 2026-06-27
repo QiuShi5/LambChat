@@ -60,6 +60,41 @@ test("reconstructMessagesFromEvents ignores goal update events as message conten
   assert.equal(messages[0]?.role, "user");
 });
 
+test("reconstructMessagesFromEvents restores artifact result parts", () => {
+  const messages = reconstructMessagesFromEvents(
+    [
+      {
+        id: "event-artifact",
+        event_type: "artifact:result",
+        run_id: "run-1",
+        timestamp: "2026-05-08T00:00:01.000Z",
+        data: {
+          success: true,
+          artifact: {
+            kind: "file",
+            id: "file:revealed/puppy.svg",
+            name: "puppy.svg",
+            path: "/workspace/puppy.svg",
+            preview: {
+              kind: "file",
+              previewKey: "revealed/puppy.svg",
+              filePath: "/workspace/puppy.svg",
+              s3Key: "revealed/puppy.svg",
+              signedUrl: "/api/upload/file/revealed/puppy.svg",
+            },
+          },
+        },
+      } satisfies HistoryEvent,
+    ],
+    new Set<string>(),
+    { activeSubagentStack: [] },
+  );
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0]?.role, "assistant");
+  assert.equal(messages[0]?.parts?.[0]?.type, "artifact");
+});
+
 test("reconstructMessagesFromEvents does not create duplicate assistant ids for goal lifecycle events", () => {
   const runId = "run_20260530120841_cf52eb51";
   const messages = reconstructMessagesFromEvents(

@@ -157,12 +157,14 @@ def test_subagent_prompts_include_tool_selection_rules() -> None:
 
 def test_subagent_prompts_require_file_reveal_before_claiming_completion() -> None:
     required_guidance = [
-        "file reveal (required)",
-        "must call `reveal_file` immediately",
+        "artifact delivery (required)",
+        "automatically staged",
+        "workspace snapshots",
+        "without the agent manually registering each one",
+        "external `http(s)` urls should use `reveal_file",
         "call `reveal_project(project_path, name, template?)`",
-        "returning only a path is not sufficient",
         "do not claim the file or project is done",
-        "reveal the actual artifact",
+        "auto-staged by the runtime or explicitly revealed",
     ]
 
     for prompt in (DEFAULT_SUBAGENT_PROMPT, DETAILED_SUBAGENT_PROMPT, SUBAGENT_PROMPT):
@@ -173,12 +175,14 @@ def test_subagent_prompts_require_file_reveal_before_claiming_completion() -> No
 
 def test_main_agent_prompts_require_file_reveal_before_claiming_completion() -> None:
     required_guidance = [
-        "file reveal (required)",
-        "must call `reveal_file` immediately",
+        "artifact delivery (required)",
+        "automatically staged",
+        "workspace snapshots",
+        "without the agent manually registering each one",
+        "external `http(s)` urls should use `reveal_file",
         "call `reveal_project(project_path, name, template?)`",
-        "returning only a path is not sufficient",
         "do not claim the file or project is done",
-        "reveal the actual artifact",
+        "auto-staged by the runtime or explicitly revealed",
     ]
 
     for prompt in (
@@ -195,7 +199,7 @@ def test_main_agent_prompt_sections_hold_workflow_guidance() -> None:
     joined = "\n\n".join(MAIN_AGENT_PROMPT_SECTIONS)
 
     for phrase in [
-        "File Reveal (REQUIRED)",
+        "Artifact Delivery (REQUIRED)",
         "Artifact Completion Gate (REQUIRED)",
         "File Transfer",
         "Tool Selection Rules",

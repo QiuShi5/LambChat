@@ -31,4 +31,5 @@ export {
   shouldResetMessageScrollStateForSessionChange,
   shouldArmPendingHistoryScroll,
   shouldFinalizeHistoryLoadScroll,
+  shouldInferBatchedHistoryLoadReady,
 } from "./useMessageScroll.followState";

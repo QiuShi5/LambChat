@@ -20,6 +20,8 @@ export type {
   TextPart,
   ThinkingPart,
   ToolPart,
+  ArtifactPart,
+  ArtifactPartArtifact,
   SubagentPart,
   TodoPart,
   TodoItem,

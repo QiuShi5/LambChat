@@ -34,6 +34,7 @@ from src.agents.fast_agent.context import FastAgentContext
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    ArtifactDeliveryMiddleware,
     ImageUrlToBase64Middleware,
     PromptCachingMiddleware,
     SectionPromptMiddleware,
@@ -200,6 +201,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
     subagent_middleware = [
         *create_retry_middleware(fallback_model=fallback_model_value, thinking=thinking_config),
         ToolResultBinaryMiddleware(base_url=subagent_base_url),
+        ArtifactDeliveryMiddleware(),
         SubagentActivityMiddleware(backend=backend),
     ]
     if image_url_to_base64:
@@ -235,6 +237,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
         fallback_model=fallback_model_value, thinking=thinking_config
     )
     user_middleware.append(ToolResultBinaryMiddleware(base_url=subagent_base_url))
+    user_middleware.append(ArtifactDeliveryMiddleware())
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())
     # Skills + memory guide: session-static (one SectionPromptMiddleware, multiple blocks)

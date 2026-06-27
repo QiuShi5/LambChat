@@ -3,20 +3,25 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
+import mimetypes
+import os
 import sys
 from typing import Annotated, Any
+from urllib.parse import unquote, urlsplit
 
 from langchain_core.tools import BaseTool, InjectedToolArg
 
 from src.agents.core.node_utils import (
+    IMAGE_DATA_URL_INLINE_MAX_BYTES,
     build_human_message,
     inline_image_attachments_as_data_urls,
 )
 from src.infra.async_utils import run_blocking_io
 from src.infra.llm.client import LLMClient
 from src.infra.logging import get_logger
-from src.infra.tool.backend_utils import get_base_url_from_runtime
+from src.infra.tool.backend_utils import get_backend_from_runtime, get_base_url_from_runtime
 from src.kernel.config import settings
 from src.kernel.schemas.model import ModelConfig
 
@@ -37,6 +42,7 @@ IMAGE_ANALYSIS_INTERNAL_RUN_CONFIG = {
     "metadata": {"lc_source": "image_analysis_tool", "internal_tool_call": True},
     "tags": ["internal_tool_call", "image_analysis_tool"],
 }
+_UPLOAD_FILE_MARKER = "/api/upload/file/"
 
 
 async def _json_dumps_result(data: dict[str, Any]) -> str:
@@ -73,6 +79,129 @@ def _image_attachments_from_urls(image_urls: list[str]) -> list[dict[str, Any]]:
             }
         )
     return attachments
+
+
+def _backend_path_from_image_reference(image_ref: str) -> str | None:
+    ref = image_ref.strip()
+    if not ref or ref.startswith("data:") or _UPLOAD_FILE_MARKER in ref:
+        return None
+
+    parsed = urlsplit(ref)
+    scheme = (parsed.scheme or "").lower()
+    if scheme in {"http", "https"}:
+        return None
+    if scheme == "file":
+        return unquote(parsed.path or "")
+    if scheme:
+        return None
+    return ref
+
+
+def _guess_image_mime_type(file_path: str, content: bytes) -> str | None:
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type and mime_type.startswith("image/"):
+        return mime_type
+
+    signatures = (
+        (b"\x89PNG\r\n\x1a\n", "image/png"),
+        (b"\xff\xd8\xff", "image/jpeg"),
+        (b"GIF87a", "image/gif"),
+        (b"GIF89a", "image/gif"),
+        (b"RIFF", "image/webp"),
+        (b"BM", "image/bmp"),
+    )
+    for prefix, detected_mime_type in signatures:
+        if content.startswith(prefix):
+            return detected_mime_type
+    if content.lstrip().startswith(b"<svg"):
+        return "image/svg+xml"
+    return None
+
+
+async def _download_file_from_backend(backend: Any, file_path: str) -> bytes | None:
+    if hasattr(backend, "adownload_files"):
+        try:
+            responses = await backend.adownload_files([file_path])
+            if responses:
+                resp = responses[0]
+                if resp.content:
+                    return resp.content
+                if resp.error:
+                    logger.warning(
+                        "[image_analyze] Download error for %s: %s", file_path, resp.error
+                    )
+        except Exception as e:
+            logger.warning("[image_analyze] adownload_files failed for %s: %s", file_path, e)
+
+    if hasattr(backend, "download_files"):
+        try:
+            responses = await run_blocking_io(backend.download_files, [file_path])
+            if responses:
+                resp = responses[0]
+                if resp.content:
+                    return resp.content
+                if resp.error:
+                    logger.warning(
+                        "[image_analyze] Download error for %s: %s", file_path, resp.error
+                    )
+        except Exception as e:
+            logger.warning("[image_analyze] download_files failed for %s: %s", file_path, e)
+
+    return None
+
+
+async def _inline_backend_image_paths(
+    attachments: list[dict[str, Any]],
+    runtime: ToolRuntime | None,
+) -> list[dict[str, Any]]:
+    backend = get_backend_from_runtime(runtime)
+    if backend is None:
+        return attachments
+
+    resolved: list[dict[str, Any]] = []
+    for attachment in attachments:
+        url = str(attachment.get("url") or "")
+        backend_path = _backend_path_from_image_reference(url)
+        if backend_path is None:
+            resolved.append(attachment)
+            continue
+
+        content = await _download_file_from_backend(backend, backend_path)
+        if content is None:
+            resolved.append(attachment)
+            continue
+        if len(content) > IMAGE_DATA_URL_INLINE_MAX_BYTES:
+            logger.warning(
+                "[image_analyze] Refusing oversized backend image: %s size=%s max=%s",
+                backend_path,
+                len(content),
+                IMAGE_DATA_URL_INLINE_MAX_BYTES,
+            )
+            resolved.append(attachment)
+            continue
+
+        mime_type = _guess_image_mime_type(backend_path, content)
+        if not mime_type:
+            logger.warning(
+                "[image_analyze] Backend file is not a recognized image: %s", backend_path
+            )
+            resolved.append(attachment)
+            continue
+
+        encoded = await run_blocking_io(base64.b64encode, content)
+        data_url = f"data:{mime_type};base64,{encoded.decode('ascii')}"
+        resolved.append(
+            {
+                **attachment,
+                "name": os.path.basename(backend_path.rstrip("/")) or attachment.get("name"),
+                "mime_type": mime_type,
+                "url": None,
+                "data_url": data_url,
+                "size": len(content),
+            }
+        )
+
+    return resolved
 
 
 def _content_to_text(content: Any) -> str:
@@ -150,6 +279,7 @@ async def image_analyze(
         if not attachments:
             return await _json_dumps_result({"error": "image_urls must include at least one image"})
 
+        attachments = await _inline_backend_image_paths(attachments, runtime)
         force_data_url = bool(model_config.profile.image_url_to_base64)
         attachments = await inline_image_attachments_as_data_urls(
             attachments,

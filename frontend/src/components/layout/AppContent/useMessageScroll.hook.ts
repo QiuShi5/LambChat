@@ -41,6 +41,7 @@ import {
   getNextMessageScrollFollowStateForUserScroll,
   shouldArmPendingHistoryScroll,
   shouldFinalizeHistoryLoadScroll,
+  shouldInferBatchedHistoryLoadReady,
 } from "./useMessageScroll.followState";
 
 interface UseMessageScrollReturn {
@@ -101,6 +102,10 @@ export function useMessageScroll(
   } | null>(null);
   const previousSessionIdRef = useRef(sessionId);
   const previousMessagesRef = useRef(messages);
+  const previousHistoryLoadSignatureRef = useRef({
+    sessionId,
+    messageCount: messages.length,
+  });
   const isNearBottomRef = useRef(true);
 
   const userScrolledUpRef = useRef(false);
@@ -536,6 +541,26 @@ export function useMessageScroll(
   }, [sessionId, externalNavigationToken, isLoadingHistory]);
 
   useEffect(() => {
+    const previousHistoryLoadSignature =
+      previousHistoryLoadSignatureRef.current;
+    previousHistoryLoadSignatureRef.current = {
+      sessionId,
+      messageCount: messages.length,
+    };
+
+    if (
+      shouldInferBatchedHistoryLoadReady({
+        previousSessionId: previousHistoryLoadSignature.sessionId,
+        sessionId,
+        previousMessageCount: previousHistoryLoadSignature.messageCount,
+        messageCount: messages.length,
+        isLoadingHistory,
+        externalNavigationToken,
+      })
+    ) {
+      pendingHistoryScrollRef.current = true;
+    }
+
     if (!isLoadingHistory && messages.length === 0) {
       pendingHistoryScrollRef.current = false;
     }
@@ -573,7 +598,13 @@ export function useMessageScroll(
         cancelAnimationFrame(raf2);
       };
     }
-  }, [isLoadingHistory, messages.length, requestScrollToBottom]);
+  }, [
+    externalNavigationToken,
+    isLoadingHistory,
+    messages.length,
+    requestScrollToBottom,
+    sessionId,
+  ]);
 
   useEffect(() => {
     if (sessionBottomScrollToken && externalNavigationToken) {

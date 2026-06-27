@@ -42,6 +42,7 @@ from src.infra.revealed_file.storage import get_revealed_file_storage
 from src.infra.tool.backend_utils import (
     get_backend_from_runtime,
     get_base_url_from_runtime,
+    get_delivery_source_from_runtime,
     get_session_id_from_runtime,
     get_trace_id_from_runtime,
     get_user_id_from_runtime,
@@ -198,6 +199,19 @@ async def _index_revealed_file(
             or ""
         )
         session_project_id = await _lookup_session_project_id(session_id)
+        delivery_source = get_delivery_source_from_runtime(runtime)
+        data: dict[str, Any] = {
+            "file_type": file_category,
+            "mime_type": mime_type,
+            "file_size": file_size,
+            "url": url,
+            "session_id": session_id,
+            "project_id": session_project_id,
+            "description": description,
+            "original_path": original_path,
+        }
+        if delivery_source:
+            data["delivery_source"] = delivery_source
 
         storage_index = get_revealed_file_storage()
         await storage_index.upsert_by_name(
@@ -206,16 +220,7 @@ async def _index_revealed_file(
             source="reveal_file",
             file_key=file_key,
             trace_id=trace_id,
-            data={
-                "file_type": file_category,
-                "mime_type": mime_type,
-                "file_size": file_size,
-                "url": url,
-                "session_id": session_id,
-                "project_id": session_project_id,
-                "description": description,
-                "original_path": original_path,
-            },
+            data=data,
         )
     except Exception as idx_err:
         logger.warning(f"[reveal_file] Failed to index revealed file: {idx_err}")

@@ -114,6 +114,20 @@ def get_trace_id_from_runtime(runtime: Any) -> Optional[str]:
     return None
 
 
+def get_delivery_source_from_runtime(runtime: Any) -> Optional[str]:
+    """Return the artifact delivery source marker carried by internal tool calls."""
+    if runtime is not None:
+        if hasattr(runtime, "config") and runtime.config:
+            config = runtime.config
+            if isinstance(config, dict):
+                configurable = config.get("configurable", {})
+                if isinstance(configurable, dict):
+                    delivery_source = configurable.get("delivery_source")
+                    if delivery_source:
+                        return str(delivery_source)
+    return None
+
+
 def get_backend_from_runtime(runtime: Any) -> Optional[SandboxBackendProtocol]:
     """从 ToolRuntime 获取 backend（分布式安全）
 

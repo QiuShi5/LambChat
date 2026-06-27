@@ -87,6 +87,16 @@ export function MessagePartRenderer({
     );
   }
 
+  if (part.type === "artifact") {
+    return (
+      <span
+        id={toolPartAnchorId}
+        className="block h-0 scroll-mt-6 rounded-xl transition-[box-shadow] duration-300 data-[external-navigation-highlighted=true]:h-1 data-[external-navigation-highlighted=true]:ring-2 data-[external-navigation-highlighted=true]:ring-amber-500/80 data-[external-navigation-highlighted=true]:shadow-[0_0_20px_rgba(245,158,11,0.25)] dark:data-[external-navigation-highlighted=true]:ring-amber-400/60 dark:data-[external-navigation-highlighted=true]:shadow-[0_0_20px_rgba(251,191,36,0.12)]"
+        aria-hidden="true"
+      />
+    );
+  }
+
   if (part.type === "tool") {
     // Detect Read tool, use dedicated component (strips line numbers, shows file path)
     if (part.name === "read_file") {
