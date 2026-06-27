@@ -554,14 +554,14 @@ export function SharedPage() {
       {/* Top bar — matching landing page Navbar style */}
       <header
         data-yields-sidebar
-        className="safe-area-top fixed top-0 inset-x-0 z-50 border-b border-theme-border bg-[color-mix(in_srgb,var(--theme-bg-card)_82%,transparent)] backdrop-blur-xl"
+        className="safe-area-top fixed top-0 inset-x-0 z-50 border-b border-theme-border bg-[color-mix(in_srgb,var(--theme-bg-card)_82%,transparent)] border-r border-theme-border"
       >
         {/* Scroll progress bar */}
         <div
           className="absolute bottom-0 left-0 h-[2px] landing-progress-bar"
           style={{ width: `${scrollProgress * 100}%` }}
         />
-        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between border-r border-theme-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between">
           {/* Left: Brand */}
           <Link
             to="/"

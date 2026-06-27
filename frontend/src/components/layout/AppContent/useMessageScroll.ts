@@ -32,4 +32,5 @@ export {
   shouldArmPendingHistoryScroll,
   shouldFinalizeHistoryLoadScroll,
   shouldInferBatchedHistoryLoadReady,
+  shouldStartHistoryScrollSettling,
 } from "./useMessageScroll.followState";

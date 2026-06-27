@@ -26,7 +26,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="backdrop-blur-sm rounded-lg border border-[var(--usage-border)] bg-[var(--theme-bg-card)] px-4 py-2.5 shadow-lg">
+    <div className="rounded-lg border border-[var(--usage-border)] bg-[var(--theme-bg-card)] px-4 py-2.5 shadow-lg">
       <div className="h-0.5 mb-2 rounded-full bg-[var(--theme-primary)]" />
       <p className="mb-1 text-[11px] font-medium text-theme-text-tertiary">
         {label}

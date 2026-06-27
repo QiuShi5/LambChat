@@ -236,6 +236,39 @@ test("tool result panel exposes console chrome styling hooks", () => {
   );
 });
 
+test("tool result panel masks rich content until the first panel paint settles", () => {
+  const componentSource = readFileSync(
+    new URL("../ToolResultPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    componentSource,
+    /const \[contentReady, setContentReady\] = useState\(false\)/,
+    "panel should track whether rich content is ready to reveal",
+  );
+  assert.match(
+    componentSource,
+    /requestAnimationFrame\(\(\) => \{\s*frameIds\.push\(\s*requestAnimationFrame\(\(\) => \{/s,
+    "panel should wait for two animation frames so lazy markdown and code viewers can settle",
+  );
+  assert.match(
+    componentSource,
+    /aria-busy=\{!contentReady\}/,
+    "body should expose busy state while the reveal mask is active",
+  );
+  assert.match(
+    componentSource,
+    /className=\{`tool-console-body__content[\s\S]*?\$\{\s*contentReady \? "opacity-100" : "opacity-0"/,
+    "rich content should be mounted but visually hidden until ready",
+  );
+  assert.match(
+    componentSource,
+    /tool-console-body__loading/s,
+    "panel should show a loading overlay while rich content is hidden",
+  );
+});
+
 test("tool detail sections keep visible separation in light mode", () => {
   const componentsSource = readFileSync(
     new URL("../../../../../styles/components.css", import.meta.url),

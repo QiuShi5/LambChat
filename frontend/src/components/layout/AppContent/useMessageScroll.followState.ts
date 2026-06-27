@@ -292,6 +292,13 @@ interface ShouldInferBatchedHistoryLoadReadyOptions {
   externalNavigationToken?: string | null;
 }
 
+interface ShouldStartHistoryScrollSettlingOptions {
+  pendingHistoryScroll: boolean;
+  isLoadingHistory: boolean;
+  messageCount: number;
+  externalNavigationToken?: string | null;
+}
+
 export function shouldArmPendingHistoryScroll({
   isLoadingHistory,
   sessionId,
@@ -322,6 +329,20 @@ export function shouldInferBatchedHistoryLoadReady({
     previousMessageCount === 0 &&
     messageCount > 0 &&
     !isLoadingHistory &&
+    !externalNavigationToken
+  );
+}
+
+export function shouldStartHistoryScrollSettling({
+  pendingHistoryScroll,
+  isLoadingHistory,
+  messageCount,
+  externalNavigationToken,
+}: ShouldStartHistoryScrollSettlingOptions): boolean {
+  return (
+    pendingHistoryScroll &&
+    !isLoadingHistory &&
+    messageCount > 0 &&
     !externalNavigationToken
   );
 }

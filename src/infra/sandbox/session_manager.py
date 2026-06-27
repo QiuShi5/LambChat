@@ -164,10 +164,30 @@ class SessionSandboxManager(_DaytonaMixin, _E2BMixin, _CubeSandboxMixin):
                 self._locks[user_id] = asyncio.Lock()
             return self._locks[user_id]
 
+    def _binding_platform(self) -> str:
+        """Return the active sandbox platform used to scope persisted bindings."""
+        return settings.SANDBOX_PLATFORM.lower()
+
     async def _get_binding(self, user_id: str) -> Optional[dict]:
-        """从 MongoDB 获取用户的沙箱绑定"""
+        """从 MongoDB 获取当前平台的用户沙箱绑定"""
         doc = await self._bindings.find_one({"user_id": user_id})
-        return doc
+        if not doc:
+            return None
+
+        platform = self._binding_platform()
+        platform_binding = (doc.get("sandboxes") or {}).get(platform)
+        if platform_binding:
+            scoped_doc = dict(doc)
+            scoped_doc.update(platform_binding)
+            scoped_doc["sandbox_platform"] = platform
+            return scoped_doc
+
+        # Backward compatibility for records written before platform-scoped
+        # bindings existed. Once saved again, the platform slot is populated.
+        legacy_platform = doc.get("sandbox_platform")
+        if legacy_platform is None or legacy_platform == platform:
+            return doc
+        return None
 
     def _evict_if_needed(self) -> None:
         """淘汰最久未使用的缓存条目（LRU），防止内存泄漏。
@@ -268,18 +288,28 @@ class SessionSandboxManager(_DaytonaMixin, _E2BMixin, _CubeSandboxMixin):
     ) -> None:
         """保存/更新用户的沙箱绑定"""
         now = utc_now_iso()
+        platform = self._binding_platform()
         update = {
             "$set": {
+                "sandbox_platform": platform,
                 "sandbox_id": sandbox_id,
                 "sandbox_state": state,
                 "sandbox_last_used_at": now,
+                f"sandboxes.{platform}.sandbox_id": sandbox_id,
+                f"sandboxes.{platform}.sandbox_state": state,
+                f"sandboxes.{platform}.sandbox_last_used_at": now,
+                f"sandboxes.{platform}.sandbox_platform": platform,
             },
         }
         # 仅在首次创建时设置 sandbox_created_at
         if is_new:
             update["$set"]["sandbox_created_at"] = now
+            update["$set"][f"sandboxes.{platform}.sandbox_created_at"] = now
         else:
-            update["$setOnInsert"] = {"sandbox_created_at": now}
+            update["$setOnInsert"] = {
+                "sandbox_created_at": now,
+                f"sandboxes.{platform}.sandbox_created_at": now,
+            }
 
         await self._bindings.update_one(
             {"user_id": user_id},

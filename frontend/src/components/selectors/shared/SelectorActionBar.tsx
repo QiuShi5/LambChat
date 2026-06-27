@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export const SELECTOR_ACTION_BAR_CLASS =
-  "sticky top-0 z-10 flex items-center gap-2 px-4 sm:px-6 py-2.5 border-b border-stone-200/80 bg-white/75 backdrop-blur-md dark:border-stone-700/80 dark:bg-stone-900/60";
+  "sticky top-0 z-10 flex items-center gap-2 px-4 sm:px-6 py-2.5 border-b border-stone-200/80 bg-white/75 dark:border-stone-700/80 dark:bg-stone-900/60";
 export const SELECTOR_ACTION_BUTTON_CLASS =
   "rounded-full border border-transparent px-3 py-2 sm:py-1.5 text-xs font-semibold text-stone-600 hover:border-stone-200 hover:bg-stone-100 hover:text-stone-950 active:bg-stone-200 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-50 transition-colors";
 export const SELECTOR_ACTION_ACCENT_BUTTON_CLASS =

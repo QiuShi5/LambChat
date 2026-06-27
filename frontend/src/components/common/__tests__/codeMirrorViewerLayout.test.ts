@@ -55,6 +55,18 @@ test("CodeMirrorViewer keeps the selection layer visible", () => {
   assert.match(source, /rgba\(37, 99, 235, 0\.26\)/);
 });
 
+test("DeferredCodeMirrorViewer fallback does not flash raw code", () => {
+  const source = readSource("../DeferredCodeMirrorViewer.tsx");
+
+  assert.match(source, /LoadingSpinner/);
+  assert.match(source, /aria-label=\{loadingLabel\}/);
+  assert.doesNotMatch(
+    source,
+    /<pre[\s\S]*?\{value\}[\s\S]*?<\/pre>/,
+    "lazy CodeMirror fallback should not render raw source before highlighting loads",
+  );
+});
+
 test("document code preview relies on the shared viewer fill behavior", () => {
   const source = readSource("../../documents/previews/CodeRenderer.tsx");
 

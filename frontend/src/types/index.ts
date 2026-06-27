@@ -214,6 +214,7 @@ export type {
   ShareVisibility,
   SharedSession,
   ShareCreate,
+  ShareUpdate,
   ShareResponse,
   ShareListResponse,
   SharedContentOwner,

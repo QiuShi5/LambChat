@@ -60,6 +60,25 @@ When `SANDBOX_PLATFORM=cubesandbox`, LambChat follows this order for a user:
 
 CubeSandbox may occasionally report a sandbox as `running` in the control plane even though the data plane returns `504 Gateway Time-out`. LambChat treats that as unhealthy when it cannot create the session work directory or run commands, then falls back to another existing sandbox or creates a new one.
 
+### Production Migration
+
+LambChat stores sandbox bindings per user and per platform. New records use:
+
+- `sandboxes.e2b`
+- `sandboxes.cubesandbox`
+
+Older production records may only have top-level fields such as `sandbox_id` and `sandbox_state`. When `SANDBOX_PLATFORM=e2b`, those legacy top-level records are treated as E2B bindings for backward compatibility. On the next successful reuse, LambChat writes the same sandbox into `sandboxes.e2b`, so the existing E2B sandbox continues to be used and is not recreated.
+
+Switching a user or deployment from `e2b` to `cubesandbox` creates or reuses a CubeSandbox binding under `sandboxes.cubesandbox` without overwriting `sandboxes.e2b`. Switching back to `e2b` reads the E2B slot again.
+
+For production deployments that should keep using E2B, leave:
+
+```bash
+SANDBOX_PLATFORM=e2b
+```
+
+Do not set `SANDBOX_PLATFORM=cubesandbox` unless you intentionally want those users to start using CubeSandbox. The two platforms have separate sandbox IDs and separate lifecycle APIs.
+
 ### Performance Notes
 
 - A cold CubeSandbox create depends on the template and local runtime restore time. In local testing this can take around 20-30 seconds.

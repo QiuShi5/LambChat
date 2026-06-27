@@ -1,11 +1,15 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import {
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+} from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 import type { Message } from "../../../types";
 import type { ExternalNavigationTargetFile } from "./externalNavigationState";
 import {
   forceVirtuosoToBottom,
-  getAutoScrollResumeThresholdPx,
-  getAwayFromBottomThresholdPx,
   getScrollToBottomTimingOptions,
   didLatestStreamingAssistantFinish,
   shouldAutoScrollAfterViewportChange,
@@ -15,6 +19,8 @@ import {
   type ScrollToBottomTimingMode,
 } from "./messageScrollUtils";
 import { createMessageAnchorId } from "./messageOutline";
+import { useMessageScrollHistorySettling } from "./useMessageScroll.historySettling";
+import { getMessageScrollViewportState } from "./useMessageScroll.viewport";
 import {
   createExternalNavigationElementResolver,
   ensureSubagentPanelsOpen,
@@ -42,6 +48,7 @@ import {
   shouldArmPendingHistoryScroll,
   shouldFinalizeHistoryLoadScroll,
   shouldInferBatchedHistoryLoadReady,
+  shouldStartHistoryScrollSettling,
 } from "./useMessageScroll.followState";
 
 interface UseMessageScrollReturn {
@@ -51,6 +58,7 @@ interface UseMessageScrollReturn {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isNearBottom: boolean;
   isNearTop: boolean;
+  isHistoryScrollSettling: boolean;
   handleVirtuosoAtBottomChange: (atBottom: boolean) => void;
   scrollToBottom: () => void;
   scrollToTop: () => void;
@@ -67,21 +75,12 @@ export function useMessageScroll(
   isLoadingHistory = false,
   sessionBottomScrollToken?: string | null,
 ): UseMessageScrollReturn {
-  const MOBILE_BOTTOM_BREATHING_ROOM_PX = 96;
-  const DESKTOP_BOTTOM_BREATHING_ROOM_PX = 16;
-  const isMobileViewport =
-    typeof window !== "undefined" ? window.innerWidth < 640 : false;
-  const bottomBreathingRoomPx = isMobileViewport
-    ? MOBILE_BOTTOM_BREATHING_ROOM_PX
-    : DESKTOP_BOTTOM_BREATHING_ROOM_PX;
-  const awayFromBottomThresholdPx = getAwayFromBottomThresholdPx(
+  const {
     isMobileViewport,
     bottomBreathingRoomPx,
-  );
-  const autoScrollResumeThresholdPx = getAutoScrollResumeThresholdPx(
-    isMobileViewport,
-    bottomBreathingRoomPx,
-  );
+    awayFromBottomThresholdPx,
+    autoScrollResumeThresholdPx,
+  } = getMessageScrollViewportState();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const virtuosoScrollerRef = useRef<HTMLDivElement>(null);
@@ -89,6 +88,11 @@ export function useMessageScroll(
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [isNearTop, setIsNearTop] = useState(true);
+  const {
+    isHistoryScrollSettling,
+    clearHistoryScrollSettling,
+    startHistoryScrollSettling,
+  } = useMessageScrollHistorySettling();
   const rafRef = useRef<number>(0);
   const viewportResizeRafRef = useRef<number>(0);
   const scrollCleanupRef = useRef<(() => void) | null>(null);
@@ -168,10 +172,11 @@ export function useMessageScroll(
     isNearBottomRef.current = resetState.isNearBottom;
     previousMessagesRef.current = messages;
     historyLoadActiveRef.current = isLoadingHistory;
+    clearHistoryScrollSettling();
 
     setIsNearBottom(resetState.isNearBottom);
     setIsNearTop(true);
-  }, [isLoadingHistory, messages, sessionId]);
+  }, [clearHistoryScrollSettling, isLoadingHistory, messages, sessionId]);
 
   const handleVirtuosoAtBottomChange = useCallback((atBottom: boolean) => {
     cancelAnimationFrame(rafRef.current);
@@ -197,7 +202,11 @@ export function useMessageScroll(
   const requestScrollToBottom = useCallback(
     (
       mode: ScrollToBottomTimingMode = "default",
-      options?: { clearManualDetachFromStream?: boolean },
+      options?: {
+        clearManualDetachFromStream?: boolean;
+        onInitialSettle?: () => void;
+        onComplete?: () => void;
+      },
     ) => {
       const timing = getScrollToBottomTimingOptions({
         isMobileViewport,
@@ -261,10 +270,14 @@ export function useMessageScroll(
           recoverUnexpectedTopJumpUntilRef.current =
             Date.now() + timing.observeAfterSettleMs;
         },
+        onInitialSettle: () => {
+          options?.onInitialSettle?.();
+        },
         onComplete: () => {
           autoScrollActiveRef.current = false;
           recoverUnexpectedTopJumpUntilRef.current =
             Date.now() + timing.observeAfterSettleMs;
+          options?.onComplete?.();
         },
       });
     },
@@ -540,7 +553,7 @@ export function useMessageScroll(
     }
   }, [sessionId, externalNavigationToken, isLoadingHistory]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previousHistoryLoadSignature =
       previousHistoryLoadSignatureRef.current;
     previousHistoryLoadSignatureRef.current = {
@@ -572,38 +585,47 @@ export function useMessageScroll(
         messageCount: messages.length,
       })
     ) {
-      let raf1 = 0;
-      let raf2 = 0;
+      if (
+        shouldStartHistoryScrollSettling({
+          pendingHistoryScroll: pendingHistoryScrollRef.current,
+          isLoadingHistory,
+          messageCount: messages.length,
+          externalNavigationToken,
+        })
+      ) {
+        startHistoryScrollSettling();
+      }
+
+      let raf = 0;
       let settled = false;
 
       const tryScroll = () => {
         if (settled) return;
         if (!virtuosoRef.current || !virtuosoScrollerRef.current) {
-          raf1 = requestAnimationFrame(() => {
-            raf2 = requestAnimationFrame(tryScroll);
-          });
+          raf = requestAnimationFrame(tryScroll);
           return;
         }
         settled = true;
         pendingHistoryScrollRef.current = false;
-        requestScrollToBottom("history-finalize");
+        requestScrollToBottom("history-finalize", {
+          onComplete: clearHistoryScrollSettling,
+        });
       };
 
-      raf1 = requestAnimationFrame(() => {
-        raf2 = requestAnimationFrame(tryScroll);
-      });
+      tryScroll();
       return () => {
         settled = true;
-        cancelAnimationFrame(raf1);
-        cancelAnimationFrame(raf2);
+        cancelAnimationFrame(raf);
       };
     }
   }, [
+    clearHistoryScrollSettling,
     externalNavigationToken,
     isLoadingHistory,
     messages.length,
     requestScrollToBottom,
     sessionId,
+    startHistoryScrollSettling,
   ]);
 
   useEffect(() => {
@@ -972,6 +994,7 @@ export function useMessageScroll(
     messagesEndRef,
     isNearBottom,
     isNearTop,
+    isHistoryScrollSettling,
     handleVirtuosoAtBottomChange,
     scrollToBottom,
     scrollToTop,
