@@ -126,11 +126,7 @@ def detect_tool_error(out: Any, raw: Any) -> tuple[bool, str | None]:
             return True, (
                 raw.get("error")
                 or raw.get("message")
-                or (
-                    f"Tool returned status {normalized_status}"
-                    if normalized_status
-                    else str(raw)
-                )
+                or (f"Tool returned status {normalized_status}" if normalized_status else str(raw))
             )
 
     if isinstance(raw, str) and raw:

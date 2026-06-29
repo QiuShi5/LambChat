@@ -250,7 +250,11 @@ def _message_input_value_for_schema_field(
         item_type = str(items.get("type") or "").lower()
         if _is_file_input_schema(items):
             return _MISSING
-        if _should_fill_message_field(field_name, items, {field_name}) or item_type in {"string", "unknown", ""}:
+        if _should_fill_message_field(field_name, items, {field_name}) or item_type in {
+            "string",
+            "unknown",
+            "",
+        }:
             return [message]
         if item_type == "object" or isinstance(items.get("properties"), dict):
             child_patch = _message_input_patch_for_schema(items, message)
@@ -350,8 +354,11 @@ def safe_workflow_pre_run_error(exc: Exception) -> str:
 
 
 def workflow_result_context(result: dict[str, Any]) -> str:
-    output = result.get("output") if isinstance(result.get("output"), dict) else {}
-    contract_value = workflow_output_contract_value(output, result.get("io_contract"))
+    raw_output = result.get("output")
+    output = raw_output if isinstance(raw_output, dict) else {}
+    raw_io_contract = result.get("io_contract")
+    io_contract = raw_io_contract if isinstance(raw_io_contract, dict) else {}
+    contract_value = workflow_output_contract_value(output, io_contract)
     if contract_value not in (None, ""):
         rendered = _bounded_context_value(contract_value)
     else:

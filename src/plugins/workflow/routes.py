@@ -32,7 +32,7 @@ from src.plugins.workflow.contracts import (
 )
 from src.plugins.workflow.service import WorkflowPluginService, create_workflow_service
 
-PLUGIN_ID = "workflow"
+PLUGIN_ID: Literal["workflow"] = "workflow"
 RUN_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 RUN_SSE_STOP_WAITING_STATUSES = {"paused"}
 RUN_WAITING_STATUSES = {"queued", "running", "paused"}
@@ -245,7 +245,9 @@ class WorkflowRunResponse(BaseModel):
     workflow_id: str
     version_id: str | None = None
     mode: Literal["sync", "async", "stream"] = "sync"
-    status: Literal["stub", "queued", "running", "paused", "succeeded", "failed", "cancelled"] = "stub"
+    status: Literal["stub", "queued", "running", "paused", "succeeded", "failed", "cancelled"] = (
+        "stub"
+    )
     output: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
     pause: dict[str, Any] = Field(default_factory=dict)
@@ -331,7 +333,9 @@ def _workflow_version_interface(definition: Any, version: Any) -> dict[str, Any]
     )
 
 
-def _workflow_contract_payload_with_interface(payload: dict[str, Any], *, workflow_id: str, version_id: str | None) -> dict[str, Any]:
+def _workflow_contract_payload_with_interface(
+    payload: dict[str, Any], *, workflow_id: str, version_id: str | None
+) -> dict[str, Any]:
     result = dict(payload)
     resolved_workflow_id = result.get("workflow_id") or workflow_id
     resolved_version_id = result.get("version_id") or version_id
@@ -461,7 +465,9 @@ async def list_workflow_credentials(
     """Return credential aliases available to workflow imports and preflight."""
     credentials = await service.list_credentials(user=user, skip=skip, limit=limit)
     return WorkflowCredentialListResponse(
-        credentials=[WorkflowCredentialResponse(**credential.model_dump()) for credential in credentials],
+        credentials=[
+            WorkflowCredentialResponse(**credential.model_dump()) for credential in credentials
+        ],
         skip=skip,
         limit=limit,
     )
@@ -513,7 +519,9 @@ async def list_workflows(
     skip: int = 0,
     limit: int = 50,
     query: str | None = None,
-    status_filter: Literal["draft", "published", "archived"] | None = Query(default=None, alias="status"),
+    status_filter: Literal["draft", "published", "archived"] | None = Query(
+        default=None, alias="status"
+    ),
     user: TokenPayload = Depends(require_permissions("workflow:read")),
     service: WorkflowPluginService = Depends(get_workflow_service),
 ) -> WorkflowListResponse:
@@ -1202,7 +1210,9 @@ async def resume_workflow_run(
 
 
 @router.get("/node-types")
-async def list_node_types(_: None = Depends(require_permissions("workflow:read"))) -> dict[str, Any]:
+async def list_node_types(
+    _: None = Depends(require_permissions("workflow:read")),
+) -> dict[str, Any]:
     """Return the first planned node catalog for UI discovery."""
     return {
         "plugin_id": PLUGIN_ID,

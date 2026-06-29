@@ -64,7 +64,9 @@ def json_value_matches_schema_type(value: Any, raw_type: Any) -> bool:
     return any(
         (expected == "string" and isinstance(value, str))
         or (expected == "integer" and isinstance(value, int) and not isinstance(value, bool))
-        or (expected == "number" and isinstance(value, (int, float)) and not isinstance(value, bool))
+        or (
+            expected == "number" and isinstance(value, (int, float)) and not isinstance(value, bool)
+        )
         or (expected == "boolean" and isinstance(value, bool))
         or (expected == "array" and isinstance(value, list))
         or (expected == "object" and isinstance(value, dict))
@@ -373,7 +375,10 @@ def schema_value_mismatches(
     required = schema_required(schema)
     if isinstance(value, dict) and (properties or required):
         for field in sorted(required):
-            field_schema = properties.get(field) if isinstance(properties.get(field), dict) else {}
+            raw_field_schema = properties.get(field)
+            field_schema: dict[str, Any] = (
+                raw_field_schema if isinstance(raw_field_schema, dict) else {}
+            )
             if ignore_required_defaults and "default" in field_schema:
                 continue
             if field not in value or value.get(field) is None:

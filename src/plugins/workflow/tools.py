@@ -40,7 +40,10 @@ def _json(data: dict[str, Any]) -> str:
 def _event_payload_truncation(payload: Any) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
-    if payload.get("truncated") is not True or payload.get("reason") != "workflow_event_payload_too_large":
+    if (
+        payload.get("truncated") is not True
+        or payload.get("reason") != "workflow_event_payload_too_large"
+    ):
         return None
     keys = payload.get("keys")
     return {
@@ -61,7 +64,9 @@ def _event_payload(event: Any) -> dict[str, Any]:
     model_dump = getattr(event, "model_dump", None)
     if callable(model_dump):
         payload = model_dump(mode="json")
-        truncation = _event_payload_truncation(payload.get("payload") if isinstance(payload, dict) else None)
+        truncation = _event_payload_truncation(
+            payload.get("payload") if isinstance(payload, dict) else None
+        )
         if truncation is not None:
             payload["payload_truncation"] = truncation
         return payload
@@ -159,7 +164,17 @@ def _sample_value_for_schema(schema: Any, *, field_name: str = "value") -> Any:
     if field_type in {"boolean", "bool"}:
         return True
     normalized = field_name.lower().replace("-", "_")
-    if normalized in {"message", "input", "query", "prompt", "question", "topic", "text", "content", "name"}:
+    if normalized in {
+        "message",
+        "input",
+        "query",
+        "prompt",
+        "question",
+        "topic",
+        "text",
+        "content",
+        "name",
+    }:
         return "LambChat"
     return "value"
 
@@ -248,6 +263,8 @@ def _run_payload(
     version_id = getattr(run, "version_id", None)
     run_id = getattr(run, "run_id", None)
     status = getattr(run, "status", None)
+    raw_output = getattr(run, "output", {}) or {}
+    output_payload = raw_output if isinstance(raw_output, dict) else {}
     payload = {
         "plugin_id": "workflow",
         "workflow_id": workflow_id,
@@ -255,7 +272,7 @@ def _run_payload(
         "run_id": run_id,
         "mode": getattr(run, "mode", None),
         "status": status,
-        "output": getattr(run, "output", {}) or {},
+        "output": output_payload,
         "error": getattr(run, "error", None),
         "pause": getattr(run, "pause", {}) or {},
         "started_at": getattr(run, "started_at", None),
@@ -276,7 +293,8 @@ def _run_payload(
         payload["events"] = [_event_payload(event) for event in events]
     if io_contract is not None:
         payload["io_contract"] = io_contract
-        output_contract = _output_contract_status(payload["output"], io_contract)
+        normalized_contract = io_contract if isinstance(io_contract, dict) else {}
+        output_contract = _output_contract_status(output_payload, normalized_contract)
         if output_contract is not None:
             payload["output_contract"] = output_contract
     return payload
@@ -391,20 +409,29 @@ def _schema_metadata(internal_model: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(nodes, list):
         nodes = []
     has_explicit = bool(_explicit_input_schema_from_start_nodes(nodes))
-    explicit_properties = set(_explicit_input_schema_from_start_nodes(nodes).get("properties") or {})
+    explicit_properties = set(
+        _explicit_input_schema_from_start_nodes(nodes).get("properties") or {}
+    )
     inferred = sorted(
         {
             field
             for node in nodes
             if isinstance(node, dict) and str(node.get("type") or "") != "start"
-            for field in (_schema_field_name(candidate) for candidate in _input_candidates_from_value(node.get("data")))
+            for field in (
+                _schema_field_name(candidate)
+                for candidate in _input_candidates_from_value(node.get("data"))
+            )
             if field and field not in _INTERNAL_TEMPLATE_KEYS
         }
         - _produced_variable_names(nodes)
         - explicit_properties
     )
     return {
-        "schema_source": "declared_and_inferred" if has_explicit and inferred else "declared" if has_explicit else "inferred",
+        "schema_source": "declared_and_inferred"
+        if has_explicit and inferred
+        else "declared"
+        if has_explicit
+        else "inferred",
         "inferred_fields": inferred,
     }
 
@@ -487,7 +514,9 @@ def infer_workflow_io_contract_payload(
     }
 
 
-def _infer_output_schema_with_metadata(internal_model: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _infer_output_schema_with_metadata(
+    internal_model: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     graph = internal_model.get("graph") if isinstance(internal_model, dict) else None
     nodes = graph.get("nodes") if isinstance(graph, dict) else []
     if not isinstance(nodes, list):
@@ -507,11 +536,14 @@ def _infer_output_schema_with_metadata(internal_model: dict[str, Any]) -> tuple[
             if not isinstance(node, dict):
                 continue
             node_type = str(node.get("type") or "")
-            data = node.get("data") if isinstance(node.get("data"), dict) else {}
+            raw_data = node.get("data")
+            data = raw_data if isinstance(raw_data, dict) else {}
             if node_type == "end":
                 properties.update(_end_output_properties(data))
             elif node_type == "answer":
-                properties.setdefault("answer", _default_schema_for_field("answer", source="inferred"))
+                properties.setdefault(
+                    "answer", _default_schema_for_field("answer", source="inferred")
+                )
         if not properties:
             properties["output"] = {
                 "type": "object",
@@ -530,9 +562,12 @@ def _explicit_output_schema_from_exit_nodes(nodes: list[Any]) -> dict[str, Any]:
     for node in nodes:
         if not isinstance(node, dict) or str(node.get("type") or "") not in {"answer", "end"}:
             continue
-        data = node.get("data") if isinstance(node.get("data"), dict) else {}
+        raw_data = node.get("data")
+        data = raw_data if isinstance(raw_data, dict) else {}
         raw_schema = data.get("output_schema") or data.get("outputSchema") or data.get("schema")
-        if isinstance(raw_schema, dict) and (raw_schema.get("type") == "object" or isinstance(raw_schema.get("properties"), dict)):
+        if isinstance(raw_schema, dict) and (
+            raw_schema.get("type") == "object" or isinstance(raw_schema.get("properties"), dict)
+        ):
             merged = _merge_schema(merged, raw_schema)
     return merged
 
@@ -608,7 +643,8 @@ def _explicit_input_schema_from_start_nodes(nodes: list[Any]) -> dict[str, Any]:
     for node in nodes:
         if not isinstance(node, dict) or str(node.get("type") or "") != "start":
             continue
-        data = node.get("data") if isinstance(node.get("data"), dict) else {}
+        raw_data = node.get("data")
+        data = raw_data if isinstance(raw_data, dict) else {}
         raw_schema = (
             data.get("input_schema")
             or data.get("inputSchema")
@@ -633,7 +669,9 @@ def _merge_schema(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, A
     properties = dict(merged.get("properties") or {})
     properties.update(incoming.get("properties") or {})
     merged["properties"] = properties
-    required = sorted({str(item) for item in (merged.get("required") or []) + (incoming.get("required") or [])})
+    required = sorted(
+        {str(item) for item in (merged.get("required") or []) + (incoming.get("required") or [])}
+    )
     if required:
         merged["required"] = required
     if "additionalProperties" in incoming:
@@ -672,7 +710,11 @@ def _schema_from_start_variables(raw_variables: Any) -> dict[str, Any]:
         properties[name] = field_schema
         if bool(item_data.get("required")):
             required.append(name)
-    schema: dict[str, Any] = {"type": "object", "properties": properties, "additionalProperties": True}
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": properties,
+        "additionalProperties": True,
+    }
     if required:
         schema["required"] = sorted(set(required))
     return schema
@@ -752,7 +794,9 @@ def _start_input_constraints(item_data: dict[str, Any]) -> dict[str, Any]:
         value = _first_mapping_value(item_data, *keys)
         if value is not None:
             constraints[target] = value
-    raw_format = item_data.get("format") or item_data.get("input_format") or item_data.get("inputFormat")
+    raw_format = (
+        item_data.get("format") or item_data.get("input_format") or item_data.get("inputFormat")
+    )
     normalized_format = str(raw_format or item_data.get("type") or "").strip().lower()
     if normalized_format in {"email", "url", "uri"}:
         constraints["format"] = "url" if normalized_format == "uri" else normalized_format
@@ -793,7 +837,16 @@ def _start_option_value(option: Any) -> Any:
 
 def _json_schema_type(raw_type: Any, *, field: str) -> str:
     normalized = str(raw_type or "").strip().lower()
-    if normalized in {"file", "image", "audio", "video", "document", "upload", "upload_file", "file_upload"}:
+    if normalized in {
+        "file",
+        "image",
+        "audio",
+        "video",
+        "document",
+        "upload",
+        "upload_file",
+        "file_upload",
+    }:
         return "object"
     if normalized in {"files", "file-list", "file_list", "image-list", "image_list", "uploads"}:
         return "array"
@@ -843,11 +896,24 @@ def _produced_variable_names(nodes: list[Any]) -> set[str]:
             continue
         node_type = str(node.get("type") or "")
         node_id = str(node.get("id") or "")
-        data = node.get("data") if isinstance(node.get("data"), dict) else {}
+        raw_data = node.get("data")
+        data = raw_data if isinstance(raw_data, dict) else {}
         produced.update(_NODE_OUTPUT_DEFAULTS.get(node_type, set()))
-        if node_id and node_type in {"llm", "parameter_extractor", "question_classifier", "knowledge_retrieval", "http_request", "document_extractor"}:
+        if node_id and node_type in {
+            "llm",
+            "parameter_extractor",
+            "question_classifier",
+            "knowledge_retrieval",
+            "http_request",
+            "document_extractor",
+        }:
             produced.add(node_id)
-        output_key = data.get("output_key") or data.get("outputKey") or data.get("variable") or data.get("name")
+        output_key = (
+            data.get("output_key")
+            or data.get("outputKey")
+            or data.get("variable")
+            or data.get("name")
+        )
         if output_key:
             produced.add(str(output_key))
         if node_type == "variable_assign":
@@ -1041,7 +1107,9 @@ async def workflow_run(
 
 @tool("workflow_list")
 async def workflow_list(
-    scope: Annotated[Literal["all", "published", "project", "session"], "Workflow scope."] = "published",
+    scope: Annotated[
+        Literal["all", "published", "project", "session"], "Workflow scope."
+    ] = "published",
     runtime: Annotated[ToolRuntime, InjectedToolArg] = None,  # type: ignore[assignment]
 ) -> str:
     """List visible workflows so an agent can choose the right published workflow before running it."""
@@ -1077,7 +1145,9 @@ async def workflow_list(
 @tool("workflow_get_schema")
 async def workflow_get_schema(
     workflow_id: Annotated[str, "Workflow id whose input schema should be returned."],
-    version_id: Annotated[str | None, "Optional workflow version id whose schema should be returned."] = None,
+    version_id: Annotated[
+        str | None, "Optional workflow version id whose schema should be returned."
+    ] = None,
     runtime: Annotated[ToolRuntime, InjectedToolArg] = None,  # type: ignore[assignment]
 ) -> str:
     """Return the workflow input/output JSON schemas before collecting run arguments."""
@@ -1099,7 +1169,9 @@ async def workflow_get_schema(
         service = await create_workflow_service()
         get_io_contract = getattr(service, "get_workflow_io_contract", None)
         if callable(get_io_contract):
-            payload = await get_io_contract(workflow_id, owner_user_id=user.sub, version_id=version_id)
+            payload = await get_io_contract(
+                workflow_id, owner_user_id=user.sub, version_id=version_id
+            )
         else:
             payload = await service.get_workflow_input_schema(
                 workflow_id,
@@ -1221,8 +1293,12 @@ async def workflow_resume(
     run_id: Annotated[str, "Paused workflow run id to resume."],
     approved: Annotated[bool, "Whether the human approval decision approved the run."] = True,
     comment: Annotated[str | None, "Optional approval comment."] = None,
-    values: Annotated[dict[str, Any] | None, "Optional approval values merged into the approval output."] = None,
-    response: Annotated[dict[str, Any] | None, "Optional structured approval response payload."] = None,
+    values: Annotated[
+        dict[str, Any] | None, "Optional approval values merged into the approval output."
+    ] = None,
+    response: Annotated[
+        dict[str, Any] | None, "Optional structured approval response payload."
+    ] = None,
     runtime: Annotated[ToolRuntime, InjectedToolArg] = None,  # type: ignore[assignment]
 ) -> str:
     """Resume a paused workflow run after a human approval decision."""

@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import yaml
@@ -119,11 +119,17 @@ class WorkflowPluginService:
         if definition is None:
             raise LookupError("workflow_not_found")
         version = None
-        resolved_version_id = version_id or definition.published_version_id or definition.latest_version_id
+        resolved_version_id = (
+            version_id or definition.published_version_id or definition.latest_version_id
+        )
         if resolved_version_id:
-            version = await self.storage.get_version(resolved_version_id, owner_user_id=owner_user_id)
+            version = await self.storage.get_version(
+                resolved_version_id, owner_user_id=owner_user_id
+            )
         if version is None:
-            version = await self.storage.get_latest_version(workflow_id, owner_user_id=owner_user_id)
+            version = await self.storage.get_latest_version(
+                workflow_id, owner_user_id=owner_user_id
+            )
         if version is None or version.workflow_id != workflow_id:
             raise LookupError("workflow_version_not_found")
         from src.plugins.workflow.tools import infer_workflow_input_schema_payload
@@ -147,11 +153,17 @@ class WorkflowPluginService:
         if definition is None:
             raise LookupError("workflow_not_found")
         version = None
-        resolved_version_id = version_id or definition.published_version_id or definition.latest_version_id
+        resolved_version_id = (
+            version_id or definition.published_version_id or definition.latest_version_id
+        )
         if resolved_version_id:
-            version = await self.storage.get_version(resolved_version_id, owner_user_id=owner_user_id)
+            version = await self.storage.get_version(
+                resolved_version_id, owner_user_id=owner_user_id
+            )
         if version is None:
-            version = await self.storage.get_latest_version(workflow_id, owner_user_id=owner_user_id)
+            version = await self.storage.get_latest_version(
+                workflow_id, owner_user_id=owner_user_id
+            )
         if version is None or version.workflow_id != workflow_id:
             raise LookupError("workflow_version_not_found")
         from src.plugins.workflow.tools import infer_workflow_io_contract_payload
@@ -262,7 +274,9 @@ class WorkflowPluginService:
         if run.status != "paused":
             raise ValueError(f"workflow_run_not_paused:{run.status}")
         pause = run.pause if isinstance(run.pause, dict) else {}
-        resume_state = pause.get("resume_state") if isinstance(pause.get("resume_state"), dict) else None
+        resume_state = (
+            pause.get("resume_state") if isinstance(pause.get("resume_state"), dict) else None
+        )
         if resume_state is None:
             raise ValueError("workflow_run_resume_state_missing")
         version = await self.storage.get_version(run.version_id, owner_user_id=user.sub)
@@ -336,7 +350,7 @@ class WorkflowPluginService:
         self,
         *,
         name: str,
-        source_format: str,
+        source_format: Literal["json", "yaml"],
         source_payload: dict[str, Any] | None = None,
         source_content: str | None = None,
         dry_run: bool,
@@ -372,7 +386,7 @@ class WorkflowPluginService:
         *,
         workflow_id: str,
         name: str | None,
-        source_format: str,
+        source_format: Literal["json", "yaml"],
         source_payload: dict[str, Any] | None = None,
         source_content: str | None = None,
         user: TokenPayload,
@@ -473,7 +487,9 @@ class WorkflowPluginService:
                 available_tool_names=available_tool_names,
                 http_policy=await self._http_policy_if_needed(version.internal_model),
                 llm_available=await self._llm_available_if_needed(version.internal_model),
-                knowledge_available=await self._knowledge_available_if_needed(version.internal_model),
+                knowledge_available=await self._knowledge_available_if_needed(
+                    version.internal_model
+                ),
                 available_sub_workflow_refs=available_sub_workflow_refs,
             )
             errors.extend(result.errors)
@@ -553,7 +569,7 @@ class WorkflowPluginService:
         workflow_id: str,
         version_id: str | None,
         workflow_input: dict[str, Any],
-        mode: str,
+        mode: Literal["sync", "async", "stream"],
         user: TokenPayload,
     ):
         if mode not in {"sync", "async", "stream"}:
@@ -885,7 +901,9 @@ class WorkflowPluginService:
     ) -> dict[str, Any]:
         required = _credential_refs_required(report)
         mappings = await _resolve_credential_ref_mappings()
-        mappings.update(await self._credential_vault_mappings(required, owner_user_id=owner_user_id))
+        mappings.update(
+            await self._credential_vault_mappings(required, owner_user_id=owner_user_id)
+        )
         return _credential_resolution_payload(required, mappings)
 
     async def _credential_vault_mappings(
@@ -1098,15 +1116,19 @@ class WorkflowPluginService:
                 sub_workflow_depth=self.sub_workflow_depth + 1,
                 sub_workflow_stack=next_stack,
             )
+            raw_workflow_input = request.get("input")
+            workflow_input = raw_workflow_input if isinstance(raw_workflow_input, dict) else {}
             run, events = await child_service.run_workflow(
                 workflow_id=workflow_id,
                 version_id=str(version_id) if version_id else None,
-                workflow_input=request.get("input") if isinstance(request.get("input"), dict) else {},
+                workflow_input=workflow_input,
                 mode="sync",
                 user=user,
             )
             if run.status != "succeeded":
-                raise WorkflowExecutionError(run.error or f"workflow_sub_workflow_failed:{workflow_id}")
+                raise WorkflowExecutionError(
+                    run.error or f"workflow_sub_workflow_failed:{workflow_id}"
+                )
             return {
                 "workflow_id": run.workflow_id,
                 "version_id": run.version_id,
@@ -1152,6 +1174,8 @@ class WorkflowPluginService:
         for dependency in _sub_workflow_dependencies(internal_model):
             workflow_id = dependency["workflow_id"]
             version_id = dependency.get("version_id")
+            if not workflow_id:
+                continue
             if workflow_id in ancestry:
                 raise ValueError(f"workflow_sub_workflow_cycle_detected:{workflow_id}")
             definition = await self.storage.get_workflow(workflow_id, owner_user_id=user.sub)
@@ -1175,9 +1199,13 @@ class WorkflowPluginService:
             visited.add(resolved_ref_key)
             child_ancestry = _append_sub_workflow_stack(ancestry, workflow_id, "")
             try:
-                self._assert_import_publishable(version.internal_model, version.compatibility_report)
+                self._assert_import_publishable(
+                    version.internal_model, version.compatibility_report
+                )
             except ValueError as exc:
-                raise ValueError(f"workflow_sub_workflow_not_publishable:{workflow_id}:{exc}") from exc
+                raise ValueError(
+                    f"workflow_sub_workflow_not_publishable:{workflow_id}:{exc}"
+                ) from exc
             await self._collect_available_sub_workflow_refs(
                 version.internal_model,
                 user=user,
@@ -1187,18 +1215,26 @@ class WorkflowPluginService:
             )
             child_result = self.executor.validate_static(
                 version.internal_model,
-                available_tool_names=await self._available_tool_names_if_needed(version.internal_model, user=user),
+                available_tool_names=await self._available_tool_names_if_needed(
+                    version.internal_model, user=user
+                ),
                 http_policy=await self._http_policy_if_needed(version.internal_model),
                 llm_available=await self._llm_available_if_needed(version.internal_model),
-                knowledge_available=await self._knowledge_available_if_needed(version.internal_model),
+                knowledge_available=await self._knowledge_available_if_needed(
+                    version.internal_model
+                ),
                 available_sub_workflow_refs=refs,
             )
             try:
                 child_result.raise_for_errors()
             except WorkflowExecutionError as exc:
-                raise ValueError(f"workflow_sub_workflow_not_publishable:{workflow_id}:{exc}") from exc
+                raise ValueError(
+                    f"workflow_sub_workflow_not_publishable:{workflow_id}:{exc}"
+                ) from exc
 
-    async def _build_llm_invoker_if_needed(self, internal_model: dict[str, Any]) -> LlmInvoker | None:
+    async def _build_llm_invoker_if_needed(
+        self, internal_model: dict[str, Any]
+    ) -> LlmInvoker | None:
         if not _model_contains_any_node_type(
             internal_model,
             {"llm", "parameter_extractor", "question_classifier"},
@@ -1223,7 +1259,7 @@ class WorkflowPluginService:
                 )
                 model_id = resolved_model_id
                 model = resolved_model or model
-            model_kwargs = {
+            model_kwargs: dict[str, Any] = {
                 "model": str(model) if model else None,
                 "model_id": str(model_id) if model_id else None,
                 "temperature": _float_or_default(request.get("temperature"), 0.7),
@@ -1381,7 +1417,10 @@ def _missing_required_workflow_inputs(
         field = str(raw_field).strip()
         if not field:
             continue
-        field_schema = properties.get(field) if isinstance(properties.get(field), dict) else {}
+        raw_field_schema = properties.get(field)
+        field_schema: dict[str, Any] = (
+            raw_field_schema if isinstance(raw_field_schema, dict) else {}
+        )
         if "default" in field_schema:
             continue
         if _workflow_input_value(workflow_input, field) in (None, "", [], {}):
@@ -1474,7 +1513,11 @@ def _workflow_input_matches_type(value: Any, expected_types: list[str]) -> bool:
             return True
         if expected_type == "integer" and isinstance(value, int) and not isinstance(value, bool):
             return True
-        if expected_type == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        if (
+            expected_type == "number"
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
             return True
         if expected_type == "boolean" and isinstance(value, bool):
             return True
@@ -1577,7 +1620,9 @@ def _events_with_run_started(*, run: Any, events: list[dict[str, Any]]) -> list[
     if events and str(events[0].get("event_type") or "") == "run_started":
         return events
     return [
-        _run_started_event(mode=str(run.mode), workflow_input=dict(getattr(run, "input", {}) or {})),
+        _run_started_event(
+            mode=str(run.mode), workflow_input=dict(getattr(run, "input", {}) or {})
+        ),
         *events,
     ]
 
@@ -1629,12 +1674,14 @@ def _model_contains_node_type(internal_model: dict[str, Any], node_type: str) ->
 
 def _sub_workflow_dependencies(internal_model: dict[str, Any]) -> list[dict[str, str | None]]:
     graph = internal_model.get("graph") if isinstance(internal_model, dict) else None
-    nodes = graph.get("nodes") if isinstance(graph, dict) else []
+    raw_nodes = graph.get("nodes") if isinstance(graph, dict) else []
+    nodes = raw_nodes if isinstance(raw_nodes, list) else []
     dependencies: list[dict[str, str | None]] = []
     for node in nodes:
         if not isinstance(node, dict) or node.get("type") != "sub_workflow":
             continue
-        data = node.get("data") if isinstance(node.get("data"), dict) else {}
+        raw_data = node.get("data")
+        data = raw_data if isinstance(raw_data, dict) else {}
         workflow_id = _sub_workflow_id_from_data(data)
         if not workflow_id:
             continue
@@ -1747,7 +1794,9 @@ def _normalize_credential_ref_mappings(raw: Any) -> dict[str, dict[str, str]]:
                 or raw_mapping.get("model_id")
                 or ""
             ).strip()
-            mapping_type = str(raw_mapping.get("type") or raw_mapping.get("kind") or "credential_ref").strip()
+            mapping_type = str(
+                raw_mapping.get("type") or raw_mapping.get("kind") or "credential_ref"
+            ).strip()
             label = str(raw_mapping.get("label") or raw_mapping.get("name") or "").strip()
             description = str(raw_mapping.get("description") or "").strip()
         else:
@@ -1808,7 +1857,9 @@ def _normalize_knowledge_dataset_mappings(raw: Any) -> dict[str, list[str]]:
         if not dataset_id:
             continue
         if isinstance(value, dict):
-            memory_types = value.get("memory_types") or value.get("memoryTypes") or value.get("types")
+            memory_types = (
+                value.get("memory_types") or value.get("memoryTypes") or value.get("types")
+            )
         else:
             memory_types = value
         if isinstance(memory_types, str):
@@ -1844,7 +1895,8 @@ def _memory_types_for_dataset_ids(
 
 def _model_contains_any_node_type(internal_model: dict[str, Any], node_types: set[str]) -> bool:
     graph = internal_model.get("graph") if isinstance(internal_model, dict) else None
-    nodes = graph.get("nodes") if isinstance(graph, dict) else []
+    raw_nodes = graph.get("nodes") if isinstance(graph, dict) else []
+    nodes = raw_nodes if isinstance(raw_nodes, list) else []
     return any(isinstance(node, dict) and node.get("type") in node_types for node in nodes)
 
 
@@ -1942,7 +1994,10 @@ async def _resolve_llm_direct_model_kwargs(model_kwargs: dict[str, Any]) -> dict
         resolved["api_base"] = resolved.get("api_base") or getattr(stored_model, "api_base", None)
         if getattr(stored_model, "temperature", None) is not None:
             resolved["temperature"] = getattr(stored_model, "temperature")
-        if resolved.get("max_tokens") is None and getattr(stored_model, "max_tokens", None) is not None:
+        if (
+            resolved.get("max_tokens") is None
+            and getattr(stored_model, "max_tokens", None) is not None
+        ):
             resolved["max_tokens"] = getattr(stored_model, "max_tokens")
     elif model and not resolved.get("model"):
         resolved["model"] = model
@@ -1991,7 +2046,10 @@ def _normalize_openai_compatible_response(response: Any) -> dict[str, Any]:
     message = choice.get("message") if isinstance(choice, dict) else None
     content = message.get("content") if isinstance(message, dict) else None
     if isinstance(content, list):
-        text = "".join(str(item.get("text") or item) if isinstance(item, dict) else str(item) for item in content)
+        text = "".join(
+            str(item.get("text") or item) if isinstance(item, dict) else str(item)
+            for item in content
+        )
     else:
         text = "" if content is None else str(content)
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}

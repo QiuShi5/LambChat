@@ -29,7 +29,9 @@ async def startup() -> None:
             break
         recovered += batch_count
     if recovered:
-        logger.warning("Marked %s stale async/stream workflow runs as failed after startup", recovered)
+        logger.warning(
+            "Marked %s stale async/stream workflow runs as failed after startup", recovered
+        )
     retention_days = await resolve_run_log_retention_days()
     delete_terminal_run_logs_before = getattr(storage, "delete_terminal_run_logs_before", None)
     if retention_days > 0 and callable(delete_terminal_run_logs_before):

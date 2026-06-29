@@ -68,7 +68,9 @@ def parse_workflow(source_payload: dict[str, Any], *, name: str) -> WorkflowPlug
             "has_unsupported_nodes": bool(unsupported_nodes),
             "dangling_edge_count": len(dangling_edge_errors),
             "boundary_edge_count": len(boundary_edge_errors),
-            "runnable": not unsupported_nodes and not dangling_edge_errors and not boundary_edge_errors,
+            "runnable": not unsupported_nodes
+            and not dangling_edge_errors
+            and not boundary_edge_errors,
         },
     }
     warnings = []
@@ -79,7 +81,9 @@ def parse_workflow(source_payload: dict[str, Any], *, name: str) -> WorkflowPlug
     if dangling_edge_errors:
         warnings.append("Some workflow edges reference missing nodes and were marked invalid.")
     if boundary_edge_errors:
-        warnings.append("Some workflow edges cross entry or exit boundaries and were marked invalid.")
+        warnings.append(
+            "Some workflow edges cross entry or exit boundaries and were marked invalid."
+        )
     edge_errors = [*dangling_edge_errors, *boundary_edge_errors]
     report = {
         "source": "workflow",
@@ -109,7 +113,9 @@ def _extract_graph(source_payload: dict[str, Any]) -> dict[str, Any]:
     return source_payload
 
 
-def _parse_nodes(raw_nodes: list[Any]) -> tuple[list[dict[str, Any]], set[str], list[dict[str, Any]]]:
+def _parse_nodes(
+    raw_nodes: list[Any],
+) -> tuple[list[dict[str, Any]], set[str], list[dict[str, Any]]]:
     nodes: list[dict[str, Any]] = []
     supported_types: set[str] = set()
     unsupported_nodes: list[dict[str, Any]] = []
@@ -124,7 +130,9 @@ def _parse_nodes(raw_nodes: list[Any]) -> tuple[list[dict[str, Any]], set[str], 
         source_type = str(node_data.get("type") or node.get("type") or "unknown")
         normalized_source_type = source_type.strip().lower()
         mapped_type = SUPPORTED_NODE_TYPES.get(normalized_source_type)
-        title = str(node_data.get("title") or node.get("title") or node_data.get("label") or node_id)
+        title = str(
+            node_data.get("title") or node.get("title") or node_data.get("label") or node_id
+        )
         position = _as_dict(node.get("position")) or _as_dict(node.get("positionAbsolute"))
         metadata: dict[str, Any] = {}
         if mapped_type is None:
@@ -234,8 +242,34 @@ def _parse_edges(
     for index, raw_edge in enumerate(raw_edges):
         edge = _as_dict(raw_edge)
         edge_data = _as_dict(edge.get("data"))
-        source = _edge_string(edge, edge_data, "source", "sourceNode", "source_node", "sourceNodeId", "source_node_id", "from", "fromNode", "from_node", "fromNodeId", "from_node_id")
-        target = _edge_string(edge, edge_data, "target", "targetNode", "target_node", "targetNodeId", "target_node_id", "to", "toNode", "to_node", "toNodeId", "to_node_id")
+        source = _edge_string(
+            edge,
+            edge_data,
+            "source",
+            "sourceNode",
+            "source_node",
+            "sourceNodeId",
+            "source_node_id",
+            "from",
+            "fromNode",
+            "from_node",
+            "fromNodeId",
+            "from_node_id",
+        )
+        target = _edge_string(
+            edge,
+            edge_data,
+            "target",
+            "targetNode",
+            "target_node",
+            "targetNodeId",
+            "target_node_id",
+            "to",
+            "toNode",
+            "to_node",
+            "toNodeId",
+            "to_node_id",
+        )
         edge_id = str(edge.get("id") or f"edge_{index + 1}")
         valid = bool(source and target and source in known_node_ids and target in known_node_ids)
         if not valid:
@@ -258,8 +292,22 @@ def _parse_edges(
                 "id": edge_id,
                 "source": source,
                 "target": target,
-                "source_handle": _edge_optional_value(edge, edge_data, "sourceHandle", "source_handle", "sourceHandleId", "source_handle_id"),
-                "target_handle": _edge_optional_value(edge, edge_data, "targetHandle", "target_handle", "targetHandleId", "target_handle_id"),
+                "source_handle": _edge_optional_value(
+                    edge,
+                    edge_data,
+                    "sourceHandle",
+                    "source_handle",
+                    "sourceHandleId",
+                    "source_handle_id",
+                ),
+                "target_handle": _edge_optional_value(
+                    edge,
+                    edge_data,
+                    "targetHandle",
+                    "target_handle",
+                    "targetHandleId",
+                    "target_handle_id",
+                ),
                 "data": edge_data,
                 "valid": valid,
             }
@@ -360,7 +408,11 @@ def _has_http_auth(data: dict[str, Any]) -> bool:
 
 
 def _has_direct_credential_data(data: dict[str, Any]) -> bool:
-    for key in (*EXPLICIT_CREDENTIAL_REF_KEYS, *LEGACY_CREDENTIAL_ID_KEYS, *PROVIDER_CREDENTIAL_ID_KEYS):
+    for key in (
+        *EXPLICIT_CREDENTIAL_REF_KEYS,
+        *LEGACY_CREDENTIAL_ID_KEYS,
+        *PROVIDER_CREDENTIAL_ID_KEYS,
+    ):
         if data.get(key) not in (None, ""):
             return True
     return False

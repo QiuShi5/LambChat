@@ -219,7 +219,12 @@ class WorkflowPluginStorage:
             status_filter=status_filter,
         )
         total = await self.definitions.count_documents(mongo_query)
-        cursor = self.definitions.find(mongo_query).sort("updated_at", -1).skip(max(skip, 0)).limit(limit)
+        cursor = (
+            self.definitions.find(mongo_query)
+            .sort("updated_at", -1)
+            .skip(max(skip, 0))
+            .limit(limit)
+        )
         workflows = [self._definition_from_doc(doc) async for doc in cursor]
         return WorkflowListResult(workflows=workflows, total=total)
 
@@ -316,7 +321,9 @@ class WorkflowPluginStorage:
         *,
         owner_user_id: str,
     ) -> WorkflowVersion | None:
-        doc = await self.versions.find_one({"version_id": version_id, "owner_user_id": owner_user_id})
+        doc = await self.versions.find_one(
+            {"version_id": version_id, "owner_user_id": owner_user_id}
+        )
         return self._version_from_doc(doc) if doc else None
 
     async def get_latest_version(
@@ -546,6 +553,8 @@ class WorkflowPluginStorage:
         next_sequence = int(latest.get("sequence") or 0) + 1 if latest else 1
         docs: list[dict[str, Any]] = []
         for index, event in enumerate(events, start=next_sequence):
+            raw_payload = event.get("payload")
+            payload = raw_payload if isinstance(raw_payload, dict) else {}
             docs.append(
                 {
                     "event_id": f"wfe_{uuid.uuid4().hex}",
@@ -558,8 +567,7 @@ class WorkflowPluginStorage:
                     "node_id": event.get("node_id"),
                     "node_type": event.get("node_type"),
                     "payload": _bounded_event_payload(
-                        event.get("payload") if isinstance(event.get("payload"), dict) else {},
-                        max_bytes=self.max_event_payload_bytes,
+                        payload, max_bytes=self.max_event_payload_bytes
                     ),
                     "created_at": now,
                 }

@@ -103,7 +103,9 @@ COMPATIBILITY_MATRIX: list[WorkflowNodeCompatibility] = [
         "aliases": ["variable-aggregator", "variable_aggregator", "aggregator"],
         "runtime": "local",
         "publish_requirements": ["selectors"],
-        "notes": ["Aggregates selector descriptors or selector mappings using first-non-empty or list modes."],
+        "notes": [
+            "Aggregates selector descriptors or selector mappings using first-non-empty or list modes."
+        ],
     },
     {
         "source_type": "list-operator",
@@ -120,7 +122,12 @@ COMPATIBILITY_MATRIX: list[WorkflowNodeCompatibility] = [
         "source_type": "document-extractor",
         "internal_type": "document_extractor",
         "status": "supported",
-        "aliases": ["document-extractor", "document_extractor", "document extractor", "doc-extractor"],
+        "aliases": [
+            "document-extractor",
+            "document_extractor",
+            "document extractor",
+            "doc-extractor",
+        ],
         "runtime": "local",
         "publish_requirements": ["input selector"],
         "notes": [
@@ -159,7 +166,12 @@ COMPATIBILITY_MATRIX: list[WorkflowNodeCompatibility] = [
         "source_type": "question-classifier",
         "internal_type": "question_classifier",
         "status": "guarded",
-        "aliases": ["question-classifier", "question_classifier", "question classifier", "classifier"],
+        "aliases": [
+            "question-classifier",
+            "question_classifier",
+            "question classifier",
+            "classifier",
+        ],
         "runtime": "llm_invoker",
         "publish_requirements": ["llm runtime", "classes", "fallback branch for multi-edge graphs"],
         "notes": [
@@ -206,7 +218,11 @@ COMPATIBILITY_MATRIX: list[WorkflowNodeCompatibility] = [
         "status": "guarded",
         "aliases": ["sub-workflow", "sub_workflow", "sub workflow"],
         "runtime": "nested_workflow_runner",
-        "publish_requirements": ["owned child workflow", "published or pinned child version", "cycle checks"],
+        "publish_requirements": [
+            "owned child workflow",
+            "published or pinned child version",
+            "cycle checks",
+        ],
         "notes": [
             "Runs an owned LambChat workflow as a nested call.",
             "Requires static dependency validation and bounded nesting depth.",

@@ -805,10 +805,14 @@ class ScheduledTaskRunner:
         parts = ["Workflow output contract failed"]
         missing_required = output_contract.get("missing_required")
         if isinstance(missing_required, list) and missing_required:
-            parts.append(f"missing_required={ScheduledTaskRunner._workflow_delivery_compact_value(missing_required)}")
+            parts.append(
+                f"missing_required={ScheduledTaskRunner._workflow_delivery_compact_value(missing_required)}"
+            )
         type_mismatches = output_contract.get("type_mismatches")
         if isinstance(type_mismatches, list) and type_mismatches:
-            parts.append(f"type_mismatches={ScheduledTaskRunner._workflow_delivery_compact_value(type_mismatches)}")
+            parts.append(
+                f"type_mismatches={ScheduledTaskRunner._workflow_delivery_compact_value(type_mismatches)}"
+            )
         return "; ".join(parts)
 
     @staticmethod
@@ -858,7 +862,9 @@ class ScheduledTaskRunner:
                 return []
             required = [str(item) for item in current_schema.get("required") or [] if item]
             ordered_fields = [field for field in required if field in properties]
-            ordered_fields.extend(str(field) for field in properties if str(field) not in ordered_fields)
+            ordered_fields.extend(
+                str(field) for field in properties if str(field) not in ordered_fields
+            )
 
             paths: list[str] = []
             for field in ordered_fields:

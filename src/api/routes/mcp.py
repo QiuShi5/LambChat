@@ -625,7 +625,9 @@ async def admin_invoke_internal_tool(
     if not _is_internal_server(name):
         raise HTTPException(status_code=404, detail=f"Server '{name}' not found")
     if tool_name not in INTERNAL_TOOL_INVOKE_ALLOWLIST:
-        raise HTTPException(status_code=403, detail=f"Internal tool '{tool_name}' cannot be invoked via admin API")
+        raise HTTPException(
+            status_code=403, detail=f"Internal tool '{tool_name}' cannot be invoked via admin API"
+        )
 
     from src.infra.tool.internal_registry import get_internal_tools_for_user
 
@@ -640,7 +642,9 @@ async def admin_invoke_internal_tool(
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
 
     if not hasattr(tool, "_arun"):
-        raise HTTPException(status_code=400, detail=f"Tool '{tool_name}' cannot be invoked directly")
+        raise HTTPException(
+            status_code=400, detail=f"Tool '{tool_name}' cannot be invoked directly"
+        )
 
     runtime = _tool_runtime_for_user(user)
     raw_result = await tool._arun(runtime=runtime, config={}, **data.arguments)

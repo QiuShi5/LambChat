@@ -229,7 +229,9 @@ class PluginDataService:
             return
         merged = {**existing, **missing}
         try:
-            path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            path.write_text(
+                json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
         except OSError:
             return
 

@@ -380,7 +380,9 @@ def _runtime_states_for_project_defaults(runtime) -> list[object]:
             plugin_ids = [
                 manifest.id
                 for manifest in BUILTIN_PLUGIN_MANIFESTS
-                if any(option.applies_to_session_key for option in manifest.frontend.project_options)
+                if any(
+                    option.applies_to_session_key for option in manifest.frontend.project_options
+                )
             ]
         result = []
         for plugin_id in dict.fromkeys(plugin_ids):
@@ -400,7 +402,9 @@ def _merge_missing_plugin_options(
         for key, value in values.items():
             if plugin_option_from_metadata(merged, plugin_id=plugin_id, key=key) not in (None, ""):
                 continue
-            if not _can_merge_plugin_option_default(merged["plugin_options"], defaults, plugin_id, key):
+            if not _can_merge_plugin_option_default(
+                merged["plugin_options"], defaults, plugin_id, key
+            ):
                 continue
             merged = with_plugin_option(
                 merged,

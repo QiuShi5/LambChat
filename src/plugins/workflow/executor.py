@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import json
+import re
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
@@ -74,8 +74,22 @@ _SENSITIVE_TEXT_PATTERN = re.compile(
     r"(?i)(bearer\s+)[^\s,;]+|((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret)=)[^\s,;&]+"
 )
 _LIST_OPERATOR_FILTER_OPERATIONS = {"filter", "where", "select", "keep", "match", "matches"}
-_LIST_OPERATOR_FIND_OPERATIONS = {"find", "find_first", "first_match", "first-match", "first_where", "first-where"}
-_LIST_OPERATOR_ANY_OPERATIONS = {"any", "some", "has_match", "has-match", "exists_match", "exists-match"}
+_LIST_OPERATOR_FIND_OPERATIONS = {
+    "find",
+    "find_first",
+    "first_match",
+    "first-match",
+    "first_where",
+    "first-where",
+}
+_LIST_OPERATOR_ANY_OPERATIONS = {
+    "any",
+    "some",
+    "has_match",
+    "has-match",
+    "exists_match",
+    "exists-match",
+}
 _LIST_OPERATOR_ALL_OPERATIONS = {"all", "every"}
 _LIST_OPERATOR_NONE_OPERATIONS = {"none", "not_any", "not-any", "no_match", "no-match"}
 _LIST_OPERATOR_COUNT_MATCHING_OPERATIONS = {
@@ -94,46 +108,57 @@ _LIST_OPERATOR_CONDITION_OPERATIONS = (
     | _LIST_OPERATOR_NONE_OPERATIONS
     | _LIST_OPERATOR_COUNT_MATCHING_OPERATIONS
 )
-_LIST_OPERATOR_VALUE_KEY_OPERATIONS = {"pluck", "values", "extract", "field_values", "field-values", "field values"}
-_LIST_OPERATOR_SUPPORTED_OPERATIONS = {
-    "first",
-    "head",
-    "last",
-    "tail",
-    "count",
-    "length",
-    "len",
-    "size",
-    "join",
-    "slice",
-    "item_at",
-    "item at",
-    "at",
-    "get",
-    "index",
-    "nth",
-    "reverse",
-    "reversed",
-    "unique",
-    "dedupe",
-    "deduplicate",
-    "distinct",
-    "sort",
-    "sorted",
-    "order",
-    "order_by",
-    "order-by",
-    "orderby",
-    "sum",
-    "total",
-    "average",
-    "avg",
-    "mean",
-    "min",
-    "minimum",
-    "max",
-    "maximum",
-} | _LIST_OPERATOR_VALUE_KEY_OPERATIONS | _LIST_OPERATOR_CONDITION_OPERATIONS
+_LIST_OPERATOR_VALUE_KEY_OPERATIONS = {
+    "pluck",
+    "values",
+    "extract",
+    "field_values",
+    "field-values",
+    "field values",
+}
+_LIST_OPERATOR_SUPPORTED_OPERATIONS = (
+    {
+        "first",
+        "head",
+        "last",
+        "tail",
+        "count",
+        "length",
+        "len",
+        "size",
+        "join",
+        "slice",
+        "item_at",
+        "item at",
+        "at",
+        "get",
+        "index",
+        "nth",
+        "reverse",
+        "reversed",
+        "unique",
+        "dedupe",
+        "deduplicate",
+        "distinct",
+        "sort",
+        "sorted",
+        "order",
+        "order_by",
+        "order-by",
+        "orderby",
+        "sum",
+        "total",
+        "average",
+        "avg",
+        "mean",
+        "min",
+        "minimum",
+        "max",
+        "maximum",
+    }
+    | _LIST_OPERATOR_VALUE_KEY_OPERATIONS
+    | _LIST_OPERATOR_CONDITION_OPERATIONS
+)
 DEFAULT_NODE_TIMEOUT_SECONDS = 120.0
 CANCEL_CHECK_INTERVAL_SECONDS = 0.05
 ToolInvoker = Callable[[str, dict[str, Any]], Awaitable[Any]]
@@ -153,7 +178,7 @@ class WorkflowExecutionError(RuntimeError):
         self.events = events or []
 
 
-class WorkflowExecutionPaused(RuntimeError):
+class WorkflowExecutionPaused(RuntimeError):  # noqa: N818
     """Raised when execution reaches a node that needs external resume input."""
 
     def __init__(
@@ -189,11 +214,15 @@ class WorkflowStaticValidationResult:
 
     def raise_for_errors(self) -> None:
         if self.errors:
-            raise WorkflowExecutionError("workflow_static_validation_failed:" + ";".join(self.errors))
+            raise WorkflowExecutionError(
+                "workflow_static_validation_failed:" + ";".join(self.errors)
+            )
 
 
 class MinimalWorkflowExecutor:
-    def __init__(self, *, default_node_timeout_seconds: float | None = DEFAULT_NODE_TIMEOUT_SECONDS) -> None:
+    def __init__(
+        self, *, default_node_timeout_seconds: float | None = DEFAULT_NODE_TIMEOUT_SECONDS
+    ) -> None:
         self.default_node_timeout_seconds = _normalize_timeout_seconds(
             default_node_timeout_seconds,
             default=DEFAULT_NODE_TIMEOUT_SECONDS,
@@ -338,14 +367,16 @@ class MinimalWorkflowExecutor:
             ),
         )
         if unreachable_errors:
-            raise WorkflowExecutionError("workflow_static_validation_failed:" + ";".join(unreachable_errors))
+            raise WorkflowExecutionError(
+                "workflow_static_validation_failed:" + ";".join(unreachable_errors)
+            )
         variables: dict[str, Any] = _initial_workflow_variables(
             workflow_input,
             start_node=start_node,
         )
         visited: set[str] = set()
         events: list[dict[str, Any]] = []
-        current = start_node
+        current: dict[str, Any] | None = start_node
         output: dict[str, Any] = {}
 
         while current is not None:
@@ -355,20 +386,32 @@ class MinimalWorkflowExecutor:
                 raise WorkflowExecutionError(f"workflow_cycle_detected:{node_id}")
             visited.add(node_id)
             if node_type not in RUNTIME_SUPPORTED_NODE_TYPES:
-                raise WorkflowExecutionError(f"workflow_node_type_not_executable:{node_id}:{node_type}")
+                raise WorkflowExecutionError(
+                    f"workflow_node_type_not_executable:{node_id}:{node_type}"
+                )
             if node_type == "tool_call":
-                raise WorkflowExecutionError(f"workflow_tool_call_requires_async_executor:{node_id}")
+                raise WorkflowExecutionError(
+                    f"workflow_tool_call_requires_async_executor:{node_id}"
+                )
             if node_type == "http_request":
-                raise WorkflowExecutionError(f"workflow_http_request_requires_async_executor:{node_id}")
+                raise WorkflowExecutionError(
+                    f"workflow_http_request_requires_async_executor:{node_id}"
+                )
             if node_type == "llm":
                 raise WorkflowExecutionError(f"workflow_llm_requires_async_executor:{node_id}")
             if node_type == "parameter_extractor":
-                raise WorkflowExecutionError(f"workflow_parameter_extractor_requires_async_executor:{node_id}")
+                raise WorkflowExecutionError(
+                    f"workflow_parameter_extractor_requires_async_executor:{node_id}"
+                )
             if node_type == "question_classifier":
-                raise WorkflowExecutionError(f"workflow_question_classifier_requires_async_executor:{node_id}")
+                raise WorkflowExecutionError(
+                    f"workflow_question_classifier_requires_async_executor:{node_id}"
+                )
 
             node_started_at = perf_counter()
-            events.append(_node_event("node_started", current, payload={"title": current.get("title")}))
+            events.append(
+                _node_event("node_started", current, payload={"title": current.get("title")})
+            )
             try:
                 if node_type == "start":
                     _validate_start_required_inputs(current, variables)
@@ -403,7 +446,9 @@ class MinimalWorkflowExecutor:
                 target_id = str(next_edges[0].get("target") or "")
                 current = node_by_id.get(target_id)
                 if current is None:
-                    raise WorkflowExecutionError(f"workflow_edge_target_missing:{node_id}->{target_id}")
+                    raise WorkflowExecutionError(
+                        f"workflow_edge_target_missing:{node_id}->{target_id}"
+                    )
             except WorkflowExecutionError as exc:
                 raise _with_events(
                     exc,
@@ -462,10 +507,14 @@ class MinimalWorkflowExecutor:
             ),
         )
         if unreachable_errors:
-            raise WorkflowExecutionError("workflow_static_validation_failed:" + ";".join(unreachable_errors))
+            raise WorkflowExecutionError(
+                "workflow_static_validation_failed:" + ";".join(unreachable_errors)
+            )
         if resume_state:
             variables: dict[str, Any] = dict(_as_dict(resume_state.get("variables")))
-            visited: set[str] = {str(item) for item in _as_list(resume_state.get("visited_node_ids"))}
+            visited: set[str] = {
+                str(item) for item in _as_list(resume_state.get("visited_node_ids"))
+            }
             events: list[dict[str, Any]] = []
             output: dict[str, Any] = dict(_as_dict(resume_state.get("output")))
             current = _resume_after_human_approval(
@@ -497,10 +546,14 @@ class MinimalWorkflowExecutor:
                 raise WorkflowExecutionError(f"workflow_cycle_detected:{node_id}")
             visited.add(node_id)
             if node_type not in RUNTIME_SUPPORTED_NODE_TYPES:
-                raise WorkflowExecutionError(f"workflow_node_type_not_executable:{node_id}:{node_type}")
+                raise WorkflowExecutionError(
+                    f"workflow_node_type_not_executable:{node_id}:{node_type}"
+                )
 
             node_started_at = perf_counter()
-            events.append(_node_event("node_started", current, payload={"title": current.get("title")}))
+            events.append(
+                _node_event("node_started", current, payload={"title": current.get("title")})
+            )
             try:
                 if node_type == "start":
                     _validate_start_required_inputs(current, variables)
@@ -558,7 +611,9 @@ class MinimalWorkflowExecutor:
                 target_id = str(next_edges[0].get("target") or "")
                 current = node_by_id.get(target_id)
                 if current is None:
-                    raise WorkflowExecutionError(f"workflow_edge_target_missing:{node_id}->{target_id}")
+                    raise WorkflowExecutionError(
+                        f"workflow_edge_target_missing:{node_id}->{target_id}"
+                    )
             except WorkflowExecutionPaused:
                 raise
             except WorkflowExecutionError as exc:
@@ -604,8 +659,16 @@ async def _await_with_runtime_guard(
                 with suppress(asyncio.CancelledError):
                     await task
                 raise WorkflowExecutionError(f"workflow_node_timeout:{node_id}:{node_type}")
-            remaining = None if timeout_seconds is None else max(timeout_seconds - (perf_counter() - started_at), 0.0)
-            wait_for = CANCEL_CHECK_INTERVAL_SECONDS if remaining is None else min(CANCEL_CHECK_INTERVAL_SECONDS, remaining)
+            remaining = (
+                None
+                if timeout_seconds is None
+                else max(timeout_seconds - (perf_counter() - started_at), 0.0)
+            )
+            wait_for = (
+                CANCEL_CHECK_INTERVAL_SECONDS
+                if remaining is None
+                else min(CANCEL_CHECK_INTERVAL_SECONDS, remaining)
+            )
             done, _ = await asyncio.wait({task}, timeout=wait_for)
             if done:
                 break
@@ -626,17 +689,18 @@ def _select_start_node(nodes: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _events_with_node_failed(
     events: list[dict[str, Any]],
-    node: dict[str, Any],
+    node: dict[str, Any] | None,
     *,
     error: str,
     duration_ms: int | None = None,
 ) -> list[dict[str, Any]]:
+    failed_node = node or {"id": "unknown", "type": "unknown", "title": "Unknown node"}
     return [
         *events,
         _node_event(
             "node_failed",
-            node,
-            payload={"title": node.get("title"), "error": error},
+            failed_node,
+            payload={"title": failed_node.get("title"), "error": error},
             duration_ms=duration_ms,
         ),
     ]
@@ -712,11 +776,15 @@ def validate_workflow_static(
     node_by_id = {str(node.get("id") or ""): node for node in nodes if node.get("id")}
     errors: list[str] = []
     if not node_by_id:
-        return WorkflowStaticValidationResult(errors=["workflow_has_no_nodes"], reachable_node_ids=set())
+        return WorkflowStaticValidationResult(
+            errors=["workflow_has_no_nodes"], reachable_node_ids=set()
+        )
 
     start_nodes = [node for node in nodes if node.get("type") == "start"]
     if not start_nodes:
-        return WorkflowStaticValidationResult(errors=["workflow_missing_start_node"], reachable_node_ids=set())
+        return WorkflowStaticValidationResult(
+            errors=["workflow_missing_start_node"], reachable_node_ids=set()
+        )
     if len(start_nodes) > 1:
         errors.append("workflow_has_multiple_start_nodes")
     start_node = start_nodes[0]
@@ -834,7 +902,9 @@ def validate_workflow_static(
             if len(next_edges) > 1:
                 handles = {str(edge.get("source_handle") or "").lower() for edge in next_edges}
                 class_handles = {_normalize_classifier_label(option["id"]) for option in classes}
-                class_handles.update(_normalize_classifier_label(option["name"]) for option in classes)
+                class_handles.update(
+                    _normalize_classifier_label(option["name"]) for option in classes
+                )
                 if not handles.intersection(class_handles):
                     errors.append(f"workflow_question_classifier_branch_missing:{node_id}")
                 if not handles.intersection({"default", "fallback", "else"}):
@@ -1003,9 +1073,13 @@ def _execute_node(node: dict[str, Any], variables: dict[str, Any]) -> dict[str, 
             f"workflow_knowledge_retrieval_requires_async_executor:{node.get('id')}"
         )
     if node_type == "sub_workflow":
-        raise WorkflowExecutionError(f"workflow_sub_workflow_requires_async_executor:{node.get('id')}")
+        raise WorkflowExecutionError(
+            f"workflow_sub_workflow_requires_async_executor:{node.get('id')}"
+        )
     if node_type == "human_approval":
-        raise WorkflowExecutionError(f"workflow_human_approval_requires_async_executor:{node.get('id')}")
+        raise WorkflowExecutionError(
+            f"workflow_human_approval_requires_async_executor:{node.get('id')}"
+        )
     if node_type == "condition":
         return _execute_condition(data, variables)
     if node_type == "tool_call":
@@ -1230,7 +1304,9 @@ def _human_approval_pending_payload(
     }
 
 
-def _human_approval_output(data: dict[str, Any], approval_response: dict[str, Any]) -> dict[str, Any]:
+def _human_approval_output(
+    data: dict[str, Any], approval_response: dict[str, Any]
+) -> dict[str, Any]:
     approved = bool(approval_response.get("approved", True))
     response_payload = approval_response.get("response")
     if not isinstance(response_payload, dict):
@@ -1407,7 +1483,9 @@ def _text_template_part_to_string(value: Any) -> str:
     for key in ("text", "content", "template", "prompt", "message", "value"):
         if key in value:
             return _text_template_to_string(value.get(key))
-    if part_type in {"text", "input_text", "paragraph", "markdown", "template"} and isinstance(value.get("data"), str):
+    if part_type in {"text", "input_text", "paragraph", "markdown", "template"} and isinstance(
+        value.get("data"), str
+    ):
         return str(value.get("data"))
     return ""
 
@@ -1416,14 +1494,18 @@ def _execute_variable_aggregator(data: dict[str, Any], variables: dict[str, Any]
     selectors = _aggregator_selectors_from_data(data)
     if not selectors:
         raise WorkflowExecutionError("workflow_variable_aggregator_selectors_missing")
-    mode = str(
-        data.get("mode")
-        or data.get("strategy")
-        or data.get("output_type")
-        or data.get("outputType")
-        or data.get("type")
-        or "first_non_empty"
-    ).strip().lower()
+    mode = (
+        str(
+            data.get("mode")
+            or data.get("strategy")
+            or data.get("output_type")
+            or data.get("outputType")
+            or data.get("type")
+            or "first_non_empty"
+        )
+        .strip()
+        .lower()
+    )
     values = [_resolve_path(variables, selector) for selector in selectors]
     if mode in {"array", "list", "all"}:
         aggregated: Any = [value for value in values if value is not None]
@@ -1484,13 +1566,23 @@ def _aggregator_selectors_from_value(value: Any, *, list_as_selector: bool = Fal
         )
         if descriptor_selector is not None:
             return [_selector_to_key(descriptor_selector)]
-        for wrapper_key in ("value", "values", "variables", "selectors", "items", "children", "group"):
+        for wrapper_key in (
+            "value",
+            "values",
+            "variables",
+            "selectors",
+            "items",
+            "children",
+            "group",
+        ):
             if wrapper_key in value:
                 return _aggregator_selectors_from_value(value.get(wrapper_key))
-        selectors: list[str] = []
+        nested_selectors: list[str] = []
         for raw_selector in value.values():
-            selectors.extend(_aggregator_selectors_from_value(raw_selector, list_as_selector=True))
-        return selectors
+            nested_selectors.extend(
+                _aggregator_selectors_from_value(raw_selector, list_as_selector=True)
+            )
+        return nested_selectors
     selector = _selector_to_key(value)
     return [selector] if selector else []
 
@@ -1507,7 +1599,11 @@ def _execute_list_operator(data: dict[str, Any], variables: dict[str, Any]) -> d
     else:
         raise WorkflowExecutionError("workflow_list_operator_input_not_list")
 
-    operation = str(data.get("operation") or data.get("op") or data.get("operator") or "first").strip().lower()
+    operation = (
+        str(data.get("operation") or data.get("op") or data.get("operator") or "first")
+        .strip()
+        .lower()
+    )
     if operation in {"first", "head"}:
         result: Any = items[0] if items else None
     elif operation in {"last", "tail"}:
@@ -1519,13 +1615,19 @@ def _execute_list_operator(data: dict[str, Any], variables: dict[str, Any]) -> d
         result = separator.join(str(item) for item in items)
     elif operation == "slice":
         start = _list_operator_int_param(data, variables, "start", "offset", default=0)
+        if start is None:
+            start = 0
         end = _list_operator_int_param(data, variables, "end", "limit", default=None)
-        if _list_operator_param_present(data, "limit") and not _list_operator_param_present(data, "end"):
+        if _list_operator_param_present(data, "limit") and not _list_operator_param_present(
+            data, "end"
+        ):
             limit = _list_operator_int_param(data, variables, "limit", default=None)
             end = None if limit is None else start + limit
         result = items[start:end]
     elif operation in {"item_at", "item at", "at", "get", "index", "nth"}:
-        index = _list_operator_int_param(data, variables, "index", "item_index", "itemIndex", default=0)
+        index = _list_operator_int_param(
+            data, variables, "index", "item_index", "itemIndex", default=0
+        )
         result = items[index] if index is not None and -len(items) <= index < len(items) else None
     elif operation in {"reverse", "reversed"}:
         result = list(reversed(items))
@@ -1576,7 +1678,11 @@ def _execute_list_operator(data: dict[str, Any], variables: dict[str, Any]) -> d
 def _validate_list_operator_static(data: dict[str, Any]) -> None:
     if not _list_operator_selector_from_data(data):
         raise WorkflowExecutionError("workflow_list_operator_selector_missing")
-    operation = str(data.get("operation") or data.get("op") or data.get("operator") or "first").strip().lower()
+    operation = (
+        str(data.get("operation") or data.get("op") or data.get("operator") or "first")
+        .strip()
+        .lower()
+    )
     if operation not in _LIST_OPERATOR_SUPPORTED_OPERATIONS:
         raise WorkflowExecutionError(f"workflow_list_operator_operation_not_supported:{operation}")
     if operation in _LIST_OPERATOR_VALUE_KEY_OPERATIONS:
@@ -1605,14 +1711,18 @@ def _list_item_identity(item: Any) -> str:
         return repr(item)
 
 
-def _pluck_list_items(items: list[Any], data: dict[str, Any], variables: dict[str, Any]) -> list[Any]:
+def _pluck_list_items(
+    items: list[Any], data: dict[str, Any], variables: dict[str, Any]
+) -> list[Any]:
     value_key = _list_operator_sort_key_from_data(data, variables)
     if not value_key:
         raise WorkflowExecutionError("workflow_list_operator_value_key_missing")
     return [_resolve_item_sort_value(item, value_key) for item in items]
 
 
-def _filter_list_items(items: list[Any], data: dict[str, Any], variables: dict[str, Any]) -> list[Any]:
+def _filter_list_items(
+    items: list[Any], data: dict[str, Any], variables: dict[str, Any]
+) -> list[Any]:
     conditions = _list_operator_filter_conditions_from_data(data)
     if not conditions:
         raise WorkflowExecutionError("workflow_list_operator_filter_conditions_missing")
@@ -1680,7 +1790,9 @@ def _list_operator_require_value_key(data: dict[str, Any]) -> None:
     raise WorkflowExecutionError("workflow_list_operator_value_key_missing")
 
 
-def _sort_list_items(items: list[Any], data: dict[str, Any], variables: dict[str, Any]) -> list[Any]:
+def _sort_list_items(
+    items: list[Any], data: dict[str, Any], variables: dict[str, Any]
+) -> list[Any]:
     sort_key = _list_operator_sort_key_from_data(data, variables)
     descending = _list_operator_descending_from_data(data, variables)
     indexed_items = list(enumerate(items))
@@ -1746,12 +1858,20 @@ def _list_operator_descending_from_data(data: dict[str, Any], variables: dict[st
         selector = _first_present_param_selector(data, key)
         if selector is not None:
             return _coerce_bool(_resolve_path(variables, _selector_to_key(selector)))
-    order = str(
-        _resolve_value(
-            data.get("order") or data.get("direction") or data.get("sort_order") or data.get("sortOrder") or "",
-            variables,
+    order = (
+        str(
+            _resolve_value(
+                data.get("order")
+                or data.get("direction")
+                or data.get("sort_order")
+                or data.get("sortOrder")
+                or "",
+                variables,
+            )
         )
-    ).strip().lower()
+        .strip()
+        .lower()
+    )
     return order in {"desc", "descending", "reverse", "reversed", "-1"}
 
 
@@ -1778,7 +1898,9 @@ def _list_sort_comparable(value: Any) -> tuple[int, Any]:
     return (4, str(value))
 
 
-def _list_operator_numeric_values(items: list[Any], data: dict[str, Any], variables: dict[str, Any]) -> list[int | float]:
+def _list_operator_numeric_values(
+    items: list[Any], data: dict[str, Any], variables: dict[str, Any]
+) -> list[int | float]:
     value_key = _list_operator_sort_key_from_data(data, variables)
     numeric_values: list[int | float] = []
     for item in items:
@@ -1809,7 +1931,9 @@ def _list_operator_int_param(
             return _optional_int(_resolve_value(data.get(name), variables), default=default)
         selector = _first_present_param_selector(data, name)
         if selector is not None:
-            return _optional_int(_resolve_path(variables, _selector_to_key(selector)), default=default)
+            return _optional_int(
+                _resolve_path(variables, _selector_to_key(selector)), default=default
+            )
     return default
 
 
@@ -1869,7 +1993,9 @@ def _execute_iteration(data: dict[str, Any], variables: dict[str, Any]) -> dict[
 
     max_items = _iteration_max_items_from_data(data, variables, default=100)
     if max_items is not None and len(items) > max_items:
-        raise WorkflowExecutionError(f"workflow_iteration_item_limit_exceeded:{len(items)}>{max_items}")
+        raise WorkflowExecutionError(
+            f"workflow_iteration_item_limit_exceeded:{len(items)}>{max_items}"
+        )
 
     item_template = _iteration_item_template_from_data(data)
     if item_template:
@@ -1930,7 +2056,9 @@ def _iteration_max_items_from_data(
     *,
     default: int | None = None,
 ) -> int | None:
-    return _list_operator_int_param(data, variables, "max_items", "maxItems", "limit", default=default)
+    return _list_operator_int_param(
+        data, variables, "max_items", "maxItems", "limit", default=default
+    )
 
 
 def _iteration_selector_from_data(data: dict[str, Any]) -> str:
@@ -2079,7 +2207,9 @@ def _execute_condition(data: dict[str, Any], variables: dict[str, Any]) -> dict[
     cases = _as_list(data.get("cases")) or _as_list(data.get("branches"))
     for index, raw_case in enumerate(cases):
         case = _as_dict(raw_case)
-        case_id = str(case.get("id") or case.get("case_id") or case.get("handle") or f"case_{index + 1}")
+        case_id = str(
+            case.get("id") or case.get("case_id") or case.get("handle") or f"case_{index + 1}"
+        )
         conditions = _as_list(case.get("conditions"))
         logical_operator = str(case.get("logical_operator") or case.get("logicalOperator") or "and")
         if _evaluate_conditions(conditions, logical_operator, variables):
@@ -2224,7 +2354,9 @@ async def _execute_llm(
         timeout_seconds=timeout_seconds,
         cancel_checker=cancel_checker,
     )
-    normalized = _normalize_llm_result(result, model=str(request.get("model") or request.get("model_id") or ""))
+    normalized = _normalize_llm_result(
+        result, model=str(request.get("model") or request.get("model_id") or "")
+    )
     output_key = str(data.get("output_key") or data.get("outputKey") or node_id or "llm_result")
     output = {output_key: normalized}
     if output_key != "llm_result":
@@ -2260,7 +2392,9 @@ async def _execute_parameter_extractor(
         timeout_seconds=timeout_seconds,
         cancel_checker=cancel_checker,
     )
-    text = _stringify_llm_content(result.get("text", result.get("content", result.get("output", ""))))
+    text = _stringify_llm_content(
+        result.get("text", result.get("content", result.get("output", "")))
+    )
     parsed = _parse_extractor_json(text)
     output_key = str(
         data.get("output_key")
@@ -2305,7 +2439,9 @@ async def _execute_question_classifier(
         timeout_seconds=timeout_seconds,
         cancel_checker=cancel_checker,
     )
-    text = _stringify_llm_content(result.get("text", result.get("content", result.get("output", ""))))
+    text = _stringify_llm_content(
+        result.get("text", result.get("content", result.get("output", "")))
+    )
     matched = _match_question_class(text, classes)
     if matched is None:
         branch = str(data.get("default_class") or data.get("defaultClass") or "default")
@@ -2373,11 +2509,16 @@ def _validate_sub_workflow_static(
         raise WorkflowExecutionError("workflow_sub_workflow_id_missing")
     if available_sub_workflow_refs is None:
         raise WorkflowExecutionError("workflow_sub_workflow_refs_unavailable")
-    if _sub_workflow_ref_key(workflow_id, _sub_workflow_version_id_from_data(data)) not in available_sub_workflow_refs:
+    if (
+        _sub_workflow_ref_key(workflow_id, _sub_workflow_version_id_from_data(data))
+        not in available_sub_workflow_refs
+    ):
         raise WorkflowExecutionError(f"workflow_sub_workflow_not_available:{workflow_id}")
 
 
-def _sub_workflow_request_from_data(data: dict[str, Any], variables: dict[str, Any]) -> dict[str, Any]:
+def _sub_workflow_request_from_data(
+    data: dict[str, Any], variables: dict[str, Any]
+) -> dict[str, Any]:
     return {
         "workflow_id": _sub_workflow_id_from_data(data),
         "version_id": _sub_workflow_version_id_from_data(data),
@@ -2408,14 +2549,29 @@ def _sub_workflow_version_id_from_data(data: dict[str, Any]) -> str | None:
     return text or None
 
 
-def _sub_workflow_input_from_data(data: dict[str, Any], variables: dict[str, Any]) -> dict[str, Any]:
+def _sub_workflow_input_from_data(
+    data: dict[str, Any], variables: dict[str, Any]
+) -> dict[str, Any]:
     raw_input = None
-    for key in ("input", "inputs", "arguments", "args", "parameters", "workflow_inputs", "workflowInputs"):
+    for key in (
+        "input",
+        "inputs",
+        "arguments",
+        "args",
+        "parameters",
+        "workflow_inputs",
+        "workflowInputs",
+    ):
         if key in data and data.get(key) not in (None, "", [], {}):
             raw_input = data.get(key)
             break
     if raw_input is None:
-        selector = data.get("input_selector") or data.get("inputSelector") or data.get("variable_selector") or data.get("variableSelector")
+        selector = (
+            data.get("input_selector")
+            or data.get("inputSelector")
+            or data.get("variable_selector")
+            or data.get("variableSelector")
+        )
         if selector is not None:
             resolved = _resolve_path(variables, _selector_to_key(selector))
             return dict(resolved) if isinstance(resolved, dict) else {"input": resolved}
@@ -2430,11 +2586,15 @@ def _normalize_sub_workflow_result(result: Any) -> dict[str, Any]:
     if isinstance(result, dict):
         output = result.get("output") if isinstance(result.get("output"), dict) else None
         normalized = dict(result)
-        normalized["output"] = output if output is not None else {
-            key: value
-            for key, value in result.items()
-            if key not in {"events", "run", "run_id", "workflow_id", "version_id", "status"}
-        }
+        normalized["output"] = (
+            output
+            if output is not None
+            else {
+                key: value
+                for key, value in result.items()
+                if key not in {"events", "run", "run_id", "workflow_id", "version_id", "status"}
+            }
+        )
         return normalized
     return {"output": {"value": result}}
 
@@ -2470,14 +2630,19 @@ def _knowledge_retrieval_request_from_data(
             query = "" if value is None else str(value)
     if not query:
         query = _implicit_knowledge_query(variables)
-    dataset_ids = [str(item) for item in _as_list(data.get("dataset_ids") or data.get("datasetIds"))]
+    dataset_ids = [
+        str(item) for item in _as_list(data.get("dataset_ids") or data.get("datasetIds"))
+    ]
     dataset_filters = _knowledge_dataset_filters_from_data(data)
     return {
         "query": query,
         "dataset_ids": dataset_ids,
         "dataset_filters": dataset_filters,
-        "top_k": _knowledge_numeric_param(data, variables, "top_k", "topK", "limit", default=5) or 5,
-        "score_threshold": _knowledge_numeric_param(data, variables, "score_threshold", "scoreThreshold"),
+        "top_k": _knowledge_numeric_param(data, variables, "top_k", "topK", "limit", default=5)
+        or 5,
+        "score_threshold": _knowledge_numeric_param(
+            data, variables, "score_threshold", "scoreThreshold"
+        ),
     }
 
 
@@ -2492,7 +2657,9 @@ def _knowledge_numeric_param(
             return _optional_number(_resolve_value(data.get(name), variables), default=default)
         selector = _first_present_param_selector(data, name)
         if selector is not None:
-            return _optional_number(_resolve_path(variables, _selector_to_key(selector)), default=default)
+            return _optional_number(
+                _resolve_path(variables, _selector_to_key(selector)), default=default
+            )
     return default
 
 
@@ -2532,7 +2699,13 @@ def _implicit_knowledge_query(variables: dict[str, Any]) -> str:
 def _normalize_knowledge_result(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(result, dict):
         return {"success": True, "items": [], "text": str(result)}
-    items = result.get("items") or result.get("memories") or result.get("documents") or result.get("results") or []
+    items = (
+        result.get("items")
+        or result.get("memories")
+        or result.get("documents")
+        or result.get("results")
+        or []
+    )
     if not isinstance(items, list):
         items = [items]
     text_parts: list[str] = []
@@ -2549,8 +2722,12 @@ def _normalize_knowledge_result(result: dict[str, Any]) -> dict[str, Any]:
         "text": "\n".join(text_parts),
         "raw": result,
         "dataset_ids": [str(item) for item in _as_list(result.get("dataset_ids"))],
-        "resolved_dataset_ids": [str(item) for item in _as_list(result.get("resolved_dataset_ids"))],
-        "unresolved_dataset_ids": [str(item) for item in _as_list(result.get("unresolved_dataset_ids"))],
+        "resolved_dataset_ids": [
+            str(item) for item in _as_list(result.get("resolved_dataset_ids"))
+        ],
+        "unresolved_dataset_ids": [
+            str(item) for item in _as_list(result.get("unresolved_dataset_ids"))
+        ],
     }
 
 
@@ -2582,10 +2759,14 @@ async def _inject_llm_credential_secret(
         secret = await credential_secret_resolver(ref)
         if secret:
             payload = _credential_secret_payload(secret)
-            api_key = _credential_secret_value(payload, "api_key", "apiKey", "token", "secret", "value")
+            api_key = _credential_secret_value(
+                payload, "api_key", "apiKey", "token", "secret", "value"
+            )
             if api_key:
                 request["api_key"] = api_key
-            api_base = _credential_secret_value(payload, "api_base", "apiBase", "base_url", "baseUrl", "endpoint")
+            api_base = _credential_secret_value(
+                payload, "api_base", "apiBase", "base_url", "baseUrl", "endpoint"
+            )
             if api_base:
                 request["api_base"] = api_base
             return
@@ -2606,7 +2787,9 @@ def _llm_credential_refs_from_data(data: dict[str, Any], *, node_id: str) -> lis
             value = source.get(key)
             if value not in (None, ""):
                 refs.append(str(value).strip())
-    provider_credential_id = model_data.get("provider_credential_id") or data.get("provider_credential_id")
+    provider_credential_id = model_data.get("provider_credential_id") or data.get(
+        "provider_credential_id"
+    )
     if provider_credential_id not in (None, ""):
         refs.append(f"{node_id}:provider_credential_id:{provider_credential_id}")
     provider = model_data.get("provider") or data.get("provider")
@@ -2615,12 +2798,21 @@ def _llm_credential_refs_from_data(data: dict[str, Any], *, node_id: str) -> lis
     return _dedupe_non_empty(refs)
 
 
-def _llm_generation_params_from_data(data: dict[str, Any], variables: dict[str, Any]) -> dict[str, Any]:
+def _llm_generation_params_from_data(
+    data: dict[str, Any], variables: dict[str, Any]
+) -> dict[str, Any]:
     nested_params = _llm_nested_params_from_data(data)
     params: dict[str, Any] = {}
     for output_key, aliases in {
         "temperature": ("temperature",),
-        "max_tokens": ("max_tokens", "maxTokens", "max_token", "maxToken", "max_new_tokens", "maxNewTokens"),
+        "max_tokens": (
+            "max_tokens",
+            "maxTokens",
+            "max_token",
+            "maxToken",
+            "max_new_tokens",
+            "maxNewTokens",
+        ),
         "top_p": ("top_p", "topP"),
         "presence_penalty": ("presence_penalty", "presencePenalty"),
         "frequency_penalty": ("frequency_penalty", "frequencyPenalty"),
@@ -2678,7 +2870,9 @@ def _llm_nested_params_from_data(data: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
-def _first_llm_param_value(data: dict[str, Any], nested_params: dict[str, Any], *aliases: str) -> Any:
+def _first_llm_param_value(
+    data: dict[str, Any], nested_params: dict[str, Any], *aliases: str
+) -> Any:
     for alias in aliases:
         if alias in data:
             return data.get(alias)
@@ -2706,14 +2900,18 @@ def _parameter_extractor_request_from_data(
         "extractInstruction",
     )
     query = _parameter_extractor_query_from_data(data, variables)
-    schema = data.get("schema") or data.get("parameters") or data.get("fields") or data.get("outputs")
+    schema = (
+        data.get("schema") or data.get("parameters") or data.get("fields") or data.get("outputs")
+    )
     if not explicit_prompt:
         prompt_parts = [
             instruction or "Extract parameters from the input and return only a JSON object.",
         ]
         if schema:
             prompt_parts.append("Schema:")
-            prompt_parts.append(json.dumps(_resolve_structured_value(schema, variables), ensure_ascii=False))
+            prompt_parts.append(
+                json.dumps(_resolve_structured_value(schema, variables), ensure_ascii=False)
+            )
         if query:
             prompt_parts.append("Input:")
             prompt_parts.append(query)
@@ -2759,7 +2957,7 @@ def _question_classifier_request_from_data(
     class_lines = [f"- {item['id']}: {item['name']}" for item in classes]
     prompt_parts = [
         instruction
-        or "Classify the input into exactly one class. Return only JSON like {\"class\": \"class_id\"}.",
+        or 'Classify the input into exactly one class. Return only JSON like {"class": "class_id"}.',
         "Classes:",
         *class_lines,
     ]
@@ -2859,7 +3057,7 @@ def _classifier_response_candidates(text: str) -> list[str]:
                     candidates.append(str(value))
         elif parsed not in (None, ""):
             candidates.append(str(parsed))
-    candidates.append(stripped.strip('"\''))
+    candidates.append(stripped.strip("\"'"))
     return _dedupe_preserve_order(candidates)
 
 
@@ -2914,7 +3112,9 @@ def _llm_prompt_from_data(data: dict[str, Any], variables: dict[str, Any]) -> st
     return ""
 
 
-def _llm_messages_from_data(data: dict[str, Any], variables: dict[str, Any]) -> list[dict[str, str]]:
+def _llm_messages_from_data(
+    data: dict[str, Any], variables: dict[str, Any]
+) -> list[dict[str, str]]:
     raw_messages = _as_list(data.get("messages")) or _as_list(data.get("prompt_template"))
     messages: list[dict[str, str]] = []
     for index, item in enumerate(raw_messages):
@@ -2953,12 +3153,16 @@ def _llm_message_part_to_text(value: Any) -> str:
 
 
 def _llm_message_role_from_data(data: dict[str, Any], *, index: int) -> str:
-    role = str(
-        data.get("role")
-        or data.get("name")
-        or data.get("type")
-        or ("user" if index else "system")
-    ).strip().lower()
+    role = (
+        str(
+            data.get("role")
+            or data.get("name")
+            or data.get("type")
+            or ("user" if index else "system")
+        )
+        .strip()
+        .lower()
+    )
     role_aliases = {
         "ai": "assistant",
         "bot": "assistant",
@@ -2972,7 +3176,9 @@ def _llm_message_role_from_data(data: dict[str, Any], *, index: int) -> str:
 
 
 def _normalize_llm_result(result: dict[str, Any], *, model: str) -> dict[str, Any]:
-    content = result.get("text", result.get("content", result.get("answer", result.get("output", ""))))
+    content = result.get(
+        "text", result.get("content", result.get("answer", result.get("output", "")))
+    )
     return {
         "text": _stringify_llm_content(content),
         "model": str(result.get("model") or model),
@@ -3063,7 +3269,9 @@ def _validate_http_node_static(
 
 
 def _http_method_from_data(data: dict[str, Any]) -> str:
-    return str(data.get("method") or data.get("request_method") or data.get("requestMethod") or "GET")
+    return str(
+        data.get("method") or data.get("request_method") or data.get("requestMethod") or "GET"
+    )
 
 
 def _http_headers_from_data(data: dict[str, Any], variables: dict[str, Any]) -> dict[str, str]:
@@ -3076,11 +3284,7 @@ def _http_headers_from_data(data: dict[str, Any], variables: dict[str, Any]) -> 
         "request_headers",
         "requestHeaders",
     )
-    return {
-        str(key): str(value)
-        for key, value in headers.items()
-        if key and value is not None
-    }
+    return {str(key): str(value) for key, value in headers.items() if key and value is not None}
 
 
 async def _inject_http_credential_secret(
@@ -3128,7 +3332,9 @@ def _http_credential_refs_from_data(data: dict[str, Any], *, node_id: str) -> li
     return _dedupe_non_empty(refs)
 
 
-def _apply_http_credential_secret(headers: dict[str, str], data: dict[str, Any], *, payload: dict[str, Any]) -> None:
+def _apply_http_credential_secret(
+    headers: dict[str, str], data: dict[str, Any], *, payload: dict[str, Any]
+) -> None:
     for key, value in _credential_secret_headers(payload).items():
         if not _header_exists(headers, key):
             headers[key] = value
@@ -3137,16 +3343,19 @@ def _apply_http_credential_secret(headers: dict[str, str], data: dict[str, Any],
     if not secret:
         return
     auth = _as_dict(data.get("authorization")) or _as_dict(data.get("auth"))
-    header_name = str(
-        auth.get("header")
-        or auth.get("header_name")
-        or auth.get("headerName")
-        or payload.get("header")
-        or payload.get("header_name")
-        or payload.get("headerName")
-        or auth.get("name")
+    header_name = (
+        str(
+            auth.get("header")
+            or auth.get("header_name")
+            or auth.get("headerName")
+            or payload.get("header")
+            or payload.get("header_name")
+            or payload.get("headerName")
+            or auth.get("name")
+            or "Authorization"
+        ).strip()
         or "Authorization"
-    ).strip() or "Authorization"
+    )
     if _header_exists(headers, header_name):
         return
 
@@ -3208,7 +3417,9 @@ def _credential_secret_value(payload: dict[str, Any], *keys: str) -> str:
 
 
 def _credential_secret_headers(payload: dict[str, Any]) -> dict[str, str]:
-    raw_headers = payload.get("headers") or payload.get("request_headers") or payload.get("requestHeaders")
+    raw_headers = (
+        payload.get("headers") or payload.get("request_headers") or payload.get("requestHeaders")
+    )
     headers = raw_headers if isinstance(raw_headers, dict) else {}
     return {
         str(key): str(value)
@@ -3239,7 +3450,9 @@ def _http_params_from_data(data: dict[str, Any], variables: dict[str, Any]) -> d
     )
 
 
-def _http_mapping_from_data(data: dict[str, Any], variables: dict[str, Any], *keys: str) -> dict[str, Any]:
+def _http_mapping_from_data(
+    data: dict[str, Any], variables: dict[str, Any], *keys: str
+) -> dict[str, Any]:
     for key in keys:
         value = data.get(key)
         if value in (None, "", [], {}):
@@ -3248,7 +3461,10 @@ def _http_mapping_from_data(data: dict[str, Any], variables: dict[str, Any], *ke
             value = _descriptor_list_to_dict(value)
         else:
             value = _as_dict(value)
-        return {str(item_key): _resolve_structured_value(item_value, variables) for item_key, item_value in value.items()}
+        return {
+            str(item_key): _resolve_structured_value(item_value, variables)
+            for item_key, item_value in value.items()
+        }
     return {}
 
 
@@ -3282,7 +3498,8 @@ async def _default_http_invoker(request: dict[str, Any]) -> dict[str, Any]:
             kwargs["content"] = str(body)
     async with httpx.AsyncClient(timeout=float(request.get("timeout_seconds") or 10.0)) as client:
         response = await client.request(method, str(request.get("url") or ""), **kwargs)
-    content = response.content[: int(request.get("max_response_bytes") or 65536)]
+    max_response_bytes = _optional_int(request.get("max_response_bytes")) or 65536
+    content = response.content[:max_response_bytes]
     return {
         "status_code": response.status_code,
         "headers": dict(response.headers),
@@ -3293,7 +3510,7 @@ async def _default_http_invoker(request: dict[str, Any]) -> dict[str, Any]:
 def _normalize_http_result(result: dict[str, Any], *, max_response_bytes: int) -> dict[str, Any]:
     status_code = result.get("status_code", result.get("status"))
     try:
-        normalized_status = int(status_code)
+        normalized_status = int(status_code) if status_code is not None else 0
     except (TypeError, ValueError):
         normalized_status = 0
     headers = _as_dict(result.get("headers"))
@@ -3309,7 +3526,9 @@ def _normalize_http_result(result: dict[str, Any], *, max_response_bytes: int) -
     }
 
 
-def _node_timeout_seconds(data: dict[str, Any], default_timeout_seconds: float | None) -> float | None:
+def _node_timeout_seconds(
+    data: dict[str, Any], default_timeout_seconds: float | None
+) -> float | None:
     timeout = (
         data.get("timeout_seconds")
         or data.get("timeoutSeconds")
@@ -3350,7 +3569,10 @@ def _tool_arguments_from_data(data: dict[str, Any], variables: dict[str, Any]) -
         raw_arguments = _descriptor_list_to_dict(raw_arguments)
     else:
         raw_arguments = _as_dict(raw_arguments)
-    return {str(key): _resolve_structured_value(value, variables) for key, value in raw_arguments.items()}
+    return {
+        str(key): _resolve_structured_value(value, variables)
+        for key, value in raw_arguments.items()
+    }
 
 
 def _first_tool_arguments_value(data: dict[str, Any]) -> Any:
@@ -3411,7 +3633,11 @@ def _descriptor_item_value(item: dict[str, Any]) -> Any:
             if key.endswith("selector") or key.endswith("Selector") or key == "selector":
                 return {key: item.get(key)}
             return item.get(key)
-    return {key: value for key, value in item.items() if key not in {"name", "variable", "key", "parameter", "field"}}
+    return {
+        key: value
+        for key, value in item.items()
+        if key not in {"name", "variable", "key", "parameter", "field"}
+    }
 
 
 def _resolve_structured_value(value: Any, variables: dict[str, Any]) -> Any:
@@ -3473,7 +3699,9 @@ def _evaluate_conditions(
 ) -> bool:
     if not conditions:
         return False
-    results = [_evaluate_condition_entry(_as_dict(condition), variables) for condition in conditions]
+    results = [
+        _evaluate_condition_entry(_as_dict(condition), variables) for condition in conditions
+    ]
     normalized_operator = _normalize_condition_logical_operator(logical_operator)
     if normalized_operator == "or":
         return any(results)
@@ -3531,19 +3759,30 @@ def _condition_group_negated(condition: dict[str, Any]) -> bool:
 def _evaluate_condition(condition: dict[str, Any], variables: dict[str, Any]) -> bool:
     left = _resolve_condition_left(condition, variables)
     right = _resolve_condition_right(condition, variables)
-    operator = str(
-        condition.get("comparison_operator")
-        or condition.get("operator")
-        or condition.get("op")
-        or "equals"
-    ).strip().lower()
+    operator = (
+        str(
+            condition.get("comparison_operator")
+            or condition.get("operator")
+            or condition.get("op")
+            or "equals"
+        )
+        .strip()
+        .lower()
+    )
     if operator in {"equals", "=", "==", "is"}:
         return left == right
     if operator in {"not equals", "not_equal", "!=", "is not"}:
         return left != right
     if operator in {"contains", "include", "includes"}:
         return str(right) in str(left)
-    if operator in {"not contains", "not_contains", "not contain", "not_include", "not include", "not includes"}:
+    if operator in {
+        "not contains",
+        "not_contains",
+        "not contain",
+        "not_include",
+        "not include",
+        "not includes",
+    }:
         return str(right) not in str(left)
     if operator in {"matches", "regex", "regexp", "matches regex", "match_regex"}:
         return _condition_regex_match(left, right)
@@ -3551,15 +3790,34 @@ def _evaluate_condition(condition: dict[str, Any], variables: dict[str, Any]) ->
         return not _condition_regex_match(left, right)
     if operator in {"in", "is in", "one_of", "one of", "belongs_to", "belongs to"}:
         return _condition_membership(left, right)
-    if operator in {"not in", "not_in", "not one of", "not_one_of", "not belongs to", "not_belongs_to"}:
+    if operator in {
+        "not in",
+        "not_in",
+        "not one of",
+        "not_one_of",
+        "not belongs to",
+        "not_belongs_to",
+    }:
         return not _condition_membership(left, right)
     if operator in {"starts with", "start with", "start_with", "starts_with", "startswith"}:
         return str(left).startswith(str(right))
-    if operator in {"not starts with", "not start with", "not_start_with", "not_starts_with", "not startswith"}:
+    if operator in {
+        "not starts with",
+        "not start with",
+        "not_start_with",
+        "not_starts_with",
+        "not startswith",
+    }:
         return not str(left).startswith(str(right))
     if operator in {"ends with", "end with", "end_with", "ends_with", "endswith"}:
         return str(left).endswith(str(right))
-    if operator in {"not ends with", "not end with", "not_end_with", "not_ends_with", "not endswith"}:
+    if operator in {
+        "not ends with",
+        "not end with",
+        "not_end_with",
+        "not_ends_with",
+        "not endswith",
+    }:
         return not str(left).endswith(str(right))
     if operator in {"empty", "is empty"}:
         return left in (None, "", [], {})
@@ -3705,25 +3963,25 @@ def _start_input_defaults(start_node: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_start_required_inputs(start_node: dict[str, Any], variables: dict[str, Any]) -> None:
-    for field in _start_required_input_fields(start_node):
-        if _resolve_path(variables, field) in (None, "", [], {}):
-            raise WorkflowExecutionError(f"workflow_start_required_input_missing:{field}")
+    for input_field in _start_required_input_fields(start_node):
+        if _resolve_path(variables, input_field) in (None, "", [], {}):
+            raise WorkflowExecutionError(f"workflow_start_required_input_missing:{input_field}")
 
 
 def _validate_start_input_contract(start_node: dict[str, Any], variables: dict[str, Any]) -> None:
-    for field, rule in _start_input_rules(start_node).items():
-        value = _resolve_path(variables, field)
+    for input_field, rule in _start_input_rules(start_node).items():
+        value = _resolve_path(variables, input_field)
         if value in (None, "", [], {}):
             continue
         expected_types = rule.get("types") or []
         if expected_types and not _matches_start_input_type(value, expected_types):
             raise WorkflowExecutionError(
-                f"workflow_start_input_type_mismatch:{field}:{'|'.join(expected_types)}"
+                f"workflow_start_input_type_mismatch:{input_field}:{'|'.join(expected_types)}"
             )
         enum_values = rule.get("enum") or []
         if enum_values and not any(value == candidate for candidate in enum_values):
-            raise WorkflowExecutionError(f"workflow_start_input_enum_mismatch:{field}")
-        _validate_start_input_constraints(field, value, _as_dict(rule.get("constraints")))
+            raise WorkflowExecutionError(f"workflow_start_input_enum_mismatch:{input_field}")
+        _validate_start_input_constraints(input_field, value, _as_dict(rule.get("constraints")))
 
 
 def _start_required_input_fields(start_node: dict[str, Any]) -> list[str]:
@@ -3741,7 +3999,9 @@ def _start_required_input_fields(start_node: dict[str, Any]) -> list[str]:
         data.get("parameters"),
     ):
         schema = _as_dict(raw_schema)
-        required.extend(str(item).strip() for item in _as_list(schema.get("required")) if str(item).strip())
+        required.extend(
+            str(item).strip() for item in _as_list(schema.get("required")) if str(item).strip()
+        )
     return sorted(set(required))
 
 
@@ -3938,7 +4198,11 @@ def _matches_start_input_type(value: Any, expected_types: list[str]) -> bool:
             return True
         if expected_type == "integer" and isinstance(value, int) and not isinstance(value, bool):
             return True
-        if expected_type == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
+        if (
+            expected_type == "number"
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        ):
             return True
         if expected_type == "boolean" and isinstance(value, bool):
             return True
@@ -3960,18 +4224,27 @@ def _validate_start_input_constraints(field: str, value: Any, constraints: dict[
         raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:maxLength")
 
     minimum = _optional_float(constraints.get("minimum"))
-    if minimum is not None and (_start_numeric_value(value) is None or _start_numeric_value(value) < minimum):
+    numeric_value = _start_numeric_value(value)
+    if minimum is not None and (numeric_value is None or numeric_value < minimum):
         raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:minimum")
     maximum = _optional_float(constraints.get("maximum"))
-    if maximum is not None and (_start_numeric_value(value) is None or _start_numeric_value(value) > maximum):
+    if maximum is not None and (numeric_value is None or numeric_value > maximum):
         raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:maximum")
 
     exclusive_minimum = _exclusive_threshold(constraints, "exclusiveMinimum", minimum)
-    if exclusive_minimum is not None and (_start_numeric_value(value) is None or _start_numeric_value(value) <= exclusive_minimum):
-        raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:exclusiveMinimum")
+    if exclusive_minimum is not None and (
+        numeric_value is None or numeric_value <= exclusive_minimum
+    ):
+        raise WorkflowExecutionError(
+            f"workflow_start_input_constraint_violation:{field}:exclusiveMinimum"
+        )
     exclusive_maximum = _exclusive_threshold(constraints, "exclusiveMaximum", maximum)
-    if exclusive_maximum is not None and (_start_numeric_value(value) is None or _start_numeric_value(value) >= exclusive_maximum):
-        raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:exclusiveMaximum")
+    if exclusive_maximum is not None and (
+        numeric_value is None or numeric_value >= exclusive_maximum
+    ):
+        raise WorkflowExecutionError(
+            f"workflow_start_input_constraint_violation:{field}:exclusiveMaximum"
+        )
 
     min_items = _optional_int(constraints.get("minItems"))
     if min_items is not None and (not isinstance(value, list) or len(value) < min_items):
@@ -3982,9 +4255,13 @@ def _validate_start_input_constraints(field: str, value: Any, constraints: dict[
 
     value_format = str(constraints.get("format") or "").strip().lower()
     if value_format == "email" and not (isinstance(value, str) and _looks_like_email(value)):
-        raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:format_email")
+        raise WorkflowExecutionError(
+            f"workflow_start_input_constraint_violation:{field}:format_email"
+        )
     if value_format == "url" and not (isinstance(value, str) and _looks_like_url(value)):
-        raise WorkflowExecutionError(f"workflow_start_input_constraint_violation:{field}:format_url")
+        raise WorkflowExecutionError(
+            f"workflow_start_input_constraint_violation:{field}:format_url"
+        )
 
 
 def _optional_float(value: Any) -> float | None:
@@ -4004,7 +4281,9 @@ def _start_numeric_value(value: Any) -> float | None:
     return None
 
 
-def _exclusive_threshold(constraints: dict[str, Any], key: str, fallback: float | None) -> float | None:
+def _exclusive_threshold(
+    constraints: dict[str, Any], key: str, fallback: float | None
+) -> float | None:
     value = constraints.get(key)
     if isinstance(value, bool):
         return fallback if value else None
@@ -4026,7 +4305,9 @@ def _defaults_from_start_variables(raw_variables: Any) -> dict[str, Any]:
         name = _start_variable_name(item)
         if not name:
             continue
-        has_default = any(key in item for key in ("default", "default_value", "defaultValue", "value"))
+        has_default = any(
+            key in item for key in ("default", "default_value", "defaultValue", "value")
+        )
         if not has_default:
             continue
         defaults[name] = (
@@ -4132,7 +4413,9 @@ def _execute_end(data: dict[str, Any], variables: dict[str, Any]) -> dict[str, A
         return result
     direct = _as_dict(data.get("output")) or _as_dict(data.get("result"))
     if direct:
-        return {str(key): _resolve_end_direct_value(value, variables) for key, value in direct.items()}
+        return {
+            str(key): _resolve_end_direct_value(value, variables) for key, value in direct.items()
+        }
     return {}
 
 
@@ -4152,7 +4435,9 @@ def _end_output_items(raw_outputs: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _resolve_end_output_value(item_data: dict[str, Any], name: str, variables: dict[str, Any]) -> Any:
+def _resolve_end_output_value(
+    item_data: dict[str, Any], name: str, variables: dict[str, Any]
+) -> Any:
     if "value" in item_data:
         return _resolve_end_direct_value(item_data.get("value"), variables)
     selector = (
@@ -4204,7 +4489,9 @@ def _is_text_template_part(value: Any) -> bool:
     if part_type and part_type not in {"text", "input_text", "paragraph", "markdown", "template"}:
         return False
     text_keys = {"text", "content", "template", "prompt", "message"}
-    return bool(set(value) & text_keys) and set(value).issubset(text_keys | {"type", "kind", "label", "name", "data"})
+    return bool(set(value) & text_keys) and set(value).issubset(
+        text_keys | {"type", "kind", "label", "name", "data"}
+    )
 
 
 def _resolve_value(value: Any, variables: dict[str, Any]) -> Any:

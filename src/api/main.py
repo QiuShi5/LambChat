@@ -19,7 +19,10 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from src.api.middleware.auth import AuthMiddleware
 from src.api.middleware.tracing import TracingMiddleware
 from src.api.middleware.user_context import UserContextMiddleware
-from src.api.plugin_lifecycle import PLUGIN_LIFECYCLE_HOOK_TIMEOUT_SECONDS, run_plugin_lifecycle_hooks
+from src.api.plugin_lifecycle import (
+    PLUGIN_LIFECYCLE_HOOK_TIMEOUT_SECONDS,
+    run_plugin_lifecycle_hooks,
+)
 from src.api.routes import notification, share, upload
 from src.api.routes.registry import register_builtin_plugin_routes, register_core_routes
 from src.frontend_resolution import resolve_frontend_target
@@ -70,6 +73,8 @@ _LIFESPAN_BACKGROUND_TASK_NAMES = (
     "feishu_task",
 )
 _STALE_TASK_CLEANUP_RECHECK_DELAY_SECONDS = max(5.0, HEARTBEAT_TIMEOUT * 2 + 5)
+
+
 def _is_body_limit_exempt(scope: Scope) -> bool:
     path = str(scope.get("path") or "")
 

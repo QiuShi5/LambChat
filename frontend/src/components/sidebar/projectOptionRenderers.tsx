@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { teamApi } from "../../services/api/team";
 import type { CoreScopedPluginOptionContribution } from "../../extensions/coreContributions";
 import {
+  WorkflowPluginInputOption,
   WorkflowPluginSelectOption,
   WorkflowPluginVersionSelectOption,
 } from "../../plugins/workflow/WorkflowSelectOption";
@@ -90,6 +91,9 @@ const PROJECT_OPTION_RENDERERS: Record<string, ProjectOptionRenderer> = {
   ),
   "workflow.WorkflowVersionSelectOption": (props) => (
     <WorkflowPluginVersionSelectOption {...props} inactive={!props.option.effective} />
+  ),
+  "workflow.WorkflowInputOption": (props) => (
+    <WorkflowPluginInputOption {...props} inactive={!props.option.effective} />
   ),
 };
 

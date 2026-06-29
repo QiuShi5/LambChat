@@ -93,7 +93,9 @@ def build_http_request_policy(
         policy=normalized_policy,
         allowlist=tuple(_normalize_allowlist(allowlist)),
         timeout_seconds=_positive_float(timeout_seconds, default=10.0, maximum=60.0),
-        max_response_bytes=int(_positive_float(max_response_bytes, default=65536.0, maximum=1048576.0)),
+        max_response_bytes=int(
+            _positive_float(max_response_bytes, default=65536.0, maximum=1048576.0)
+        ),
     )
 
 

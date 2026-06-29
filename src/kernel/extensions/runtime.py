@@ -404,19 +404,13 @@ class PluginRuntime:
         )
 
     def routes(self, *, enabled_only: bool = True) -> list[PluginRouteRegistration]:
-        return PluginRegistry(self.manifests(enabled_only=enabled_only)).routes(
-            enabled_only=False
-        )
+        return PluginRegistry(self.manifests(enabled_only=enabled_only)).routes(enabled_only=False)
 
     def tools(self, *, enabled_only: bool = True) -> list[PluginToolRegistration]:
-        return PluginRegistry(self.manifests(enabled_only=enabled_only)).tools(
-            enabled_only=False
-        )
+        return PluginRegistry(self.manifests(enabled_only=enabled_only)).tools(enabled_only=False)
 
     def agents(self, *, enabled_only: bool = True) -> list[PluginAgentRegistration]:
-        return PluginRegistry(self.manifests(enabled_only=enabled_only)).agents(
-            enabled_only=False
-        )
+        return PluginRegistry(self.manifests(enabled_only=enabled_only)).agents(enabled_only=False)
 
     def plugin_for_agent(self, agent_id: str) -> str | None:
         """Return the plugin that owns an agent catalog entry, if any."""
@@ -493,7 +487,9 @@ class PluginRuntime:
         )
         if plugin_id is None:
             return registrations
-        return [registration for registration in registrations if registration.plugin_id == plugin_id]
+        return [
+            registration for registration in registrations if registration.plugin_id == plugin_id
+        ]
 
     async def execute_lifecycle_hooks(
         self,

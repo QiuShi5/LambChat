@@ -16,8 +16,8 @@ from src.kernel.config import settings
 from src.kernel.extensions.plugin_options import (
     plugin_options_from_metadata,
     selected_agent_team_id_from_metadata,
-    with_plugin_options,
     with_agent_team_session_option,
+    with_plugin_options,
 )
 from src.kernel.schemas.session import SessionUpdate
 

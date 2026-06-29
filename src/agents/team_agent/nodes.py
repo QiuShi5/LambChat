@@ -121,8 +121,11 @@ def workflow_result_prompt_section(agent_options: dict[str, Any] | None) -> str:
     )
     if not isinstance(result, dict):
         return ""
-    output = result.get("output") if isinstance(result.get("output"), dict) else {}
-    contract_value = workflow_output_contract_value(output, result.get("io_contract"))
+    raw_output = result.get("output")
+    output = raw_output if isinstance(raw_output, dict) else {}
+    raw_io_contract = result.get("io_contract")
+    io_contract = raw_io_contract if isinstance(raw_io_contract, dict) else {}
+    contract_value = workflow_output_contract_value(output, io_contract)
     rendered_output = contract_value if contract_value not in (None, "") else output
     lines = [
         "## Workflow Result",
@@ -169,9 +172,7 @@ def workflow_result_prompt_section(agent_options: dict[str, Any] | None) -> str:
                     f"output_schema={exit_.get('schema_tool')}.{exit_.get('schema_field')}"
                 )
             if isinstance(debug, dict):
-                interface_parts.append(
-                    f"debug={debug.get('tool')}.{debug.get('events_field')}"
-                )
+                interface_parts.append(f"debug={debug.get('tool')}.{debug.get('events_field')}")
             lines.append("interface: " + " ".join(interface_parts))
     next_action = result.get("next_action")
     if isinstance(next_action, dict):

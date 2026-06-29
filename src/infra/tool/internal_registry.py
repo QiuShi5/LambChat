@@ -30,8 +30,8 @@ from src.kernel.schemas.mcp import (
     MCPTransport,
 )
 from src.kernel.types import Permission
-from src.plugins.workflow.tools import get_workflow_tools
 from src.plugins.feedback.tools import get_feedback_tools
+from src.plugins.workflow.tools import get_workflow_tools
 
 INTERNAL_MCP_SERVER_NAME = "lambchat_internal"
 

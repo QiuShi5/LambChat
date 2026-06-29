@@ -683,7 +683,7 @@ def build_workflow_plugin_manifest() -> PluginManifest:
                     "seo_description": "seo.workflows.runDescription",
                     "redirect_to": "/chat",
                     "show_no_permission_toast": True,
-                }
+                },
             ],
             "app_panels": [
                 {
@@ -700,7 +700,7 @@ def build_workflow_plugin_manifest() -> PluginManifest:
                     "id": "workflow:workflow-run-panel",
                     "tab": "workflows-run",
                     "renderer": "workflow.WorkflowPanel",
-                }
+                },
             ],
             "sidebar_items": [
                 {
@@ -732,7 +732,7 @@ def build_workflow_plugin_manifest() -> PluginManifest:
                     "order": 11,
                     "renderer": "workflow.WorkflowVersionSelectOption",
                     "applies_to_session_key": "SELECTED_WORKFLOW_VERSION_ID",
-                }
+                },
             ],
             "session_options": [
                 {
@@ -764,7 +764,7 @@ def build_workflow_plugin_manifest() -> PluginManifest:
                     "order": 12,
                     "renderer": "workflow.WorkflowInputOption",
                     "legacy_payload_keys": ["workflow_input", "input"],
-                }
+                },
             ],
             "scheduled_task_options": [
                 {
@@ -796,7 +796,7 @@ def build_workflow_plugin_manifest() -> PluginManifest:
                     "order": 12,
                     "renderer": "workflow.WorkflowInputOption",
                     "legacy_payload_keys": ["workflow_input", "input"],
-                }
+                },
             ],
             "chat_input_options": [
                 {
