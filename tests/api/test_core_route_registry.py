@@ -492,7 +492,7 @@ def test_plugin_runtime_routes_expose_feedback_observability() -> None:
     assert feedback["package"]["data_template"]["template"] == "plugin-data-template"
     assert "config/current.json" in feedback["package"]["data_template"]["files"]
     assert "config/defaults.json" in feedback["package"]["data_template"]["files"]
-    assert "state/audit.jsonl" in feedback["package"]["data_template"]["files"]
+    assert "state/audit.jsonl" not in feedback["package"]["data_template"]["files"]
     agent_team = next(
         plugin for plugin in payload["plugins"] if plugin["plugin_id"] == AGENT_TEAM_PLUGIN_ID
     )
@@ -1657,7 +1657,7 @@ def test_plugin_runtime_package_and_data_routes() -> None:
     assert package_payload["package_summary"]["data_template"]["template"] == "plugin-data-template"
     assert "config/current.json" in package_payload["package_summary"]["data_template"]["files"]
     assert "config/defaults.json" in package_payload["package_summary"]["data_template"]["files"]
-    assert "state/audit.jsonl" in package_payload["package_summary"]["data_template"]["files"]
+    assert "state/audit.jsonl" not in package_payload["package_summary"]["data_template"]["files"]
     assert package_payload["package_summary"]["standard_files"]["plugin.yaml"] is True
     assert package_payload["package_summary"]["standard_files"]["config/schema.json"] is True
     assert package_payload["package_summary"]["standard_files"]["resources/resources.yaml"] is True

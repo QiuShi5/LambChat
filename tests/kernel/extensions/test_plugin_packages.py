@@ -1626,7 +1626,7 @@ def test_builtin_folder_packages_are_complete_runtime_contracts() -> None:
         audit_template = data_template_dir / "state" / "audit.jsonl"
         assert current_template.is_file()
         assert defaults_template.is_file()
-        assert audit_template.is_file()
+        assert not audit_template.exists()
         assert json.loads(current_template.read_text(encoding="utf-8")) == {}
         assert (
             json.loads(defaults_template.read_text(encoding="utf-8"))
