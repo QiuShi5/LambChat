@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { teamApi } from "../../services/api/team";
 import type { CoreScopedPluginOptionContribution } from "../../extensions/coreContributions";
 import {
-  DifyWorkflowSelectOption,
-  DifyWorkflowVersionSelectOption,
-} from "../../plugins/dify_workflow/WorkflowSelectOption";
+  WorkflowPluginSelectOption,
+  WorkflowPluginVersionSelectOption,
+} from "../../plugins/workflow/WorkflowSelectOption";
 import type { Team } from "../../types/team";
 
 interface ProjectOptionRendererProps {
@@ -85,11 +85,11 @@ function AgentTeamDefaultTeamSelect({
 
 const PROJECT_OPTION_RENDERERS: Record<string, ProjectOptionRenderer> = {
   "agent_team.TeamSelectOption": AgentTeamDefaultTeamSelect,
-  "dify_workflow.WorkflowSelectOption": (props) => (
-    <DifyWorkflowSelectOption {...props} inactive={!props.option.effective} />
+  "workflow.WorkflowSelectOption": (props) => (
+    <WorkflowPluginSelectOption {...props} inactive={!props.option.effective} />
   ),
-  "dify_workflow.WorkflowVersionSelectOption": (props) => (
-    <DifyWorkflowVersionSelectOption {...props} inactive={!props.option.effective} />
+  "workflow.WorkflowVersionSelectOption": (props) => (
+    <WorkflowPluginVersionSelectOption {...props} inactive={!props.option.effective} />
   ),
 };
 

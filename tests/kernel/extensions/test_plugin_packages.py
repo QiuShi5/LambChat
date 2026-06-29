@@ -775,10 +775,10 @@ def test_controlled_frontend_references_include_builtin_plugin_renderers() -> No
     assert CONTROLLED_FRONTEND_REFERENCES[
         "chat_input_options.selected_renderer"
     ] == frozenset(
-        {"agent_team.SelectedTeamChip", "dify_workflow.SelectedWorkflowChip"}
+        {"agent_team.SelectedTeamChip", "workflow.SelectedWorkflowChip"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["chat_input_panels.renderer"] == frozenset(
-        {"agent_team.TeamPickerModal", "dify_workflow.WorkflowPickerModal"}
+        {"agent_team.TeamPickerModal", "workflow.WorkflowPickerModal"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["mention_providers.provider"] == frozenset(
         {"agent_team.searchTeams"}
@@ -786,24 +786,24 @@ def test_controlled_frontend_references_include_builtin_plugin_renderers() -> No
     assert CONTROLLED_FRONTEND_REFERENCES["project_options.renderer"] == frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     )
     assert CONTROLLED_FRONTEND_REFERENCES["session_options.renderer"] == frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowInputOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowInputOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     )
     assert CONTROLLED_FRONTEND_REFERENCES["scheduled_task_options.renderer"] == frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowInputOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowInputOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     )
     assert CONTROLLED_FRONTEND_REFERENCES["channel_connectors.panel_renderer"] == frozenset(
@@ -1675,7 +1675,7 @@ def test_builtin_folder_packages_are_complete_runtime_contracts() -> None:
 def test_migrated_system_plugins_do_not_use_legacy_frontend_route_fields() -> None:
     scan = PluginPackageScanner(plugin_root=Path("plugins"), data_root=Path("plugin-data")).scan()
     descriptors = scan.by_plugin_id()
-    migrated_plugin_ids = {"feedback", "agent_team", "dify_workflow", "usage_reports"}
+    migrated_plugin_ids = {"feedback", "agent_team", "workflow", "usage_reports"}
 
     assert scan.errors == ()
     assert migrated_plugin_ids <= set(descriptors)

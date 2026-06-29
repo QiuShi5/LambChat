@@ -10,7 +10,7 @@ from langchain_core.tools import InjectedToolArg
 from src.infra.scheduler.service import ScheduledTaskService
 from src.infra.tool.backend_utils import get_user_id_from_runtime
 from src.infra.utils.datetime import ensure_utc, to_iso, utc_now
-from src.kernel.extensions import DIFY_WORKFLOW_PLUGIN_ID
+from src.kernel.extensions import WORKFLOW_PLUGIN_ID
 from src.kernel.extensions.plugin_options import (
     AGENT_TEAM_PLUGIN_ID,
     AGENT_TEAM_SELECTED_TEAM_OPTION,
@@ -108,12 +108,12 @@ def _agent_team_plugin_unavailable() -> bool:
     return _plugin_unavailable(AGENT_TEAM_PLUGIN_ID)
 
 
-def _dify_workflow_plugin_unavailable() -> bool:
-    return _plugin_unavailable(DIFY_WORKFLOW_PLUGIN_ID)
+def _workflow_plugin_unavailable() -> bool:
+    return _plugin_unavailable(WORKFLOW_PLUGIN_ID)
 
 
-def _has_dify_workflow_options(plugin_options: dict[str, dict[str, Any]]) -> bool:
-    return bool(plugin_options.get(DIFY_WORKFLOW_PLUGIN_ID))
+def _has_workflow_options(plugin_options: dict[str, dict[str, Any]]) -> bool:
+    return bool(plugin_options.get(WORKFLOW_PLUGIN_ID))
 
 
 @tool
@@ -257,12 +257,12 @@ async def scheduled_task_create(
     ) = await _get_current_session_defaults()
     effective_timezone = schedule_timezone or session_user_timezone or "UTC"
     normalized_plugin_options = _normalized_plugin_options(plugin_options)
-    if _has_dify_workflow_options(normalized_plugin_options) and _dify_workflow_plugin_unavailable():
+    if _has_workflow_options(normalized_plugin_options) and _workflow_plugin_unavailable():
         return _json(
             {
                 "error": "Workflow plugin is disabled; scheduled workflow tasks cannot be created.",
                 "code": "plugin_unavailable",
-                "plugin_id": DIFY_WORKFLOW_PLUGIN_ID,
+                "plugin_id": WORKFLOW_PLUGIN_ID,
             }
         )
 

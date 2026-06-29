@@ -13,7 +13,7 @@ from src.kernel.extensions import (
     PluginRuntime,
     PluginRuntimeStatus,
     build_agent_team_plugin_manifest,
-    build_dify_workflow_plugin_manifest,
+    build_workflow_plugin_manifest,
 )
 
 
@@ -85,7 +85,7 @@ class _FakeLimiter:
         self.release_calls.append((user_id, run_id, dequeue))
 
 
-class _FakeDifyWorkflowStorage:
+class _FakeWorkflowPluginStorage:
     def __init__(self, status: str = "queued") -> None:
         self.run = SimpleNamespace(
             run_id="wfr-1",
@@ -113,10 +113,10 @@ class _FakeDifyWorkflowStorage:
         return self.run
 
 
-class _FakeDifyWorkflowService:
+class _FakeWorkflowPluginService:
     def __init__(
         self,
-        storage: _FakeDifyWorkflowStorage,
+        storage: _FakeWorkflowPluginStorage,
         calls: list[dict],
         execute_error: Exception | None = None,
     ) -> None:
@@ -550,13 +550,13 @@ async def test_run_agent_task_deletes_payload_after_success(
 
 
 @pytest.mark.asyncio
-async def test_run_dify_workflow_task_executes_persisted_workflow_run(
+async def test_run_workflow_task_executes_persisted_workflow_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict] = []
     storage = InMemoryPluginRuntimeStateStorage()
     await storage.set_override(
-        plugin_id="dify_workflow",
+        plugin_id="workflow",
         status=PluginRuntimeStatus.ENABLED,
         updated_by="admin-1",
     )
@@ -565,15 +565,15 @@ async def test_run_dify_workflow_task_executes_persisted_workflow_run(
         async def execute_existing_run(self, **kwargs) -> None:
             calls.append(kwargs)
 
-    async def _fake_create_dify_workflow_service():
+    async def _fake_create_workflow_service():
         return _FakeWorkflowService()
 
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.service.create_dify_workflow_service",
-        _fake_create_dify_workflow_service,
+        "src.plugins.workflow.service.create_workflow_service",
+        _fake_create_workflow_service,
     )
 
-    await arq_worker.run_dify_workflow_task(
+    await arq_worker.run_workflow_task(
         {"plugin_runtime_state_storage": storage},
         "wfr-1",
         "user-1",
@@ -590,21 +590,21 @@ async def test_run_dify_workflow_task_executes_persisted_workflow_run(
 
 
 @pytest.mark.asyncio
-async def test_run_dify_workflow_task_rejects_default_disabled_plugin(
+async def test_run_workflow_task_rejects_default_disabled_plugin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict] = []
-    fake_storage = _FakeDifyWorkflowStorage()
+    fake_storage = _FakeWorkflowPluginStorage()
 
-    async def _fake_create_dify_workflow_service():
-        return _FakeDifyWorkflowService(fake_storage, calls)
+    async def _fake_create_workflow_service():
+        return _FakeWorkflowPluginService(fake_storage, calls)
 
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.service.create_dify_workflow_service",
-        _fake_create_dify_workflow_service,
+        "src.plugins.workflow.service.create_workflow_service",
+        _fake_create_workflow_service,
     )
 
-    await arq_worker.run_dify_workflow_task(
+    await arq_worker.run_workflow_task(
         {"plugin_runtime_state_storage": InMemoryPluginRuntimeStateStorage()},
         "wfr-1",
         "user-1",
@@ -618,34 +618,34 @@ async def test_run_dify_workflow_task_rejects_default_disabled_plugin(
             "run_id": "wfr-1",
             "owner_user_id": "user-1",
             "status": "failed",
-            "error": "plugin is not enabled: dify_workflow (disabled)",
+            "error": "plugin is not enabled: workflow (disabled)",
         }
     ]
     assert fake_storage.events == [
         {
             "event_type": "run_failed",
-            "payload": {"error": "plugin is not enabled: dify_workflow (disabled)"},
+            "payload": {"error": "plugin is not enabled: workflow (disabled)"},
         }
     ]
 
 
 @pytest.mark.asyncio
-async def test_run_dify_workflow_task_does_not_crash_when_disabled_failure_mark_fails(
+async def test_run_workflow_task_does_not_crash_when_disabled_failure_mark_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls = 0
 
-    async def _fake_create_dify_workflow_service():
+    async def _fake_create_workflow_service():
         nonlocal calls
         calls += 1
         raise RuntimeError("storage offline")
 
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.service.create_dify_workflow_service",
-        _fake_create_dify_workflow_service,
+        "src.plugins.workflow.service.create_workflow_service",
+        _fake_create_workflow_service,
     )
 
-    await arq_worker.run_dify_workflow_task(
+    await arq_worker.run_workflow_task(
         {"plugin_runtime_state_storage": InMemoryPluginRuntimeStateStorage()},
         "wfr-1",
         "user-1",
@@ -656,27 +656,27 @@ async def test_run_dify_workflow_task_does_not_crash_when_disabled_failure_mark_
 
 
 @pytest.mark.asyncio
-async def test_run_dify_workflow_task_marks_run_failed_when_worker_execution_fails(
+async def test_run_workflow_task_marks_run_failed_when_worker_execution_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict] = []
-    fake_storage = _FakeDifyWorkflowStorage()
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.enable_plugin("dify_workflow")
+    fake_storage = _FakeWorkflowPluginStorage()
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.enable_plugin("workflow")
 
-    async def _fake_create_dify_workflow_service():
-        return _FakeDifyWorkflowService(
+    async def _fake_create_workflow_service():
+        return _FakeWorkflowPluginService(
             fake_storage,
             calls,
             execute_error=RuntimeError("storage write failed"),
         )
 
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.service.create_dify_workflow_service",
-        _fake_create_dify_workflow_service,
+        "src.plugins.workflow.service.create_workflow_service",
+        _fake_create_workflow_service,
     )
 
-    await arq_worker.run_dify_workflow_task(
+    await arq_worker.run_workflow_task(
         {"plugin_runtime": runtime},
         "wfr-1",
         "user-1",
@@ -708,23 +708,23 @@ async def test_run_dify_workflow_task_marks_run_failed_when_worker_execution_fai
 
 
 @pytest.mark.asyncio
-async def test_run_dify_workflow_task_uses_injected_enabled_runtime(
+async def test_run_workflow_task_uses_injected_enabled_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict] = []
-    fake_storage = _FakeDifyWorkflowStorage()
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.enable_plugin("dify_workflow")
+    fake_storage = _FakeWorkflowPluginStorage()
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.enable_plugin("workflow")
 
-    async def _fake_create_dify_workflow_service():
-        return _FakeDifyWorkflowService(fake_storage, calls)
+    async def _fake_create_workflow_service():
+        return _FakeWorkflowPluginService(fake_storage, calls)
 
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.service.create_dify_workflow_service",
-        _fake_create_dify_workflow_service,
+        "src.plugins.workflow.service.create_workflow_service",
+        _fake_create_workflow_service,
     )
 
-    await arq_worker.run_dify_workflow_task(
+    await arq_worker.run_workflow_task(
         {"plugin_runtime": runtime},
         "wfr-1",
         "user-1",

@@ -25,11 +25,11 @@ from src.infra.extensions import InMemoryPluginSettingsStorage, PluginSettingsSe
 from src.kernel.extensions import PluginManifest, PluginRuntime
 from src.kernel.extensions.builtin_plugins import (
     build_agent_team_plugin_manifest,
-    build_dify_workflow_plugin_manifest,
+    build_workflow_plugin_manifest,
 )
 from src.kernel.extensions.plugin_options import selected_agent_team_id_from_metadata
 from src.kernel.schemas.agent import AgentRequest, GoalSpec
-from src.plugins.dify_workflow.chat_integration import workflow_result_interface
+from src.plugins.workflow.chat_integration import workflow_result_interface
 
 
 def test_build_conversation_config_does_not_persist_run_scoped_goal() -> None:
@@ -650,17 +650,17 @@ async def test_apply_project_plugin_session_defaults_uses_manifest_projection(
 
 
 @pytest.mark.asyncio
-async def test_apply_project_plugin_session_defaults_supports_get_state_only_runtime_for_dify(
+async def test_apply_project_plugin_session_defaults_supports_get_state_only_runtime_for_workflow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    manifest = build_dify_workflow_plugin_manifest()
+    manifest = build_workflow_plugin_manifest()
     state = SimpleNamespace(manifest=manifest, executable=True)
     runtime = SimpleNamespace(get_state=lambda plugin_id: state if plugin_id == manifest.id else None)
     request = AgentRequest(message="run workflow", project_id="project-1")
     project = SimpleNamespace(
         metadata={
             "plugin_options": {
-                "dify_workflow": {"DEFAULT_WORKFLOW_ID": "workflow-project"}
+                "workflow": {"DEFAULT_WORKFLOW_ID": "workflow-project"}
             }
         }
     )
@@ -684,22 +684,22 @@ async def test_apply_project_plugin_session_defaults_supports_get_state_only_run
     )
 
     assert request.plugin_options == {
-        "dify_workflow": {"SELECTED_WORKFLOW_ID": "workflow-project"}
+        "workflow": {"SELECTED_WORKFLOW_ID": "workflow-project"}
     }
 
 
 @pytest.mark.asyncio
-async def test_apply_project_plugin_session_defaults_inherits_dify_workflow_version_pair(
+async def test_apply_project_plugin_session_defaults_inherits_workflow_version_pair(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    manifest = build_dify_workflow_plugin_manifest()
+    manifest = build_workflow_plugin_manifest()
     runtime = PluginRuntime([manifest])
-    runtime.enable_plugin("dify_workflow")
+    runtime.enable_plugin("workflow")
     request = AgentRequest(message="run workflow", project_id="project-1")
     project = SimpleNamespace(
         metadata={
             "plugin_options": {
-                "dify_workflow": {
+                "workflow": {
                     "DEFAULT_WORKFLOW_ID": "workflow-project",
                     "DEFAULT_WORKFLOW_VERSION_ID": "version-project",
                 }
@@ -725,7 +725,7 @@ async def test_apply_project_plugin_session_defaults_inherits_dify_workflow_vers
     )
 
     assert request.plugin_options == {
-        "dify_workflow": {
+        "workflow": {
             "SELECTED_WORKFLOW_ID": "workflow-project",
             "SELECTED_WORKFLOW_VERSION_ID": "version-project",
         }
@@ -733,21 +733,21 @@ async def test_apply_project_plugin_session_defaults_inherits_dify_workflow_vers
 
 
 @pytest.mark.asyncio
-async def test_apply_project_plugin_session_defaults_does_not_pair_manual_dify_workflow_with_default_version(
+async def test_apply_project_plugin_session_defaults_does_not_pair_manual_workflow_with_default_version(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    manifest = build_dify_workflow_plugin_manifest()
+    manifest = build_workflow_plugin_manifest()
     runtime = PluginRuntime([manifest])
-    runtime.enable_plugin("dify_workflow")
+    runtime.enable_plugin("workflow")
     request = AgentRequest(
         message="run workflow",
         project_id="project-1",
-        plugin_options={"dify_workflow": {"SELECTED_WORKFLOW_ID": "workflow-manual"}},
+        plugin_options={"workflow": {"SELECTED_WORKFLOW_ID": "workflow-manual"}},
     )
     project = SimpleNamespace(
         metadata={
             "plugin_options": {
-                "dify_workflow": {
+                "workflow": {
                     "DEFAULT_WORKFLOW_ID": "workflow-project",
                     "DEFAULT_WORKFLOW_VERSION_ID": "version-project",
                 }
@@ -773,7 +773,7 @@ async def test_apply_project_plugin_session_defaults_does_not_pair_manual_dify_w
     )
 
     assert request.plugin_options == {
-        "dify_workflow": {"SELECTED_WORKFLOW_ID": "workflow-manual"}
+        "workflow": {"SELECTED_WORKFLOW_ID": "workflow-manual"}
     }
 
 
@@ -843,13 +843,13 @@ async def test_apply_project_plugin_session_defaults_keeps_explicit_session_opti
     }
 
 
-def test_apply_existing_session_plugin_options_does_not_restore_stale_dify_workflow_version() -> None:
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.enable_plugin("dify_workflow")
+def test_apply_existing_session_plugin_options_does_not_restore_stale_workflow_version() -> None:
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.enable_plugin("workflow")
     request = AgentRequest(
         message="continue",
         session_id="session-1",
-        plugin_options={"dify_workflow": {"SELECTED_WORKFLOW_ID": "workflow-current"}},
+        plugin_options={"workflow": {"SELECTED_WORKFLOW_ID": "workflow-current"}},
     )
 
     apply_existing_session_plugin_options(
@@ -857,7 +857,7 @@ def test_apply_existing_session_plugin_options_does_not_restore_stale_dify_workf
         agent_id="search",
         existing_metadata={
             "plugin_options": {
-                "dify_workflow": {
+                "workflow": {
                     "SELECTED_WORKFLOW_ID": "workflow-saved",
                     "SELECTED_WORKFLOW_VERSION_ID": "version-saved",
                 }
@@ -867,7 +867,7 @@ def test_apply_existing_session_plugin_options_does_not_restore_stale_dify_workf
     )
 
     assert request.plugin_options == {
-        "dify_workflow": {"SELECTED_WORKFLOW_ID": "workflow-current"}
+        "workflow": {"SELECTED_WORKFLOW_ID": "workflow-current"}
     }
 
 
@@ -1137,7 +1137,7 @@ async def test_execute_agent_stream_runs_agent_when_active_goal_is_supplied(
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_stream_continues_after_dify_workflow_failure(
+async def test_execute_agent_stream_continues_after_workflow_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Agent:
@@ -1155,7 +1155,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_failure(
 
     async def _workflow_run(**kwargs):
         return {
-            "plugin_id": "dify_workflow",
+            "plugin_id": "workflow",
             "workflow_id": "wf-missing",
             "version_id": "wfv-missing",
             "run_id": None,
@@ -1166,7 +1166,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_failure(
 
     monkeypatch.setattr("src.api.routes.chat.AgentFactory.get", _get)
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.chat_integration.run_selected_workflow_for_message",
+        "src.plugins.workflow.chat_integration.run_selected_workflow_for_message",
         _workflow_run,
     )
 
@@ -1178,7 +1178,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_failure(
             message="hi",
             user_id="user-1",
             plugin_options={
-                "dify_workflow": {
+                "workflow": {
                     "SELECTED_WORKFLOW_ID": "wf-missing",
                     "SELECTED_WORKFLOW_VERSION_ID": "wfv-missing",
                 }
@@ -1188,7 +1188,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_failure(
 
     assert [event["event"] for event in events] == ["workflow:run", "message:chunk"]
     assert events[0]["data"] == {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-missing",
         "version_id": "wfv-missing",
         "run_id": None,
@@ -1203,7 +1203,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_failure(
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_stream_continues_after_dify_workflow_factory_failure(
+async def test_execute_agent_stream_continues_after_workflow_factory_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Agent:
@@ -1224,7 +1224,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_factory_failur
 
     monkeypatch.setattr("src.api.routes.chat.AgentFactory.get", _get)
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.chat_integration.create_dify_workflow_service",
+        "src.plugins.workflow.chat_integration.create_workflow_service",
         _create_service,
     )
 
@@ -1236,7 +1236,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_factory_failur
             message="hi",
             user_id="user-1",
             plugin_options={
-                "dify_workflow": {
+                "workflow": {
                     "SELECTED_WORKFLOW_ID": "wf-1",
                     "SELECTED_WORKFLOW_VERSION_ID": "wfv-1",
                 }
@@ -1246,7 +1246,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_factory_failur
 
     assert [event["event"] for event in events] == ["workflow:run", "message:chunk"]
     assert events[0]["data"] == {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-1",
         "version_id": "wfv-1",
         "run_id": None,
@@ -1275,7 +1275,7 @@ async def test_execute_agent_stream_continues_after_dify_workflow_factory_failur
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_stream_runs_dify_workflow_from_scheduled_task_options(
+async def test_execute_agent_stream_runs_workflow_from_scheduled_task_options(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Agent:
@@ -1295,7 +1295,7 @@ async def test_execute_agent_stream_runs_dify_workflow_from_scheduled_task_optio
     async def _workflow_run(**kwargs):
         workflow_calls.append(kwargs)
         return {
-            "plugin_id": "dify_workflow",
+            "plugin_id": "workflow",
             "workflow_id": "wf-task",
             "version_id": "wfv-task",
             "run_id": "run-workflow-1",
@@ -1306,12 +1306,12 @@ async def test_execute_agent_stream_runs_dify_workflow_from_scheduled_task_optio
 
     monkeypatch.setattr("src.api.routes.chat.AgentFactory.get", _get)
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.chat_integration.run_selected_workflow_for_message",
+        "src.plugins.workflow.chat_integration.run_selected_workflow_for_message",
         _workflow_run,
     )
 
     scheduled_task_options = {
-        "dify_workflow": {
+        "workflow": {
             "WORKFLOW_ID": "wf-task",
             "WORKFLOW_VERSION_ID": "wfv-task",
         }
@@ -1336,7 +1336,7 @@ async def test_execute_agent_stream_runs_dify_workflow_from_scheduled_task_optio
         }
     ]
     assert events[0]["data"] == {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-task",
         "version_id": "wfv-task",
         "run_id": "run-workflow-1",
@@ -1352,7 +1352,7 @@ async def test_execute_agent_stream_runs_dify_workflow_from_scheduled_task_optio
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_stream_keeps_agent_team_selection_with_dify_workflow_prerun(
+async def test_execute_agent_stream_keeps_agent_team_selection_with_workflow_prerun(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Agent:
@@ -1380,7 +1380,7 @@ async def test_execute_agent_stream_keeps_agent_team_selection_with_dify_workflo
             run_id="run-workflow-team",
         )
         return {
-            "plugin_id": "dify_workflow",
+            "plugin_id": "workflow",
             "workflow_id": "wf-team",
             "version_id": "wfv-team",
             "run_id": "run-workflow-team",
@@ -1420,13 +1420,13 @@ async def test_execute_agent_stream_keeps_agent_team_selection_with_dify_workflo
 
     monkeypatch.setattr("src.api.routes.chat.AgentFactory.get", _get)
     monkeypatch.setattr(
-        "src.plugins.dify_workflow.chat_integration.run_selected_workflow_for_message",
+        "src.plugins.workflow.chat_integration.run_selected_workflow_for_message",
         _workflow_run,
     )
 
     plugin_options = {
         "agent_team": {"SELECTED_TEAM_ID": "team-1"},
-        "dify_workflow": {
+        "workflow": {
             "SELECTED_WORKFLOW_ID": "wf-team",
             "SELECTED_WORKFLOW_VERSION_ID": "wfv-team",
         },
@@ -1461,7 +1461,7 @@ async def test_execute_agent_stream_keeps_agent_team_selection_with_dify_workflo
     assert agent.stream_kwargs["agent_options"]["_plugin_results"]["other_plugin"] == {
         "status": "ok"
     }
-    workflow_result = agent.stream_kwargs["agent_options"]["_plugin_results"]["dify_workflow"]
+    workflow_result = agent.stream_kwargs["agent_options"]["_plugin_results"]["workflow"]
     assert workflow_result == events[0]["data"]
     assert workflow_result["interface"] == workflow_result_interface(
         workflow_id="wf-team",

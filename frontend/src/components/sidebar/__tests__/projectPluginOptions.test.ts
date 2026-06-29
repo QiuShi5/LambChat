@@ -59,10 +59,10 @@ test("agent team project default team uses a controlled renderer", () => {
   assert.match(rendererSource, /if \(!option\.effective\) \{[\s\S]*return;[\s\S]*\}/);
 });
 
-test("dify workflow project and session options use a controlled workflow renderer", () => {
-  assert.match(rendererSource, /DifyWorkflowSelectOption/);
-  assert.match(rendererSource, /DifyWorkflowVersionSelectOption/);
-  assert.match(rendererSource, /"dify_workflow\.WorkflowSelectOption"/);
-  assert.match(rendererSource, /"dify_workflow\.WorkflowVersionSelectOption"/);
+test("workflow workflow project and session options use a controlled workflow renderer", () => {
+  assert.match(rendererSource, /WorkflowPluginSelectOption/);
+  assert.match(rendererSource, /WorkflowPluginVersionSelectOption/);
+  assert.match(rendererSource, /"workflow\.WorkflowSelectOption"/);
+  assert.match(rendererSource, /"workflow\.WorkflowVersionSelectOption"/);
   assert.match(rendererSource, /inactive=\{!props\.option\.effective\}/);
 });

@@ -1552,7 +1552,7 @@
     "hideCode": "Скрыть код",
     "showCode": "Показать код"
   },
-  "difyWorkflow": {
+  "workflowPlugin": {
     "chat": {
       "entry": "Вход",
       "exit": "Выход",

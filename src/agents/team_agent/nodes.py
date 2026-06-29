@@ -79,14 +79,14 @@ from src.infra.storage.mongodb_store import acreate_store
 from src.kernel.config import settings
 from src.kernel.extensions.plugin_options import plugin_result_from_agent_options
 from src.kernel.schemas.model import ModelConfig
-from src.plugins.dify_workflow.contracts import (
+from src.plugins.workflow.contracts import (
     workflow_output_contract_value,
     workflow_output_schema_summary,
 )
 
 logger = get_logger(__name__)
 
-_DIFY_WORKFLOW_PLUGIN_ID = "dify_workflow"
+_WORKFLOW_PLUGIN_ID = "workflow"
 _MAX_WORKFLOW_RESULT_SECTION_CHARS = 2000
 
 
@@ -117,7 +117,7 @@ def workflow_result_prompt_section(agent_options: dict[str, Any] | None) -> str:
     """Build a compact prompt section from the structured workflow outlet."""
     result = plugin_result_from_agent_options(
         agent_options,
-        plugin_id=_DIFY_WORKFLOW_PLUGIN_ID,
+        plugin_id=_WORKFLOW_PLUGIN_ID,
     )
     if not isinstance(result, dict):
         return ""

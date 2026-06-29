@@ -26,7 +26,7 @@ import {
   workflowCallableInterfaceLabels,
   workflowOutputPathValue,
   workflowSchemaFieldDescriptors,
-} from "../../../plugins/dify_workflow/contractUtils";
+} from "../../../plugins/workflow/contractUtils";
 import { RunStatusBadge } from "./Badges";
 
 // ── Task Session List (drill-down) ─────────────────
@@ -44,10 +44,10 @@ function workflowResultFromRun(run: TaskRun): Record<string, unknown> | null {
   const output = asRecord(run.output_result);
   if (!output) return null;
   const direct = asRecord(output.workflow_result);
-  if (direct?.plugin_id === "dify_workflow") return direct;
+  if (direct?.plugin_id === "workflow") return direct;
   const pluginResults = asRecord(output.plugin_results);
-  const difyResult = asRecord(pluginResults?.dify_workflow);
-  return difyResult?.plugin_id === "dify_workflow" ? difyResult : null;
+  const workflowResult = asRecord(pluginResults?.workflow);
+  return workflowResult?.plugin_id === "workflow" ? workflowResult : null;
 }
 
 function stringField(value: unknown): string {

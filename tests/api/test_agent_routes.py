@@ -90,7 +90,7 @@ async def test_list_tools_offloads_agent_discovery_for_unknown_agent_id(
 
 
 @pytest.mark.asyncio
-async def test_list_tools_includes_internal_dify_workflow_tools(
+async def test_list_tools_includes_internal_workflow_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[dict] = []
@@ -168,14 +168,14 @@ async def test_list_tools_includes_internal_dify_workflow_tools(
 
 
 @pytest.mark.asyncio
-async def test_list_tools_respects_dify_workflow_plugin_runtime_gate(
+async def test_list_tools_respects_workflow_plugin_runtime_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from src.infra.tool import internal_registry
     from src.kernel.extensions import (
-        DIFY_WORKFLOW_PLUGIN_ID,
+        WORKFLOW_PLUGIN_ID,
         PluginRuntime,
-        build_dify_workflow_plugin_manifest,
+        build_workflow_plugin_manifest,
     )
 
     async def no_internal_tool_policies():
@@ -188,7 +188,7 @@ async def test_list_tools_respects_dify_workflow_plugin_runtime_gate(
         assert user_id == "user-1"
         return ["user"], False
 
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
     user = TokenPayload(
         sub="user-1",
         username="user-1",
@@ -208,7 +208,7 @@ async def test_list_tools_respects_dify_workflow_plugin_runtime_gate(
     disabled_response = await agent_routes.list_tools(user=user)
     disabled_names = {tool.name for tool in disabled_response.tools}
 
-    runtime.enable_plugin(DIFY_WORKFLOW_PLUGIN_ID)
+    runtime.enable_plugin(WORKFLOW_PLUGIN_ID)
     enabled_response = await agent_routes.list_tools(user=user)
     enabled_tools = {tool.name: tool for tool in enabled_response.tools}
 

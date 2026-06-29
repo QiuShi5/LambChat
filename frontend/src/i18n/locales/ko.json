@@ -1550,7 +1550,7 @@
     "hideCode": "코드 숨기기",
     "showCode": "코드 보기"
   },
-  "difyWorkflow": {
+  "workflowPlugin": {
     "chat": {
       "entry": "진입",
       "exit": "출구",

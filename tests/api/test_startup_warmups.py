@@ -14,7 +14,7 @@ from src.infra.extensions import (
     InMemoryPluginSettingsStorage,
     PluginSettingsService,
 )
-from src.kernel.extensions import DIFY_WORKFLOW_PLUGIN_ID, PluginRuntimeStatus
+from src.kernel.extensions import WORKFLOW_PLUGIN_ID, PluginRuntimeStatus
 
 
 @pytest.mark.asyncio
@@ -163,16 +163,16 @@ async def test_run_startup_indexes_waits_for_index_initialization(
 
 
 @pytest.mark.asyncio
-async def test_startup_helpers_apply_dify_override_before_lifecycle_hook(
+async def test_startup_helpers_apply_workflow_override_before_lifecycle_hook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from src.plugins.dify_workflow import lifecycle as dify_lifecycle
+    from src.plugins.workflow import lifecycle as workflow_lifecycle
 
     app = FastAPI()
     register_builtin_plugin_routes(app)
     state_storage = InMemoryPluginRuntimeStateStorage()
     await state_storage.set_override(
-        plugin_id=DIFY_WORKFLOW_PLUGIN_ID,
+        plugin_id=WORKFLOW_PLUGIN_ID,
         status=PluginRuntimeStatus.ENABLED,
         updated_by="admin-1",
     )
@@ -182,24 +182,24 @@ async def test_startup_helpers_apply_dify_override_before_lifecycle_hook(
     )
     calls: list[str] = []
 
-    class _FakeDifyStorage:
+    class _FakeWorkflowStorage:
         def __init__(self, **_kwargs) -> None:
             return None
 
         async def ensure_indexes(self) -> None:
-            calls.append("dify.ensure_indexes")
+            calls.append("workflow.ensure_indexes")
 
         async def fail_stale_running_runs(self) -> int:
-            calls.append("dify.fail_stale_running_runs")
+            calls.append("workflow.fail_stale_running_runs")
             return 0
 
         async def delete_terminal_run_logs_before(self, cutoff) -> int:
-            calls.append("dify.delete_terminal_run_logs_before")
+            calls.append("workflow.delete_terminal_run_logs_before")
             return 0
 
-    monkeypatch.setattr(dify_lifecycle, "DifyWorkflowStorage", _FakeDifyStorage)
+    monkeypatch.setattr(workflow_lifecycle, "WorkflowPluginStorage", _FakeWorkflowStorage)
     monkeypatch.setattr(
-        dify_lifecycle,
+        workflow_lifecycle,
         "resolve_max_event_payload_bytes",
         lambda: _async_value(65536),
     )
@@ -209,15 +209,15 @@ async def test_startup_helpers_apply_dify_override_before_lifecycle_hook(
     api_main._attach_plugin_runtime_to_runtime_guards(app)
     await api_main._run_plugin_lifecycle_hooks(app, "startup")
 
-    state = app.state.plugin_runtime.get_state(DIFY_WORKFLOW_PLUGIN_ID)
+    state = app.state.plugin_runtime.get_state(WORKFLOW_PLUGIN_ID)
     assert state.status is PluginRuntimeStatus.ENABLED
     assert calls == [
-        "dify.ensure_indexes",
-        "dify.fail_stale_running_runs",
-        "dify.delete_terminal_run_logs_before",
+        "workflow.ensure_indexes",
+        "workflow.fail_stale_running_runs",
+        "workflow.delete_terminal_run_logs_before",
     ]
     assert [result.hook_name for result in app.state.plugin_runtime_hook_results] == [
-        "dify_workflow:startup"
+        "workflow:startup"
     ]
     assert app.state.plugin_runtime_hook_results[0].status == "succeeded"
 

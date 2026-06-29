@@ -28,7 +28,7 @@ from src.kernel.extensions import (
     AGENT_TEAM_PLUGIN_ID,
     AUDIO_TRANSCRIPTION_PLUGIN_ID,
     BUILTIN_PLUGIN_MANIFESTS,
-    DIFY_WORKFLOW_PLUGIN_ID,
+    WORKFLOW_PLUGIN_ID,
     FEEDBACK_PLUGIN_ID,
     FEISHU_CONNECTOR_ID,
     FEISHU_CONNECTOR_PLUGIN_ID,
@@ -580,109 +580,109 @@ def test_plugin_runtime_routes_expose_feedback_observability() -> None:
     assert feedback["resource_types"]["user_menu_item"] == 1
     assert feedback["resource_types"]["tool"] == 1
     assert feedback["dry_run_actions"] == {"archive": 8, "keep": 11}
-    dify_workflow = plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]
-    assert dify_workflow["name"] == "difyWorkflow.plugin.name"
-    assert dify_workflow["description"] == "difyWorkflow.plugin.description"
-    assert dify_workflow["status"] == "disabled"
-    assert dify_workflow["executable"] is False
-    assert dify_workflow["routes"] == [
+    workflow = plugins_by_id[WORKFLOW_PLUGIN_ID]
+    assert workflow["name"] == "workflowPlugin.plugin.name"
+    assert workflow["description"] == "workflowPlugin.plugin.description"
+    assert workflow["status"] == "disabled"
+    assert workflow["executable"] is False
+    assert workflow["routes"] == [
         {
-            "name": "dify_workflow-api",
-            "prefix": "/api/plugins/dify-workflow",
-            "module": "src.plugins.dify_workflow.routes",
+            "name": "workflow-api",
+            "prefix": "/api/plugins/workflow",
+            "module": "src.plugins.workflow.routes",
             "required_permissions": ["workflow:read", "workflow:write", "workflow:run"],
-            "tags": ["difyWorkflow.nav.label"],
+            "tags": ["workflowPlugin.nav.label"],
         }
     ]
-    assert {tool["name"] for tool in dify_workflow["tools"]} == {
-        "dify_workflow_run",
-        "dify_workflow_list",
-        "dify_workflow_get_schema",
-        "dify_workflow_get_run",
-        "dify_workflow_resume",
+    assert {tool["name"] for tool in workflow["tools"]} == {
+        "workflow_run",
+        "workflow_list",
+        "workflow_get_schema",
+        "workflow_get_run",
+        "workflow_resume",
     }
-    workflow_tools_by_name = {tool["name"]: tool for tool in dify_workflow["tools"]}
-    assert workflow_tools_by_name["dify_workflow_run"]["legacy_ids"] == ["workflow_run"]
-    assert workflow_tools_by_name["dify_workflow_list"]["legacy_ids"] == ["workflow_list"]
-    assert workflow_tools_by_name["dify_workflow_get_schema"]["legacy_ids"] == [
+    workflow_tools_by_name = {tool["name"]: tool for tool in workflow["tools"]}
+    assert workflow_tools_by_name["workflow_run"]["legacy_ids"] == ["workflow_run"]
+    assert workflow_tools_by_name["workflow_list"]["legacy_ids"] == ["workflow_list"]
+    assert workflow_tools_by_name["workflow_get_schema"]["legacy_ids"] == [
         "workflow_get_schema"
     ]
-    assert workflow_tools_by_name["dify_workflow_get_run"]["legacy_ids"] == [
+    assert workflow_tools_by_name["workflow_get_run"]["legacy_ids"] == [
         "workflow_get_run"
     ]
-    assert workflow_tools_by_name["dify_workflow_resume"]["legacy_ids"] == [
+    assert workflow_tools_by_name["workflow_resume"]["legacy_ids"] == [
         "workflow_resume"
     ]
-    assert dify_workflow["frontend"]["app_tabs"][0]["path"] == "/workflows"
+    assert workflow["frontend"]["app_tabs"][0]["path"] == "/workflows"
     assert (
-        dify_workflow["frontend"]["app_panels"][0]["renderer"]
-        == "dify_workflow.WorkflowPanel"
+        workflow["frontend"]["app_panels"][0]["renderer"]
+        == "workflow.WorkflowPanel"
     )
     assert {
         option["key"]: option["renderer"]
-        for option in dify_workflow["frontend"]["project_options"]
+        for option in workflow["frontend"]["project_options"]
     } == {
-        "DEFAULT_WORKFLOW_ID": "dify_workflow.WorkflowSelectOption",
-        "DEFAULT_WORKFLOW_VERSION_ID": "dify_workflow.WorkflowVersionSelectOption",
+        "DEFAULT_WORKFLOW_ID": "workflow.WorkflowSelectOption",
+        "DEFAULT_WORKFLOW_VERSION_ID": "workflow.WorkflowVersionSelectOption",
     }
     assert {
         option["key"]: option["renderer"]
-        for option in dify_workflow["frontend"]["session_options"]
+        for option in workflow["frontend"]["session_options"]
     } == {
-        "SELECTED_WORKFLOW_ID": "dify_workflow.WorkflowSelectOption",
-        "SELECTED_WORKFLOW_VERSION_ID": "dify_workflow.WorkflowVersionSelectOption",
-        "SELECTED_WORKFLOW_INPUT_JSON": "dify_workflow.WorkflowInputOption",
+        "SELECTED_WORKFLOW_ID": "workflow.WorkflowSelectOption",
+        "SELECTED_WORKFLOW_VERSION_ID": "workflow.WorkflowVersionSelectOption",
+        "SELECTED_WORKFLOW_INPUT_JSON": "workflow.WorkflowInputOption",
     }
     assert {
         option["key"]: option["renderer"]
-        for option in dify_workflow["frontend"]["scheduled_task_options"]
+        for option in workflow["frontend"]["scheduled_task_options"]
     } == {
-        "WORKFLOW_ID": "dify_workflow.WorkflowSelectOption",
-        "WORKFLOW_VERSION_ID": "dify_workflow.WorkflowVersionSelectOption",
-        "WORKFLOW_INPUT_JSON": "dify_workflow.WorkflowInputOption",
+        "WORKFLOW_ID": "workflow.WorkflowSelectOption",
+        "WORKFLOW_VERSION_ID": "workflow.WorkflowVersionSelectOption",
+        "WORKFLOW_INPUT_JSON": "workflow.WorkflowInputOption",
     }
-    assert dify_workflow["frontend"]["chat_input_options"] == [
+    assert workflow["frontend"]["chat_input_options"] == [
         {
-            "id": "dify_workflow:select-workflow",
+            "id": "workflow:select-workflow",
             "slot": "enhance",
-            "label": "difyWorkflow.chat.selectWorkflow",
+            "label": "workflowPlugin.chat.selectWorkflow",
             "icon": "Workflow",
-            "panel": "dify_workflow:workflow-picker",
-            "selected_renderer": "dify_workflow.SelectedWorkflowChip",
+            "panel": "workflow:workflow-picker",
+            "selected_renderer": "workflow.SelectedWorkflowChip",
             "suppresses_core_persona_selector": False,
             "shortcut": "mod+w",
             "order": 30,
             "option_binding": {
-                "plugin_id": DIFY_WORKFLOW_PLUGIN_ID,
+                "plugin_id": WORKFLOW_PLUGIN_ID,
                 "key": "SELECTED_WORKFLOW_ID",
                 "scope": "session",
             },
             "visible_when": None,
         }
     ]
-    assert dify_workflow["frontend"]["chat_input_panels"] == [
+    assert workflow["frontend"]["chat_input_panels"] == [
         {
-            "id": "dify_workflow:workflow-picker",
-            "renderer": "dify_workflow.WorkflowPickerModal",
+            "id": "workflow:workflow-picker",
+            "renderer": "workflow.WorkflowPickerModal",
             "create_path": "/workflows?create=blank",
             "manage_path": "/workflows",
             "option_binding": {
-                "plugin_id": DIFY_WORKFLOW_PLUGIN_ID,
+                "plugin_id": WORKFLOW_PLUGIN_ID,
                 "key": "SELECTED_WORKFLOW_ID",
                 "scope": "session",
             },
             "visible_when": None,
         }
     ]
-    assert dify_workflow["resource_types"]["backend_route"] == 1
-    assert dify_workflow["resource_types"]["tool"] == 5
-    assert dify_workflow["resource_types"]["db_collection"] == 5
-    assert dify_workflow["resource_types"]["db_index"] == 10
-    assert dify_workflow["resource_types"]["plugin_data_folder"] == 1
-    assert dify_workflow["package"]["data_template"]["exists"] is True
-    assert "config/defaults.json" in dify_workflow["package"]["data_template"]["files"]
-    assert "storage/.gitkeep" in dify_workflow["package"]["data_template"]["files"]
-    assert "templates/.gitkeep" in dify_workflow["package"]["data_template"]["files"]
+    assert workflow["resource_types"]["backend_route"] == 1
+    assert workflow["resource_types"]["tool"] == 5
+    assert workflow["resource_types"]["db_collection"] == 5
+    assert workflow["resource_types"]["db_index"] == 10
+    assert workflow["resource_types"]["plugin_data_folder"] == 1
+    assert workflow["package"]["data_template"]["exists"] is True
+    assert "config/defaults.json" in workflow["package"]["data_template"]["files"]
+    assert "storage/.gitkeep" in workflow["package"]["data_template"]["files"]
+    assert "templates/.gitkeep" in workflow["package"]["data_template"]["files"]
     agent_team = plugins_by_id[AGENT_TEAM_PLUGIN_ID]
     assert agent_team["status"] == "enabled"
     assert agent_team["routes"][0]["prefix"] == "/api/teams"
@@ -1013,40 +1013,40 @@ def test_plugin_runtime_contribution_states_include_public_safe_contributions() 
         ]
         == "agent_team.SelectedTeamChip"
     )
-    assert plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["enabled"] is False
-    assert plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["executable"] is False
-    assert {tool["name"] for tool in plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["tools"]} == {
-        "dify_workflow_run",
-        "dify_workflow_list",
-        "dify_workflow_get_schema",
-        "dify_workflow_get_run",
-        "dify_workflow_resume",
+    assert plugins_by_id[WORKFLOW_PLUGIN_ID]["enabled"] is False
+    assert plugins_by_id[WORKFLOW_PLUGIN_ID]["executable"] is False
+    assert {tool["name"] for tool in plugins_by_id[WORKFLOW_PLUGIN_ID]["tools"]} == {
+        "workflow_run",
+        "workflow_list",
+        "workflow_get_schema",
+        "workflow_get_run",
+        "workflow_resume",
     }
     assert (
-        plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["frontend"]["app_panels"][0]["renderer"]
-        == "dify_workflow.WorkflowPanel"
+        plugins_by_id[WORKFLOW_PLUGIN_ID]["frontend"]["app_panels"][0]["renderer"]
+        == "workflow.WorkflowPanel"
     )
-    assert plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_options"][0][
+    assert plugins_by_id[WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_options"][0][
         "option_binding"
     ] == {
-        "plugin_id": DIFY_WORKFLOW_PLUGIN_ID,
+        "plugin_id": WORKFLOW_PLUGIN_ID,
         "key": "SELECTED_WORKFLOW_ID",
         "scope": "session",
     }
     assert (
-        plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_options"][0][
+        plugins_by_id[WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_options"][0][
             "selected_renderer"
         ]
-        == "dify_workflow.SelectedWorkflowChip"
+        == "workflow.SelectedWorkflowChip"
     )
     assert (
-        plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_panels"][0][
+        plugins_by_id[WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_panels"][0][
             "renderer"
         ]
-        == "dify_workflow.WorkflowPickerModal"
+        == "workflow.WorkflowPickerModal"
     )
     assert (
-        plugins_by_id[DIFY_WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_panels"][0][
+        plugins_by_id[WORKFLOW_PLUGIN_ID]["frontend"]["chat_input_panels"][0][
             "create_path"
         ]
         == "/workflows?create=blank"
@@ -2706,10 +2706,10 @@ def test_plugin_runtime_control_routes_disable_enable_feedback_guard() -> None:
     assert runtime.get_state(FEEDBACK_PLUGIN_ID).status is PluginRuntimeStatus.ENABLED
 
 
-def test_plugin_runtime_control_routes_run_startup_hook_after_enabling_dify_workflow(
+def test_plugin_runtime_control_routes_run_startup_hook_after_enabling_workflow(
     monkeypatch,
 ) -> None:
-    from src.plugins.dify_workflow import lifecycle as dify_lifecycle
+    from src.plugins.workflow import lifecycle as workflow_lifecycle
 
     app = FastAPI()
     register_core_routes(
@@ -2736,10 +2736,10 @@ def test_plugin_runtime_control_routes_run_startup_hook_after_enabling_dify_work
             calls.append("fail_stale_running_runs")
             return 0
 
-    monkeypatch.setattr(dify_lifecycle, "DifyWorkflowStorage", _FakeStorage)
+    monkeypatch.setattr(workflow_lifecycle, "WorkflowPluginStorage", _FakeStorage)
     client = TestClient(app)
 
-    enabled = client.post(f"/api/extensions/plugins/{DIFY_WORKFLOW_PLUGIN_ID}/enable")
+    enabled = client.post(f"/api/extensions/plugins/{WORKFLOW_PLUGIN_ID}/enable")
 
     assert enabled.status_code == 200
     payload = enabled.json()
@@ -2752,12 +2752,12 @@ def test_plugin_runtime_control_routes_run_startup_hook_after_enabling_dify_work
     }
     assert calls == ["ensure_indexes", "fail_stale_running_runs"]
     assert [result.hook_name for result in app.state.plugin_runtime_hook_results] == [
-        "dify_workflow:startup"
+        "workflow:startup"
     ]
     assert app.state.plugin_runtime_hook_results[0].status == "succeeded"
     assert len(storage.audit_records) == 1
     assert storage.audit_records[0].action == "enable"
-    assert runtime.get_state(DIFY_WORKFLOW_PLUGIN_ID).status is PluginRuntimeStatus.ENABLED
+    assert runtime.get_state(WORKFLOW_PLUGIN_ID).status is PluginRuntimeStatus.ENABLED
 
 
 def test_feedback_route_module_fails_closed_when_plugin_disabled_direct_include() -> None:

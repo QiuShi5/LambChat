@@ -9,10 +9,10 @@ from src.infra.distributed_validation import validate_distributed_runtime_settin
 from src.infra.logging import get_logger
 from src.kernel.config import settings
 from src.kernel.extensions import (
-    DIFY_WORKFLOW_PLUGIN_ID,
+    WORKFLOW_PLUGIN_ID,
     PluginRuntime,
     PluginUnavailableError,
-    build_dify_workflow_plugin_manifest,
+    build_workflow_plugin_manifest,
 )
 
 from .arq_payloads import TaskArqPayloadStore
@@ -180,13 +180,13 @@ async def run_agent_task(ctx: dict[str, Any], run_id: str) -> None:
         task_manager._run_info.pop(run_id, None)
 
 
-async def _resolve_dify_workflow_plugin_runtime(ctx: dict[str, Any]) -> PluginRuntime:
+async def _resolve_workflow_plugin_runtime(ctx: dict[str, Any]) -> PluginRuntime:
     runtime = ctx.get("plugin_runtime")
     if runtime is not None:
         return runtime
 
     runtime = PluginRuntime(
-        [build_dify_workflow_plugin_manifest()],
+        [build_workflow_plugin_manifest()],
         core_dependencies=("skill_core",),
     )
     storage = ctx.get("plugin_runtime_state_storage")
@@ -196,7 +196,7 @@ async def _resolve_dify_workflow_plugin_runtime(ctx: dict[str, Any]) -> PluginRu
         storage = get_plugin_runtime_state_storage()
 
     for override in await storage.list_overrides():
-        if override.plugin_id != DIFY_WORKFLOW_PLUGIN_ID:
+        if override.plugin_id != WORKFLOW_PLUGIN_ID:
             continue
         runtime.apply_stored_status(
             override.plugin_id,
@@ -207,16 +207,16 @@ async def _resolve_dify_workflow_plugin_runtime(ctx: dict[str, Any]) -> PluginRu
     return runtime
 
 
-async def _mark_dify_workflow_run_failed(
+async def _mark_workflow_run_failed(
     *,
     run_id: str,
     owner_user_id: str,
     error_message: str,
 ) -> None:
-    from src.plugins.dify_workflow.service import create_dify_workflow_service
+    from src.plugins.workflow.service import create_workflow_service
 
     try:
-        service = await create_dify_workflow_service()
+        service = await create_workflow_service()
     except Exception as exc:
         logger.warning(
             "Failed to create workflow service while marking arq run failed: run_id=%s, error=%s",
@@ -261,39 +261,39 @@ async def _mark_dify_workflow_run_failed(
         )
 
 
-async def _fail_dify_workflow_run_for_unavailable_plugin(
+async def _fail_workflow_run_for_unavailable_plugin(
     *,
     run_id: str,
     owner_user_id: str,
     error_message: str,
 ) -> None:
-    await _mark_dify_workflow_run_failed(
+    await _mark_workflow_run_failed(
         run_id=run_id,
         owner_user_id=owner_user_id,
         error_message=error_message,
     )
 
 
-async def run_dify_workflow_task(
+async def run_workflow_task(
     ctx: dict[str, Any],
     run_id: str,
     owner_user_id: str,
     user_roles: list[str] | None = None,
 ) -> None:
     """Run a persisted workflow run from an arq worker."""
-    from src.plugins.dify_workflow.service import create_dify_workflow_service
+    from src.plugins.workflow.service import create_workflow_service
 
     try:
-        runtime = await _resolve_dify_workflow_plugin_runtime(ctx)
-        runtime.ensure_enabled(DIFY_WORKFLOW_PLUGIN_ID)
+        runtime = await _resolve_workflow_plugin_runtime(ctx)
+        runtime.ensure_enabled(WORKFLOW_PLUGIN_ID)
     except PluginUnavailableError as exc:
-        error_message = str(exc) or f"plugin_unavailable:{DIFY_WORKFLOW_PLUGIN_ID}"
+        error_message = str(exc) or f"plugin_unavailable:{WORKFLOW_PLUGIN_ID}"
         logger.warning(
             "Rejecting arq workflow job for unavailable plugin: run_id=%s, plugin_id=%s",
             run_id,
-            exc.plugin_id or DIFY_WORKFLOW_PLUGIN_ID,
+            exc.plugin_id or WORKFLOW_PLUGIN_ID,
         )
-        await _fail_dify_workflow_run_for_unavailable_plugin(
+        await _fail_workflow_run_for_unavailable_plugin(
             run_id=run_id,
             owner_user_id=owner_user_id,
             error_message=error_message,
@@ -301,7 +301,7 @@ async def run_dify_workflow_task(
         return
 
     try:
-        service = await create_dify_workflow_service()
+        service = await create_workflow_service()
         await service.execute_existing_run(
             run_id=run_id,
             owner_user_id=owner_user_id,
@@ -317,7 +317,7 @@ async def run_dify_workflow_task(
             exc,
             exc_info=True,
         )
-        await _mark_dify_workflow_run_failed(
+        await _mark_workflow_run_failed(
             run_id=run_id,
             owner_user_id=owner_user_id,
             error_message=error_message,
@@ -325,5 +325,5 @@ async def run_dify_workflow_task(
 
 
 class WorkerSettings:
-    functions = [run_agent_task, run_dify_workflow_task]
+    functions = [run_agent_task, run_workflow_task]
     on_startup = worker_startup

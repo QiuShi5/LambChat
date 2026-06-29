@@ -49,7 +49,7 @@ const FeedbackPanel = lazy(() =>
   })),
 );
 const WorkflowPanel = lazy(() =>
-  import("../../../plugins/dify_workflow/WorkflowPanel").then((m) => ({
+  import("../../../plugins/workflow/WorkflowPanel").then((m) => ({
     default: m.WorkflowPanel,
   })),
 );
@@ -123,7 +123,7 @@ const corePanelComponents: Partial<Record<Exclude<TabType, "chat">, PanelCompone
 
 const pluginPanelRenderers: Record<string, PanelComponent> = {
   "agent_team.TeamBuilderPanel": TeamBuilderPanel,
-  "dify_workflow.WorkflowPanel": WorkflowPanel,
+  "workflow.WorkflowPanel": WorkflowPanel,
   "feedback.FeedbackPanel": FeedbackPanel,
   "usage_reports.UsagePanel": UsagePanel,
 };

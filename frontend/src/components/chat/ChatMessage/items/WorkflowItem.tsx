@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { CollapsibleStatus } from "../../../common";
 import { CollapsiblePill } from "../../../common";
 import type { WorkflowPart } from "../../../../types";
-import { difyWorkflowApi, type WorkflowRunResponse } from "../../../../plugins/dify_workflow/api";
+import { workflowApi, type WorkflowRunResponse } from "../../../../plugins/workflow/api";
 import { DetailSection } from "./DetailSection";
 import { ToolHoverCopyButton } from "./ToolHoverCopyButton";
 import { ToolInlineDetails } from "./ToolInlineDetails";
@@ -105,7 +105,7 @@ function workflowApprovalAction(part: WorkflowPart) {
 function workflowPartFromRun(run: WorkflowRunResponse): WorkflowPart {
   return {
     type: "workflow",
-    plugin_id: "dify_workflow",
+    plugin_id: "workflow",
     workflow_id: run.workflow_id,
     run_id: run.run_id ?? null,
     version_id: run.version_id ?? null,
@@ -397,7 +397,7 @@ const WorkflowItem = memo(function WorkflowItem({ part }: { part: WorkflowPart }
   const runHref = canOpenRun
     ? `/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}`
     : "";
-  const panelKey = `dify-workflow:${workflowId || "unknown"}:${runId || "latest"}`;
+  const panelKey = `workflow:${workflowId || "unknown"}:${runId || "latest"}`;
   const contract = isRecord(displayPart.output_contract) ? displayPart.output_contract : null;
   const missingRequired = Array.isArray(contract?.missing_required)
     ? contract.missing_required.filter((field): field is string => typeof field === "string")
@@ -421,7 +421,7 @@ const WorkflowItem = memo(function WorkflowItem({ part }: { part: WorkflowPart }
     setIsResuming(true);
     setResumeError(null);
     try {
-      const run = await difyWorkflowApi.resumeRun(workflowId, runId, {
+      const run = await workflowApi.resumeRun(workflowId, runId, {
         approved,
         comment: approvalComment || null,
       });

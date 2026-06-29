@@ -56,9 +56,9 @@ logger = get_logger(__name__)
 
 CHAT_SSE_DATA_MAX_BYTES = 256 * 1024
 
-_DIFY_WORKFLOW_PLUGIN_ID = "dify_workflow"
-_DIFY_WORKFLOW_ID_KEY = "SELECTED_WORKFLOW_ID"
-_DIFY_WORKFLOW_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID"
+_WORKFLOW_PLUGIN_ID = "workflow"
+_WORKFLOW_PLUGIN_ID_KEY = "SELECTED_WORKFLOW_ID"
+_WORKFLOW_PLUGIN_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID"
 
 
 def _model_profile_dict(model: ModelConfig) -> dict | None:
@@ -417,17 +417,17 @@ def _can_merge_plugin_option_default(
     plugin_id: str,
     key: str,
 ) -> bool:
-    if plugin_id != _DIFY_WORKFLOW_PLUGIN_ID or key != _DIFY_WORKFLOW_VERSION_KEY:
+    if plugin_id != _WORKFLOW_PLUGIN_ID or key != _WORKFLOW_PLUGIN_VERSION_KEY:
         return True
     default_workflow_id = _non_empty_plugin_option(
         defaults,
-        plugin_id=_DIFY_WORKFLOW_PLUGIN_ID,
-        key=_DIFY_WORKFLOW_ID_KEY,
+        plugin_id=_WORKFLOW_PLUGIN_ID,
+        key=_WORKFLOW_PLUGIN_ID_KEY,
     )
     current_workflow_id = _non_empty_plugin_option(
         current,
-        plugin_id=_DIFY_WORKFLOW_PLUGIN_ID,
-        key=_DIFY_WORKFLOW_ID_KEY,
+        plugin_id=_WORKFLOW_PLUGIN_ID,
+        key=_WORKFLOW_PLUGIN_ID_KEY,
     )
     if current_workflow_id:
         return current_workflow_id == default_workflow_id
@@ -736,7 +736,7 @@ async def _execute_agent_stream(
         workflow_result = None
         agent_stream_options = agent_options
         if plugin_options:
-            from src.plugins.dify_workflow.chat_integration import (
+            from src.plugins.workflow.chat_integration import (
                 run_selected_workflow_for_message,
                 workflow_result_context,
             )
@@ -750,7 +750,7 @@ async def _execute_agent_stream(
                 yield {"event": "workflow:run", "data": workflow_result}
                 agent_stream_options = _agent_options_with_plugin_result(
                     agent_options,
-                    plugin_id=_DIFY_WORKFLOW_PLUGIN_ID,
+                    plugin_id=_WORKFLOW_PLUGIN_ID,
                     result=workflow_result,
                 )
                 message = f"{workflow_result_context(workflow_result)}\n\nUser message:\n{message}"

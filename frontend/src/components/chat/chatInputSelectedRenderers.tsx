@@ -5,12 +5,12 @@ import type { CoreChatInputOptionContribution } from "../../extensions/coreContr
 import type { PluginOptionsMetadata } from "../../extensions/pluginOptions";
 import { pluginOptionFromValues } from "../../extensions/pluginOptions";
 import {
-  difyWorkflowApi,
+  workflowApi,
   type WorkflowIoContractResponse,
   type WorkflowSummary,
   type WorkflowVersionSummary,
-} from "../../plugins/dify_workflow/api";
-import { workflowCallableInterfaceLabels } from "../../plugins/dify_workflow/contractUtils";
+} from "../../plugins/workflow/api";
+import { workflowCallableInterfaceLabels } from "../../plugins/workflow/contractUtils";
 import { teamApi } from "../../services/api/team";
 import type { Team } from "../../types/team";
 import { TeamAvatar } from "../team/TeamAvatar";
@@ -20,8 +20,8 @@ import {
 } from "../team/teamAvatarUtils";
 import { ToolbarChip } from "./ToolbarChip";
 
-const DIFY_WORKFLOW_SESSION_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID";
-const DIFY_WORKFLOW_SESSION_INPUT_KEY = "SELECTED_WORKFLOW_INPUT_JSON";
+const WORKFLOW_PLUGIN_SESSION_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID";
+const WORKFLOW_PLUGIN_SESSION_INPUT_KEY = "SELECTED_WORKFLOW_INPUT_JSON";
 
 function schemaFieldLabels(schema: Record<string, unknown> | null | undefined): string[] {
   const properties = schema?.properties;
@@ -45,13 +45,13 @@ function workflowContractSummary(
   const interfaceLabels = workflowCallableInterfaceLabels(contract.interface);
   const inputs = schemaFieldLabels(contract.input_schema).slice(0, 3);
   const outputs = schemaFieldLabels(contract.output_schema).slice(0, 3);
-  const noneLabel = t("difyWorkflow.chat.none");
+  const noneLabel = t("workflowPlugin.chat.none");
   const inputLabel = inputs.length > 0 ? inputs.join(", ") : noneLabel;
   const outputLabel = outputs.length > 0 ? outputs.join(", ") : noneLabel;
-  return `${t("difyWorkflow.chat.entry")} ${interfaceLabels.entry} -> ${t(
-    "difyWorkflow.chat.exit",
-  )} ${interfaceLabels.exit} | ${t("difyWorkflow.chat.inputs")} ${inputLabel} -> ${t(
-    "difyWorkflow.chat.outputs",
+  return `${t("workflowPlugin.chat.entry")} ${interfaceLabels.entry} -> ${t(
+    "workflowPlugin.chat.exit",
+  )} ${interfaceLabels.exit} | ${t("workflowPlugin.chat.inputs")} ${inputLabel} -> ${t(
+    "workflowPlugin.chat.outputs",
   )} ${outputLabel}`;
 }
 
@@ -135,7 +135,7 @@ function AgentTeamSelectedChip({
   );
 }
 
-function DifyWorkflowSelectedChip({
+function WorkflowPluginSelectedChip({
   option,
   onActivePanelChange,
   pluginOptionValues,
@@ -161,7 +161,7 @@ function DifyWorkflowSelectedChip({
     ? pluginOptionFromValues(
         pluginOptionValues,
         optionPath.pluginId,
-        DIFY_WORKFLOW_SESSION_VERSION_KEY,
+        WORKFLOW_PLUGIN_SESSION_VERSION_KEY,
       )
     : null;
   const effectiveSelectedVersionId =
@@ -172,7 +172,7 @@ function DifyWorkflowSelectedChip({
     ? pluginOptionFromValues(
         pluginOptionValues,
         optionPath.pluginId,
-        DIFY_WORKFLOW_SESSION_INPUT_KEY,
+        WORKFLOW_PLUGIN_SESSION_INPUT_KEY,
       )
     : null;
   const hasSelectedInput =
@@ -182,8 +182,8 @@ function DifyWorkflowSelectedChip({
         Object.keys(pluginSelectedInput as Record<string, unknown>).length > 0));
   const clearSelection = () => {
     if (!optionPath) return;
-    onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_VERSION_KEY, null);
-    onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_INPUT_KEY, null);
+    onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_VERSION_KEY, null);
+    onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_INPUT_KEY, null);
     onPluginOptionChange?.(optionPath.pluginId, optionPath.key, null);
   };
 
@@ -194,7 +194,7 @@ function DifyWorkflowSelectedChip({
       return;
     }
     let cancelled = false;
-    difyWorkflowApi
+    workflowApi
       .get(effectiveSelectedWorkflowId)
       .then((workflow) => {
         if (!cancelled) setSelectedWorkflow(workflow);
@@ -213,7 +213,7 @@ function DifyWorkflowSelectedChip({
       return;
     }
     let cancelled = false;
-    difyWorkflowApi
+    workflowApi
       .ioContract(effectiveSelectedWorkflowId, effectiveSelectedVersionId)
       .then((contract) => {
         if (!cancelled) setIoContract(contract);
@@ -232,7 +232,7 @@ function DifyWorkflowSelectedChip({
       return;
     }
     let cancelled = false;
-    difyWorkflowApi
+    workflowApi
       .versions(effectiveSelectedWorkflowId)
       .then((response) => {
         if (!cancelled) {
@@ -262,7 +262,7 @@ function DifyWorkflowSelectedChip({
     : null;
   const label = versionLabel ? `${workflowLabel} / ${versionLabel}` : workflowLabel;
   const contractSummary = workflowContractSummary(ioContract, t);
-  const inputSummary = hasSelectedInput ? t("difyWorkflow.chat.inputOverrideSet") : "";
+  const inputSummary = hasSelectedInput ? t("workflowPlugin.chat.inputOverrideSet") : "";
   const summaryParts = [contractSummary, inputSummary].filter(Boolean);
   const chipLabel = summaryParts.length > 0 ? `${label} - ${summaryParts.join(" | ")}` : label;
   const chipTitle = summaryParts.length > 0 ? `${label}\n${summaryParts.join("\n")}` : label;
@@ -300,7 +300,7 @@ export const CHAT_INPUT_SELECTED_RENDERERS: Record<
     },
     Component: AgentTeamSelectedChip,
   },
-  "dify_workflow.SelectedWorkflowChip": {
+  "workflow.SelectedWorkflowChip": {
     hasSelection: ({ option, pluginOptionValues, onPluginOptionChange }) => {
       const optionPath = option.optionBinding;
       const pluginSelectedWorkflowId = optionPath
@@ -312,6 +312,6 @@ export const CHAT_INPUT_SELECTED_RENDERERS: Record<
           pluginSelectedWorkflowId,
       );
     },
-    Component: DifyWorkflowSelectedChip,
+    Component: WorkflowPluginSelectedChip,
   },
 };

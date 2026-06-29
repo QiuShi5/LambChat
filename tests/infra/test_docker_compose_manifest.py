@@ -52,27 +52,27 @@ def test_python_wheel_bundles_plugin_backend_namespace() -> None:
     assert '"src/plugins"' in pyproject
 
 
-def test_dockerfile_bundles_dify_workflow_container_acceptance_assets() -> None:
+def test_dockerfile_bundles_workflow_container_acceptance_assets() -> None:
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 
     assert (
-        "COPY scripts/dify_workflow_container_acceptance.py "
-        "./scripts/dify_workflow_container_acceptance.py"
+        "COPY scripts/workflow_container_acceptance.py "
+        "./scripts/workflow_container_acceptance.py"
     ) in dockerfile
-    assert "COPY tests/fixtures/dify_workflow/ ./tests/fixtures/dify_workflow/" in dockerfile
+    assert "COPY tests/fixtures/workflow/ ./tests/fixtures/workflow/" in dockerfile
 
 
-def test_dockerignore_keeps_only_dify_workflow_acceptance_assets() -> None:
+def test_dockerignore_keeps_only_workflow_acceptance_assets() -> None:
     dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8")
 
     assert "tests/*" in dockerignore
-    assert "!tests/fixtures/dify_workflow/**" in dockerignore
+    assert "!tests/fixtures/workflow/**" in dockerignore
     assert "scripts/*" in dockerignore
-    assert "!scripts/dify_workflow_container_acceptance.py" in dockerignore
+    assert "!scripts/workflow_container_acceptance.py" in dockerignore
 
 
-def test_makefile_exposes_dify_workflow_container_acceptance_target() -> None:
+def test_makefile_exposes_workflow_container_acceptance_target() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
-    assert "docker-dify-workflow-acceptance" in makefile
-    assert "python scripts/dify_workflow_container_acceptance.py" in makefile
+    assert "docker-workflow-acceptance" in makefile
+    assert "python scripts/workflow_container_acceptance.py" in makefile

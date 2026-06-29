@@ -802,7 +802,7 @@ async def test_failed_workflow_tool_json_result_preserves_outlet_and_failure_sta
     presenter = FakePresenter()
     processor = AgentEventProcessor(presenter)
     workflow_result = {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-chat",
         "run_id": "run-debug-1",
         "version_id": "wfv-1",
@@ -872,7 +872,7 @@ async def test_failed_workflow_tool_json_result_preserves_outlet_and_failure_sta
     assert result_event["data"]["tool_call_id"] == "tool-call-workflow-debug"
     assert result_event["data"]["success"] is False
     assert result_event["data"]["error"] == "workflow_run_not_found"
-    assert result_event["data"]["result"]["plugin_id"] == "dify_workflow"
+    assert result_event["data"]["result"]["plugin_id"] == "workflow"
     assert result_event["data"]["result"]["status"] == "failed"
     assert result_event["data"]["result"]["interface"]["entry"]["tool"] == "workflow_run"
     assert result_event["data"]["result"]["interface"]["debug"]["tool"] == "workflow_get_run"

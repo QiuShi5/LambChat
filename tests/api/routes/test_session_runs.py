@@ -453,7 +453,7 @@ async def test_get_session_events_preserves_workflow_tool_outlet(
     session_routes = _load_session_routes_module(monkeypatch)
     dual_writer_module = sys.modules["src.infra.session.dual_writer"]
     workflow_outlet = {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-chat",
         "run_id": "workflow-run-1",
         "version_id": "wfv-1",

@@ -1563,7 +1563,7 @@
     "hideCode": "隐藏代码",
     "showCode": "查看代码"
   },
-  "difyWorkflow": {
+  "workflowPlugin": {
     "chat": {
       "entry": "入口",
       "exit": "出口",

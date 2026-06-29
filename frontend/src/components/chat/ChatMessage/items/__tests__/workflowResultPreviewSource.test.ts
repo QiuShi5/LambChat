@@ -4,9 +4,9 @@ import test from "node:test";
 
 const previewSource = readFileSync(new URL("../McpBlockPreview.tsx", import.meta.url), "utf8");
 
-test("Dify workflow tool results render as workflow blocks even before a run id exists", () => {
+test("Workflow tool results render as workflow blocks even before a run id exists", () => {
   assert.match(previewSource, /function looksLikeWorkflowRunResult/);
-  assert.match(previewSource, /data\.plugin_id !== "dify_workflow"/);
+  assert.match(previewSource, /data\.plugin_id !== "workflow"/);
   assert.match(previewSource, /!nonEmptyString\(data\.workflow_id\)/);
   assert.match(previewSource, /nonEmptyString\(data\.run_id\) \|\|/);
   assert.match(previewSource, /nonEmptyString\(data\.status\) \|\|/);
@@ -35,14 +35,15 @@ test("workflow result preview exposes human approval resume outlet", () => {
 });
 
 test("workflow result preview can resume human approval from chat", () => {
-  assert.match(workflowItemSource, /import \{ difyWorkflowApi, type WorkflowRunResponse \}/);
+  assert.match(workflowItemSource, /import \{ workflowApi, type WorkflowRunResponse \}/);
   assert.match(workflowItemSource, /function workflowPartFromRun\(run: WorkflowRunResponse\): WorkflowPart/);
   assert.match(workflowItemSource, /const \[localPart, setLocalPart\] = useState<WorkflowPart \| null>\(null\)/);
   assert.match(workflowItemSource, /const displayPart = localPart \?\? part/);
   assert.match(workflowItemSource, /const handleResumeApproval = async \(approved: boolean\) =>/);
-  assert.match(workflowItemSource, /difyWorkflowApi\.resumeRun\(workflowId, runId, \{/);
+  assert.match(workflowItemSource, /workflowApi\.resumeRun\(workflowId, runId, \{/);
   assert.match(workflowItemSource, /comment: approvalComment \|\| null/);
-  assert.match(workflowItemSource, /setLocalPart\(workflowPartFromRun\(run\)\)/);
+  assert.match(workflowItemSource, /const nextPart = workflowPartFromRun\(run\)/);
+  assert.match(workflowItemSource, /setLocalPart\(nextPart\)/);
   assert.match(workflowItemSource, /workflowApprovalComment/);
   assert.match(workflowItemSource, /workflowApprove/);
   assert.match(workflowItemSource, /workflowReject/);

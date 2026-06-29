@@ -808,7 +808,7 @@ async def test_team_role_subagent_prompt_includes_role_instructions_and_skills(
             "base_url": "",
             "agent_options": {
                 "_plugin_results": {
-                    "dify_workflow": {
+                    "workflow": {
                         "workflow_id": "wf-team",
                         "version_id": "wfv-team",
                         "run_id": "wfr-team",
@@ -914,7 +914,7 @@ def test_team_agent_workflow_result_prompt_section_prefers_nested_output_contrac
     section = team_nodes.workflow_result_prompt_section(
         {
             "_plugin_results": {
-                "dify_workflow": {
+                "workflow": {
                     "workflow_id": "wf-team",
                     "version_id": "wfv-team",
                     "run_id": "wfr-team",

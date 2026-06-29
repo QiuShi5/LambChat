@@ -1,4 +1,4 @@
-.PHONY: help install install-pnpm dev build clean docker-up docker-down docker-logs docker-build docker-dify-workflow-acceptance test lint format typecheck check-all pre-commit install-hooks frontend-dev frontend-build frontend-build-smoke frontend-install
+.PHONY: help install install-pnpm dev build clean docker-up docker-down docker-logs docker-build docker-workflow-acceptance test lint format typecheck check-all pre-commit install-hooks frontend-dev frontend-build frontend-build-smoke frontend-install
 
 # 默认目标
 help:
@@ -26,7 +26,7 @@ help:
 	@echo "  make docker-down      - 停止 Docker 容器"
 	@echo "  make docker-logs      - 查看 Docker 日志"
 	@echo "  make docker-build     - 构建 Docker 镜像"
-	@echo "  make docker-dify-workflow-acceptance - Run live Dify workflow plugin acceptance"
+	@echo "  make docker-workflow-acceptance - Run live Workflow plugin acceptance"
 	@echo "  make docker-restart   - 重启 Docker 容器"
 	@echo ""
 	@echo "代码质量:"
@@ -107,9 +107,9 @@ docker-build:
 	@echo "🔨 构建 Docker 镜像..."
 	docker-compose build
 
-docker-dify-workflow-acceptance:
-	@echo "Run live Dify workflow plugin acceptance..."
-	python scripts/dify_workflow_container_acceptance.py
+docker-workflow-acceptance:
+	@echo "Run live Workflow plugin acceptance..."
+	python scripts/workflow_container_acceptance.py
 
 docker-restart: docker-down docker-up
 	@echo "🔄 Docker 容器已重启"

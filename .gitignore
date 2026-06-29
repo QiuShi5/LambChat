@@ -52,7 +52,7 @@ static/
 plugin-data/*/state/runtime.json
 plugin-data/*/state/*.jsonl
 plugin-data/*/state/
-plugin-data/dify_workflow/
+plugin-data/workflow/
 
 # Redis
 dump.rdb
@@ -104,7 +104,7 @@ YubbChat/
 /scripts/*
 !/scripts/create_daytona_snapshot.py
 !/scripts/create_e2b_template.py
-!/scripts/dify_workflow_container_acceptance.py
+!/scripts/workflow_container_acceptance.py
 docs/docs/.vitepress/
 .gitignore
 k8s/lambchat-secret.yaml

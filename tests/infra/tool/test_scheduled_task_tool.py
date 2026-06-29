@@ -14,7 +14,7 @@ from src.infra.tool import scheduled_task_tool
 from src.kernel.extensions import (
     PluginRuntime,
     build_agent_team_plugin_manifest,
-    build_dify_workflow_plugin_manifest,
+    build_workflow_plugin_manifest,
 )
 from src.kernel.schemas.scheduled_task import (
     ChannelDeliveryConfig,
@@ -650,7 +650,7 @@ async def test_create_task_accepts_generic_plugin_options(
 
 
 @pytest.mark.asyncio
-async def test_create_task_stores_dify_workflow_plugin_options_for_pre_run(
+async def test_create_task_stores_workflow_plugin_options_for_pre_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = _task(agent_id="fast")
@@ -672,7 +672,7 @@ async def test_create_task_stores_dify_workflow_plugin_options_for_pre_run(
             cron_hour="2",
             agent_id="fast",
             plugin_options={
-                "dify_workflow": {
+                "workflow": {
                     "SELECTED_WORKFLOW_ID": "wf-nightly",
                     "SELECTED_WORKFLOW_VERSION_ID": "wfv-nightly",
                 },
@@ -688,7 +688,7 @@ async def test_create_task_stores_dify_workflow_plugin_options_for_pre_run(
     assert request.input_payload == {
         "message": "Run nightly workflow",
         "plugin_options": {
-            "dify_workflow": {
+            "workflow": {
                 "SELECTED_WORKFLOW_ID": "wf-nightly",
                 "SELECTED_WORKFLOW_VERSION_ID": "wfv-nightly",
             }
@@ -697,11 +697,11 @@ async def test_create_task_stores_dify_workflow_plugin_options_for_pre_run(
 
 
 @pytest.mark.asyncio
-async def test_create_workflow_task_rejects_disabled_dify_workflow_plugin(
+async def test_create_workflow_task_rejects_disabled_workflow_plugin(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.disable_plugin("dify_workflow")
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.disable_plugin("workflow")
     scheduled_task_tool.set_plugin_runtime(runtime)
     create_mock = AsyncMock()
     approval_mock = _auto_approve(monkeypatch)
@@ -722,7 +722,7 @@ async def test_create_workflow_task_rejects_disabled_dify_workflow_plugin(
                 cron_hour="2",
                 agent_id="fast",
                 plugin_options={
-                    "dify_workflow": {
+                    "workflow": {
                         "SELECTED_WORKFLOW_ID": "wf-nightly",
                         "SELECTED_WORKFLOW_VERSION_ID": "wfv-nightly",
                     }
@@ -736,7 +736,7 @@ async def test_create_workflow_task_rejects_disabled_dify_workflow_plugin(
     assert result == {
         "error": "Workflow plugin is disabled; scheduled workflow tasks cannot be created.",
         "code": "plugin_unavailable",
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
     }
     create_mock.assert_not_called()
     approval_mock.assert_not_awaited()

@@ -155,7 +155,7 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
             user_id = runtime.config["configurable"]["context"].user_id
             return json.dumps(
                 {
-                    "plugin_id": "dify_workflow",
+                    "plugin_id": "workflow",
                     "workflow_id": kwargs["workflow_id"],
                     "run_id": "wfr-tool",
                     "status": "succeeded",
@@ -190,7 +190,7 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
         "server_name": "lambchat_internal",
         "tool_name": "workflow_run",
         "result": {
-            "plugin_id": "dify_workflow",
+            "plugin_id": "workflow",
             "workflow_id": "wf-1",
             "run_id": "wfr-tool",
             "status": "succeeded",
@@ -210,12 +210,12 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
             "workflow_list",
             {"scope": "published"},
             {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "scope": "published",
                 "workflows": [{"workflow_id": "wf-1", "status": "published"}],
             },
             {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "scope": "published",
                 "workflows": [{"workflow_id": "wf-1", "status": "published"}],
             },
@@ -225,14 +225,14 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
             {"workflow_id": "wf-1", "version_id": "wfv-1"},
             json.dumps(
                 {
-                    "plugin_id": "dify_workflow",
+                    "plugin_id": "workflow",
                     "workflow_id": "wf-1",
                     "version_id": "wfv-1",
                     "input_schema": {"type": "object", "properties": {"items": {"type": "array"}}},
                 }
             ),
             {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "version_id": "wfv-1",
                 "input_schema": {"type": "object", "properties": {"items": {"type": "array"}}},
@@ -243,7 +243,7 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
             {"workflow_id": "wf-1", "run_id": "wfr-1"},
             json.dumps(
                 {
-                    "plugin_id": "dify_workflow",
+                    "plugin_id": "workflow",
                     "workflow_id": "wf-1",
                     "run_id": "wfr-1",
                     "status": "running",
@@ -251,7 +251,7 @@ async def test_admin_internal_tool_invoke_runs_allowlisted_workflow_tool(
                 }
             ),
             {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "running",
@@ -348,11 +348,11 @@ async def test_admin_internal_tool_invoke_rejects_external_server() -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_internal_tool_invoke_respects_dify_workflow_runtime_gate(
+async def test_admin_internal_tool_invoke_respects_workflow_runtime_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from src.infra.tool import internal_registry
-    from src.kernel.extensions import PluginRuntime, build_dify_workflow_plugin_manifest
+    from src.kernel.extensions import PluginRuntime, build_workflow_plugin_manifest
 
     async def no_internal_tool_policies():
         return {}
@@ -360,7 +360,7 @@ async def test_admin_internal_tool_invoke_respects_dify_workflow_runtime_gate(
     async def workflow_permissions(_user_roles):
         return {"workflow:read", "workflow:run"}
 
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
 
     monkeypatch.setattr(internal_registry, "get_internal_tool_policies", no_internal_tool_policies)
     monkeypatch.setattr(internal_registry, "_resolve_permissions_for_roles", workflow_permissions)

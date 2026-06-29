@@ -54,7 +54,7 @@ function objectResultFromToolResult(
 }
 
 function looksLikeWorkflowRunResult(data: Record<string, unknown>): boolean {
-  if (data.plugin_id !== "dify_workflow") return false;
+  if (data.plugin_id !== "workflow") return false;
   if (!nonEmptyString(data.workflow_id)) return false;
   return Boolean(
     nonEmptyString(data.run_id) ||
@@ -79,7 +79,7 @@ function workflowPartFromToolResult(
 
   return {
     type: "workflow",
-    plugin_id: "dify_workflow",
+    plugin_id: "workflow",
     workflow_id: workflowId,
     run_id: runId,
     version_id: nonEmptyString(data.version_id),

@@ -32,8 +32,8 @@ node_modules
 tests/*
 !tests/fixtures/
 tests/fixtures/*
-!tests/fixtures/dify_workflow/
-!tests/fixtures/dify_workflow/**
+!tests/fixtures/workflow/
+!tests/fixtures/workflow/**
 .pytest_cache/
 .coverage
 htmlcov/
@@ -57,7 +57,7 @@ deploy/
 nginx/
 k8s/
 scripts/*
-!scripts/dify_workflow_container_acceptance.py
+!scripts/workflow_container_acceptance.py
 
 # Uploads & runtime
 uploads/

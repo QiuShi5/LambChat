@@ -61,13 +61,13 @@ _ASSISTANT_EVENT_TYPES = {
     "summary",
 }
 _ASSISTANT_ROLES = {"assistant", "ai"}
-_DIFY_WORKFLOW_PLUGIN_ID = "dify_workflow"
-_DIFY_WORKFLOW_LEGACY_KEYS = {
+_WORKFLOW_PLUGIN_ID = "workflow"
+_WORKFLOW_PLUGIN_LEGACY_KEYS = {
     "workflow_id",
     "workflow_version_id",
     "workflow_input",
 }
-_DIFY_WORKFLOW_OPTION_KEYS = {
+_WORKFLOW_PLUGIN_OPTION_KEYS = {
     "SELECTED_WORKFLOW_ID",
     "WORKFLOW_ID",
 }
@@ -547,7 +547,7 @@ class ScheduledTaskRunner:
         attempt: _AttemptResult,
         run_id: str,
     ) -> None:
-        if not self._task_has_dify_workflow_options(task):
+        if not self._task_has_workflow_options(task):
             return
         session_id = attempt.result.get("session_id")
         trace_id = attempt.result.get("trace_id")
@@ -577,23 +577,23 @@ class ScheduledTaskRunner:
         plugin_results = attempt.result.get("plugin_results")
         if not isinstance(plugin_results, dict):
             plugin_results = {}
-        plugin_results[_DIFY_WORKFLOW_PLUGIN_ID] = workflow_result
+        plugin_results[_WORKFLOW_PLUGIN_ID] = workflow_result
         attempt.result["plugin_results"] = plugin_results
 
     @staticmethod
-    def _task_has_dify_workflow_options(task: ScheduledTask) -> bool:
+    def _task_has_workflow_options(task: ScheduledTask) -> bool:
         payload = task.input_payload if isinstance(task.input_payload, dict) else {}
-        if any(payload.get(key) not in (None, "", {}, []) for key in _DIFY_WORKFLOW_LEGACY_KEYS):
+        if any(payload.get(key) not in (None, "", {}, []) for key in _WORKFLOW_PLUGIN_LEGACY_KEYS):
             return True
         plugin_options = payload.get("plugin_options")
         if not isinstance(plugin_options, dict):
             return False
-        workflow_options = plugin_options.get(_DIFY_WORKFLOW_PLUGIN_ID)
+        workflow_options = plugin_options.get(_WORKFLOW_PLUGIN_ID)
         if not isinstance(workflow_options, dict):
             return False
         return any(
             workflow_options.get(key) not in (None, "", {}, [])
-            for key in _DIFY_WORKFLOW_OPTION_KEYS
+            for key in _WORKFLOW_PLUGIN_OPTION_KEYS
         )
 
     @staticmethod
@@ -607,7 +607,7 @@ class ScheduledTaskRunner:
                     data = json.loads(data)
                 except json.JSONDecodeError:
                     continue
-            if isinstance(data, dict) and data.get("plugin_id") == _DIFY_WORKFLOW_PLUGIN_ID:
+            if isinstance(data, dict) and data.get("plugin_id") == _WORKFLOW_PLUGIN_ID:
                 return data
         return None
 
@@ -741,7 +741,7 @@ class ScheduledTaskRunner:
 
     @staticmethod
     def _workflow_delivery_text(data: Any) -> str:
-        if not isinstance(data, dict) or data.get("plugin_id") != _DIFY_WORKFLOW_PLUGIN_ID:
+        if not isinstance(data, dict) or data.get("plugin_id") != _WORKFLOW_PLUGIN_ID:
             return ""
         approval_pause = ScheduledTaskRunner._workflow_human_approval_delivery_text(data)
         if approval_pause:

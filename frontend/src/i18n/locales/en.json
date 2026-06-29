@@ -1563,7 +1563,7 @@
     "hideCode": "Hide code",
     "showCode": "Show code"
   },
-  "difyWorkflow": {
+  "workflowPlugin": {
     "chat": {
       "entry": "Entry",
       "exit": "Exit",

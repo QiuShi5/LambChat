@@ -26,7 +26,7 @@ test("plugin-owned app panels are not core panel fallbacks", () => {
 
   assert.match(pluginPanelRenderers, /"feedback\.FeedbackPanel":\s*FeedbackPanel/);
   assert.match(pluginPanelRenderers, /"agent_team\.TeamBuilderPanel":\s*TeamBuilderPanel/);
-  assert.match(pluginPanelRenderers, /"dify_workflow\.WorkflowPanel":\s*WorkflowPanel/);
+  assert.match(pluginPanelRenderers, /"workflow\.WorkflowPanel":\s*WorkflowPanel/);
   assert.match(pluginPanelRenderers, /"usage_reports\.UsagePanel":\s*UsagePanel/);
   assert.match(tabContentSource, /buildPanelContributions\(runtimePlugins\)/);
 });

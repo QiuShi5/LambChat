@@ -5,12 +5,12 @@ import { UsersRound } from "lucide-react";
 import { Select } from "../../common";
 import { teamApi } from "../../../services/api/team";
 import {
-  DifyWorkflowInputOption,
-  DifyWorkflowSelectOption,
-  DifyWorkflowVersionSelectOption,
-  resolveDifyWorkflowLabels,
-  resolveDifyWorkflowVersionLabels,
-} from "../../../plugins/dify_workflow/WorkflowSelectOption";
+  WorkflowPluginInputOption,
+  WorkflowPluginSelectOption,
+  WorkflowPluginVersionSelectOption,
+  resolveWorkflowPluginLabels,
+  resolveWorkflowPluginVersionLabels,
+} from "../../../plugins/workflow/WorkflowSelectOption";
 import type { ExtensionScopedOption } from "../../../types";
 import type { Team } from "../../../types/team";
 
@@ -102,20 +102,20 @@ function AgentTeamScheduledTaskTeamSelect({
 
 const SCHEDULED_TASK_OPTION_RENDERERS: Record<string, ScheduledTaskOptionRenderer> = {
   "agent_team.TeamSelectOption": AgentTeamScheduledTaskTeamSelect,
-  "dify_workflow.WorkflowSelectOption": (props) => (
-    <DifyWorkflowSelectOption
+  "workflow.WorkflowSelectOption": (props) => (
+    <WorkflowPluginSelectOption
       {...props}
       placeholder="No workflow"
     />
   ),
-  "dify_workflow.WorkflowVersionSelectOption": (props) => (
-    <DifyWorkflowVersionSelectOption
+  "workflow.WorkflowVersionSelectOption": (props) => (
+    <WorkflowPluginVersionSelectOption
       {...props}
       placeholder="No version"
     />
   ),
-  "dify_workflow.WorkflowInputOption": (props) => (
-    <DifyWorkflowInputOption {...props} />
+  "workflow.WorkflowInputOption": (props) => (
+    <WorkflowPluginInputOption {...props} />
   ),
 };
 
@@ -133,8 +133,8 @@ const SCHEDULED_TASK_OPTION_LABEL_RESOLVERS: Record<
         .map((team) => [team.id, team.name]),
     );
   },
-  "dify_workflow.WorkflowSelectOption": resolveDifyWorkflowLabels,
-  "dify_workflow.WorkflowVersionSelectOption": resolveDifyWorkflowVersionLabels,
+  "workflow.WorkflowSelectOption": resolveWorkflowPluginLabels,
+  "workflow.WorkflowVersionSelectOption": resolveWorkflowPluginVersionLabels,
 };
 
 export function findScheduledTaskOptionRenderer(

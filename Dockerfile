@@ -42,8 +42,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy source code
 COPY src/ ./src/
 COPY plugins/ ./plugins/
-COPY scripts/dify_workflow_container_acceptance.py ./scripts/dify_workflow_container_acceptance.py
-COPY tests/fixtures/dify_workflow/ ./tests/fixtures/dify_workflow/
+COPY scripts/workflow_container_acceptance.py ./scripts/workflow_container_acceptance.py
+COPY tests/fixtures/workflow/ ./tests/fixtures/workflow/
 COPY main.py ./
 
 # Copy frontend static files

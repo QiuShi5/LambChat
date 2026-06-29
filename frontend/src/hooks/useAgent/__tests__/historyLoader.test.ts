@@ -455,7 +455,7 @@ test("reconstructMessagesFromEvents treats assistant-only run after cancel as re
 test("reconstructMessagesFromEvents preserves workflow tool result outlet from persisted events", () => {
   const runId = "run_workflow_tool_history";
   const workflowOutlet = {
-    plugin_id: "dify_workflow",
+    plugin_id: "workflow",
     workflow_id: "wf-chat",
     run_id: "run-debug-1",
     version_id: "wfv-1",

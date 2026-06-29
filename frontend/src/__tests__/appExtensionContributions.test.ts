@@ -48,12 +48,12 @@ test("plugin-owned app routes show a loading route while contributions load", ()
   assert.match(appSource, /<ChatPageSkeleton \/>/);
 });
 
-test("Dify workflow routes and panel stay plugin-owned", () => {
+test("Workflow routes and panel stay plugin-owned", () => {
   assert.doesNotMatch(appSource, /workflowFallbackRoutes/);
   assert.doesNotMatch(appSource, /missingWorkflowFallbackRoutes/);
-  assert.doesNotMatch(appSource, /pluginId: "dify_workflow"/);
+  assert.doesNotMatch(appSource, /pluginId: "workflow"/);
   assert.doesNotMatch(tabContentSource, /workflows: WorkflowPanel/);
-  assert.match(tabContentSource, /"dify_workflow\.WorkflowPanel": WorkflowPanel/);
+  assert.match(tabContentSource, /"workflow\.WorkflowPanel": WorkflowPanel/);
   assert.match(tabContentSource, /activeTab === "workflows"/);
   assert.match(tabContentSource, /activeTab === "workflows-editor"/);
   assert.match(tabContentSource, /activeTab === "workflows-run"/);

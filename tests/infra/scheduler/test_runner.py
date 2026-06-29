@@ -18,7 +18,7 @@ from src.kernel.extensions import (
     PluginRuntime,
     PluginUnavailableError,
     build_agent_team_plugin_manifest,
-    build_dify_workflow_plugin_manifest,
+    build_workflow_plugin_manifest,
 )
 from src.kernel.schemas.channel import ChannelType
 from src.kernel.schemas.scheduled_task import (
@@ -28,7 +28,7 @@ from src.kernel.schemas.scheduled_task import (
     ScheduledTaskStatus,
     TriggerType,
 )
-from src.plugins.dify_workflow.chat_integration import workflow_result_interface
+from src.plugins.workflow.chat_integration import workflow_result_interface
 
 
 def _make_task(**overrides: Any) -> ScheduledTask:
@@ -329,7 +329,7 @@ async def test_runner_sends_success_result_to_configured_channel(
 
 
 @pytest.mark.asyncio
-async def test_runner_records_dify_workflow_result_from_trace_events(
+async def test_runner_records_workflow_result_from_trace_events(
     mock_storage: AsyncMock,
     mock_lock: None,
 ) -> None:
@@ -351,7 +351,7 @@ async def test_runner_records_dify_workflow_result_from_trace_events(
         }
     )
     workflow_result = {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-1",
         "version_id": "wfv-1",
         "run_id": "wfr-1",
@@ -409,8 +409,8 @@ async def test_runner_records_dify_workflow_result_from_trace_events(
     assert trace_storage.get_run_events.call_args.kwargs == {"event_types": ["workflow:run"]}
     final_update = mock_storage.update_run.call_args_list[-1].args[1]
     assert final_update["output_result"]["workflow_result"] == workflow_result
-    assert final_update["output_result"]["plugin_results"]["dify_workflow"] == workflow_result
-    persisted_result = final_update["output_result"]["plugin_results"]["dify_workflow"]
+    assert final_update["output_result"]["plugin_results"]["workflow"] == workflow_result
+    persisted_result = final_update["output_result"]["plugin_results"]["workflow"]
     assert persisted_result["interface"] == workflow_result_interface(
         workflow_id="wf-1",
         version_id="wfv-1",
@@ -427,7 +427,7 @@ async def test_runner_records_dify_workflow_result_from_trace_events(
 
 
 @pytest.mark.asyncio
-async def test_runner_delivers_dify_workflow_output_to_channel(
+async def test_runner_delivers_workflow_output_to_channel(
     mock_storage: AsyncMock,
     mock_lock: None,
 ) -> None:
@@ -460,7 +460,7 @@ async def test_runner_delivers_dify_workflow_output_to_channel(
                 {
                     "event_type": "workflow:run",
                     "data": {
-                        "plugin_id": "dify_workflow",
+                        "plugin_id": "workflow",
                         "workflow_id": "wf-1",
                         "run_id": "wfr-1",
                         "status": "succeeded",
@@ -473,7 +473,7 @@ async def test_runner_delivers_dify_workflow_output_to_channel(
                 {
                     "event_type": "workflow:run",
                     "data": {
-                        "plugin_id": "dify_workflow",
+                        "plugin_id": "workflow",
                         "workflow_id": "wf-1",
                         "run_id": "wfr-1",
                         "status": "succeeded",
@@ -517,14 +517,14 @@ def test_extract_channel_delivery_text_uses_assistant_chunks_only() -> None:
     assert text == "Hello world"
 
 
-def test_extract_channel_delivery_text_prefers_dify_workflow_output() -> None:
+def test_extract_channel_delivery_text_prefers_workflow_output() -> None:
     events = [
         {"event_type": "message:chunk", "data": {"content": "Generic "}},
         {"event_type": "message:chunk", "data": {"content": "assistant summary"}},
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -538,12 +538,12 @@ def test_extract_channel_delivery_text_prefers_dify_workflow_output() -> None:
     assert text == "Workflow exit text"
 
 
-def test_extract_channel_delivery_text_uses_dify_workflow_output_schema() -> None:
+def test_extract_channel_delivery_text_uses_workflow_output_schema() -> None:
     events = [
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -570,12 +570,12 @@ def test_extract_channel_delivery_text_uses_dify_workflow_output_schema() -> Non
     assert text == "Schema-selected report"
 
 
-def test_extract_channel_delivery_text_uses_nested_dify_workflow_output_schema() -> None:
+def test_extract_channel_delivery_text_uses_nested_workflow_output_schema() -> None:
     events = [
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -613,7 +613,7 @@ def test_extract_channel_delivery_text_reports_invalid_workflow_output_contract(
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -643,7 +643,7 @@ def test_extract_channel_delivery_text_reports_paused_workflow_human_approval() 
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-approval",
                 "run_id": "wfr-approval",
                 "status": "paused",
@@ -662,12 +662,12 @@ def test_extract_channel_delivery_text_reports_paused_workflow_human_approval() 
                     },
                     "pending": {
                         "method": "GET",
-                        "path": "/api/plugins/dify-workflow/approvals/pending",
+                        "path": "/api/plugins/workflow/approvals/pending",
                     },
                     "resume": {
                         "tool": "workflow_resume",
                         "method": "POST",
-                        "path": "/api/plugins/dify-workflow/workflows/wf-approval/runs/wfr-approval/resume",
+                        "path": "/api/plugins/workflow/workflows/wf-approval/runs/wfr-approval/resume",
                     },
                 },
             },
@@ -681,9 +681,9 @@ def test_extract_channel_delivery_text_reports_paused_workflow_human_approval() 
     assert "run_id=wfr-approval" in text
     assert "approval=Manager approval" in text
     assert "assignee=ops" in text
-    assert "pending=/api/plugins/dify-workflow/approvals/pending" in text
+    assert "pending=/api/plugins/workflow/approvals/pending" in text
     assert "tool=workflow_resume" in text
-    assert "resume=/api/plugins/dify-workflow/workflows/wf-approval/runs/wfr-approval/resume" in text
+    assert "resume=/api/plugins/workflow/workflows/wf-approval/runs/wfr-approval/resume" in text
     assert "Generic assistant fallback" not in text
 
 
@@ -693,7 +693,7 @@ def test_extract_channel_delivery_text_reports_serialized_paused_workflow_human_
             "event_type": "workflow:run",
             "data": json.dumps(
                 {
-                    "plugin_id": "dify_workflow",
+                    "plugin_id": "workflow",
                     "workflow_id": "wf-approval",
                     "run_id": "wfr-approval",
                     "status": "paused",
@@ -720,7 +720,7 @@ def test_extract_channel_delivery_text_uses_array_item_workflow_output_schema() 
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -760,7 +760,7 @@ def test_extract_channel_delivery_text_skips_non_text_required_workflow_output()
         {
             "event_type": "workflow:run",
             "data": {
-                "plugin_id": "dify_workflow",
+                "plugin_id": "workflow",
                 "workflow_id": "wf-1",
                 "run_id": "wfr-1",
                 "status": "succeeded",
@@ -785,13 +785,13 @@ def test_extract_channel_delivery_text_skips_non_text_required_workflow_output()
     assert text == "Text summary"
 
 
-def test_extract_channel_delivery_text_reads_serialized_dify_workflow_output() -> None:
+def test_extract_channel_delivery_text_reads_serialized_workflow_output() -> None:
     events = [
         {
             "event_type": "workflow:run",
             "data": json.dumps(
                 {
-                    "plugin_id": "dify_workflow",
+                    "plugin_id": "workflow",
                     "workflow_id": "wf-1",
                     "run_id": "wfr-1",
                     "status": "succeeded",
@@ -1214,11 +1214,11 @@ async def test_execute_agent_carries_generic_scheduled_task_plugin_options_to_se
 
 
 @pytest.mark.asyncio
-async def test_execute_agent_carries_dify_workflow_scheduled_task_options_to_agent_stream(
+async def test_execute_agent_carries_workflow_scheduled_task_options_to_agent_stream(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.enable_plugin("dify_workflow")
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.enable_plugin("workflow")
     task = _make_task(
         agent_id="fast",
         input_payload={
@@ -1264,7 +1264,7 @@ async def test_execute_agent_carries_dify_workflow_scheduled_task_options_to_age
     await runner._execute_agent(task, run_id="run_1", session_id="session_1")
 
     expected_options = {
-        "dify_workflow": {
+        "workflow": {
             "WORKFLOW_ID": "wf-1",
             "WORKFLOW_VERSION_ID": "wfv-1",
             "WORKFLOW_INPUT_JSON": {"topic": "nightly", "count": 3},

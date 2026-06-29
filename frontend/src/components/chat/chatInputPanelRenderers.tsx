@@ -1,12 +1,12 @@
 import { type ReactElement } from "react";
 import { TeamPickerModal } from "../team/TeamPickerModal";
-import { WorkflowPickerModal } from "../../plugins/dify_workflow/WorkflowPickerModal";
+import { WorkflowPickerModal } from "../../plugins/workflow/WorkflowPickerModal";
 import type { CoreChatInputPanelContribution } from "../../extensions/coreContributions";
 import type { PluginOptionsMetadata } from "../../extensions/pluginOptions";
 import { pluginOptionFromValues } from "../../extensions/pluginOptions";
 
-const DIFY_WORKFLOW_SESSION_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID";
-const DIFY_WORKFLOW_SESSION_INPUT_KEY = "SELECTED_WORKFLOW_INPUT_JSON";
+const WORKFLOW_PLUGIN_SESSION_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID";
+const WORKFLOW_PLUGIN_SESSION_INPUT_KEY = "SELECTED_WORKFLOW_INPUT_JSON";
 
 export interface ChatInputPanelRendererProps {
   contribution: CoreChatInputPanelContribution;
@@ -56,7 +56,7 @@ function AgentTeamPickerRenderer({
   );
 }
 
-function DifyWorkflowPickerRenderer({
+function WorkflowPluginPickerRenderer({
   contribution,
   activePanel,
   onActivePanelChange,
@@ -78,7 +78,7 @@ function DifyWorkflowPickerRenderer({
   const pluginSelectedVersionId = pluginOptionFromValues(
     pluginOptionValues,
     optionPath.pluginId,
-    DIFY_WORKFLOW_SESSION_VERSION_KEY,
+    WORKFLOW_PLUGIN_SESSION_VERSION_KEY,
   );
   const effectiveSelectedVersionId =
     typeof pluginSelectedVersionId === "string" && pluginSelectedVersionId
@@ -87,20 +87,20 @@ function DifyWorkflowPickerRenderer({
   const selectedWorkflowInput = pluginOptionFromValues(
     pluginOptionValues,
     optionPath.pluginId,
-    DIFY_WORKFLOW_SESSION_INPUT_KEY,
+    WORKFLOW_PLUGIN_SESSION_INPUT_KEY,
   );
   const handleSelectWorkflow = (workflowId: string | null) => {
     if (!workflowId || workflowId !== effectiveSelectedWorkflowId) {
-      onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_VERSION_KEY, null);
-      onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_INPUT_KEY, null);
+      onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_VERSION_KEY, null);
+      onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_INPUT_KEY, null);
     }
     onPluginOptionChange?.(optionPath.pluginId, optionPath.key, workflowId);
   };
   const handleSelectVersion = (versionId: string | null) => {
-    onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_VERSION_KEY, versionId);
+    onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_VERSION_KEY, versionId);
   };
   const handleWorkflowInputChange = (value: Record<string, unknown> | null) => {
-    onPluginOptionChange?.(optionPath.pluginId, DIFY_WORKFLOW_SESSION_INPUT_KEY, value);
+    onPluginOptionChange?.(optionPath.pluginId, WORKFLOW_PLUGIN_SESSION_INPUT_KEY, value);
   };
   const navigateToCreate = contribution.createPath
     ? () => onNavigate(contribution.createPath as string)
@@ -135,5 +135,5 @@ export const CHAT_INPUT_PANEL_RENDERERS: Record<
   (props: ChatInputPanelRendererProps) => ReactElement | null
 > = {
   "agent_team.TeamPickerModal": AgentTeamPickerRenderer,
-  "dify_workflow.WorkflowPickerModal": DifyWorkflowPickerRenderer,
+  "workflow.WorkflowPickerModal": WorkflowPluginPickerRenderer,
 };

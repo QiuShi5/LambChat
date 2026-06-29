@@ -365,17 +365,17 @@ CONTROLLED_FRONTEND_REFERENCES: dict[str, frozenset[str]] = {
     "app_panels.renderer": frozenset(
         {
             "agent_team.TeamBuilderPanel",
-            "dify_workflow.WorkflowPanel",
+            "workflow.WorkflowPanel",
             "feedback.FeedbackPanel",
             "usage_reports.UsagePanel",
         }
     ),
     "message_actions.renderer": frozenset({"feedback.FeedbackButtons"}),
     "chat_input_options.selected_renderer": frozenset(
-        {"agent_team.SelectedTeamChip", "dify_workflow.SelectedWorkflowChip"}
+        {"agent_team.SelectedTeamChip", "workflow.SelectedWorkflowChip"}
     ),
     "chat_input_panels.renderer": frozenset(
-        {"agent_team.TeamPickerModal", "dify_workflow.WorkflowPickerModal"}
+        {"agent_team.TeamPickerModal", "workflow.WorkflowPickerModal"}
     ),
     "mention_providers.provider": frozenset({"agent_team.searchTeams"}),
     "welcome_surfaces.renderer": frozenset({"agent_team.TeamWelcomeSurface"}),
@@ -383,25 +383,25 @@ CONTROLLED_FRONTEND_REFERENCES: dict[str, frozenset[str]] = {
     "project_options.renderer": frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     ),
     "session_options.renderer": frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowInputOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowInputOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     ),
     "channel_options.renderer": frozenset({"agent_team.TeamSelectOption"}),
     "scheduled_task_options.renderer": frozenset(
         {
             "agent_team.TeamSelectOption",
-            "dify_workflow.WorkflowInputOption",
-            "dify_workflow.WorkflowSelectOption",
-            "dify_workflow.WorkflowVersionSelectOption",
+            "workflow.WorkflowInputOption",
+            "workflow.WorkflowSelectOption",
+            "workflow.WorkflowVersionSelectOption",
         }
     ),
     "channel_connectors.panel_renderer": frozenset({"feishu_connector.FeishuPanel"}),

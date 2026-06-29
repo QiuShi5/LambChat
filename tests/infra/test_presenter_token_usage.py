@@ -212,7 +212,7 @@ async def test_agent_workflow_tool_result_is_persisted_as_structured_failed_outl
     )
     processor = AgentEventProcessor(presenter)
     workflow_result = {
-        "plugin_id": "dify_workflow",
+        "plugin_id": "workflow",
         "workflow_id": "wf-chat",
         "run_id": "workflow-run-1",
         "version_id": "wfv-1",
@@ -280,7 +280,7 @@ async def test_agent_workflow_tool_result_is_persisted_as_structured_failed_outl
     assert persisted_result["data"]["tool_call_id"] == "tool-call-workflow"
     assert persisted_result["data"]["success"] is False
     assert persisted_result["data"]["error"] == "workflow_run_not_found"
-    assert persisted_result["data"]["result"]["plugin_id"] == "dify_workflow"
+    assert persisted_result["data"]["result"]["plugin_id"] == "workflow"
     assert persisted_result["data"]["result"]["status"] == "failed"
     assert persisted_result["data"]["result"]["interface"]["entry"]["tool"] == "workflow_run"
     assert (

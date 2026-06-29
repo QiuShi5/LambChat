@@ -708,7 +708,7 @@ def test_team_agent_declares_sandbox_support() -> None:
 
 
 @pytest.mark.asyncio
-async def test_team_agent_node_passes_dify_workflow_tools_from_real_context(
+async def test_team_agent_node_passes_workflow_tools_from_real_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _install_deepagents_shims(monkeypatch)
@@ -717,9 +717,9 @@ async def test_team_agent_node_passes_dify_workflow_tools_from_real_context(
     from src.agents.team_agent.context import TeamAgentContext
     from src.infra.tool import internal_registry
     from src.kernel.extensions import (
-        DIFY_WORKFLOW_PLUGIN_ID,
+        WORKFLOW_PLUGIN_ID,
         PluginRuntime,
-        build_dify_workflow_plugin_manifest,
+        build_workflow_plugin_manifest,
     )
 
     fake_graph = _FakeDeepAgent()
@@ -737,8 +737,8 @@ async def test_team_agent_node_passes_dify_workflow_tools_from_real_context(
     async def fake_resolve_runtime_team(**_kwargs):
         return None
 
-    runtime = PluginRuntime([build_dify_workflow_plugin_manifest()])
-    runtime.enable_plugin(DIFY_WORKFLOW_PLUGIN_ID)
+    runtime = PluginRuntime([build_workflow_plugin_manifest()])
+    runtime.enable_plugin(WORKFLOW_PLUGIN_ID)
 
     monkeypatch.setattr(internal_registry, "get_internal_tool_policies", no_internal_tool_policies)
     monkeypatch.setattr(internal_registry, "_resolve_permissions_for_roles", workflow_permissions)
