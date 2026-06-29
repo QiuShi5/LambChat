@@ -259,8 +259,8 @@ test("tool result panel masks rich content until the first panel paint settles",
   );
   assert.match(
     componentSource,
-    /className=\{`tool-console-body__content[\s\S]*?\$\{\s*contentReady \? "opacity-100" : "opacity-0"/,
-    "rich content should be mounted but visually hidden until ready",
+    /className=\{`tool-console-body__content h-full min-h-full[\s\S]*?\$\{\s*contentReady \? "opacity-100" : "opacity-0"/,
+    "rich content should keep a full-height parent while visually hidden until ready",
   );
   assert.match(
     componentSource,
