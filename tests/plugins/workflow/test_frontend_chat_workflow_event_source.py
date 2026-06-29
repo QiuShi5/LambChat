@@ -83,24 +83,35 @@ def test_chat_workflow_part_renders_entry_exit_and_debug_interface() -> None:
     assert "toolField(exit?.schema_tool, exit?.schema_field)" in workflow_item_source
     assert "toolField(debug?.tool, debug?.events_field)" in workflow_item_source
     assert "const actionType = stringValue(action?.type)" in workflow_item_source
-    assert 'actionType !== "await_human_approval" && actionType !== "wait_for_human_approval"' in workflow_item_source
+    assert (
+        'actionType !== "await_human_approval" && actionType !== "wait_for_human_approval"'
+        in workflow_item_source
+    )
     assert 'resumeTool: stringValue(resume?.tool) || "workflow_resume"' in workflow_item_source
     assert "updatePersistentToolPanel" in workflow_item_source
     assert "function WorkflowResumeResultPanel" in workflow_item_source
     assert "<WorkflowResumeResultPanel part={nextPart} />" in workflow_item_source
     assert "status: workflowStatus(nextPart.status, nextPart.error)" in workflow_item_source
-    assert 'const panelKey = `workflow:${workflowId || "unknown"}:${runId || "latest"}`;' in workflow_item_source
+    assert (
+        'const panelKey = `workflow:${workflowId || "unknown"}:${runId || "latest"}`;'
+        in workflow_item_source
+    )
     assert "children: detailContent" in workflow_item_source
     assert "panelKey," in workflow_item_source
-    assert "`/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}`" in workflow_item_source
+    assert (
+        "`/workflows/${encodeURIComponent(workflowId)}/runs/${encodeURIComponent(runId)}`"
+        in workflow_item_source
+    )
     assert 't("chat.message.workflowOpenRun", "Open run")' in workflow_item_source
 
 
 def test_failed_workflow_tool_result_without_run_id_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "export const failedRunWithoutId" in mock_source
-    assert 'run_id: null' in mock_source
+    assert "run_id: null" in mock_source
     assert 'error: "workflow_input_required_missing:message"' in mock_source
     assert "next_action: {" in mock_source
     assert 'reason: "workflow_run_failed"' in mock_source
@@ -111,7 +122,9 @@ def test_failed_workflow_tool_result_without_run_id_has_browser_smoke_fixture() 
 
 
 def test_tool_workflow_approval_result_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "function toolWorkflowApprovalResultSmokeHtml" in mock_source
     assert 'plugin_id: "workflow"' in mock_source
@@ -122,15 +135,20 @@ def test_tool_workflow_approval_result_has_browser_smoke_fixture() -> None:
     assert "React.createElement(ToolResultContent, { result: workflowToolResult })" in mock_source
     assert 'type: "wait_for_human_approval"' in mock_source
     assert 'tool: "workflow_get_run"' in mock_source
-    assert 'approval: {' in mock_source
-    assert 'pending: {' in mock_source
-    assert 'resume: {' in mock_source
+    assert "approval: {" in mock_source
+    assert "pending: {" in mock_source
+    assert "resume: {" in mock_source
     assert 'tool: "workflow_resume"' in mock_source
-    assert 'path: "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume"' in mock_source
+    assert (
+        'path: "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume"'
+        in mock_source
+    )
 
 
 def test_chat_replay_workflow_approval_tool_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "const chatApprovalReplaySessionId" in mock_source
     assert "const chatApprovalReplayRunId" in mock_source
@@ -148,7 +166,9 @@ def test_chat_replay_workflow_approval_tool_has_browser_smoke_fixture() -> None:
 
 
 def test_agent_team_replay_workflow_approval_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "const agentTeamApprovalReplaySessionId" in mock_source
     assert "const agentTeamApprovalReplayRunId" in mock_source
@@ -168,7 +188,9 @@ def test_agent_team_replay_workflow_approval_has_browser_smoke_fixture() -> None
 
 
 def test_scheduled_workflow_approval_result_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "function scheduledApprovalWorkflowRunResult" in mock_source
     assert "...pausedApprovalRun" in mock_source
@@ -178,7 +200,9 @@ def test_scheduled_workflow_approval_result_has_browser_smoke_fixture() -> None:
     assert "window.__scheduledWorkflowApprovalSmokeLocation = location.pathname" in mock_source
     assert 'path: "/scheduled-task-approval-smoke"' in mock_source
     assert 'path: "/workflows/:workflowId/runs/:runId"' in mock_source
-    assert 'element: React.createElement(WorkflowPanel, { activeTab: "workflows-run" })' in mock_source
+    assert (
+        'element: React.createElement(WorkflowPanel, { activeTab: "workflows-run" })' in mock_source
+    )
     assert 'taskId: "task-workflow-approval-browser"' in mock_source
     assert "/api/scheduled-tasks/task-workflow-approval-browser/sessions" in mock_source
     assert "/api/scheduled-tasks/task-workflow-approval-browser/runs" in mock_source
@@ -188,7 +212,9 @@ def test_scheduled_workflow_approval_result_has_browser_smoke_fixture() -> None:
 
 
 def test_failed_workflow_tool_debug_result_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "export const failedRunWithDebugId" in mock_source
     assert 'run_id: "run-missing-debug-browser"' in mock_source
@@ -202,7 +228,9 @@ def test_failed_workflow_tool_debug_result_has_browser_smoke_fixture() -> None:
 
 
 def test_failed_workflow_tool_debug_result_replays_from_history_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "const failedChatReplaySessionId" in mock_source
     assert "function failedChatReplayWorkflowToolEvents" in mock_source
@@ -218,7 +246,9 @@ def test_failed_workflow_tool_debug_result_replays_from_history_fixture() -> Non
 
 
 def test_failed_workflow_run_event_without_run_id_has_browser_smoke_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "function failedChatWorkflowRunEvent" in mock_source
     assert "function failedWorkflowChatSmokeHtml" in mock_source
@@ -229,7 +259,9 @@ def test_failed_workflow_run_event_without_run_id_has_browser_smoke_fixture() ->
 
 
 def test_workflow_editor_browser_smoke_can_save_publish_and_run_latest_version() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
 
     assert "function workflowEditorInteractionSmokeHtml" in mock_source
     assert 'data-smoke": "workflow-editor-interaction"' in mock_source
@@ -244,7 +276,9 @@ def test_workflow_editor_browser_smoke_can_save_publish_and_run_latest_version()
 
 
 def test_workflow_editor_browser_smoke_has_non_contiguous_node_id_fixture() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
     panel_source = read_frontend_source("plugins", "workflow", "WorkflowPanel.tsx")
 
     assert 'id: "node_4"' in mock_source
@@ -255,14 +289,18 @@ def test_workflow_editor_browser_smoke_has_non_contiguous_node_id_fixture() -> N
 
 
 def test_workflow_editor_browser_smoke_can_dispatch_canvas_drop() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
     panel_source = read_frontend_source("plugins", "workflow", "WorkflowPanel.tsx")
 
-    assert 'const WORKFLOW_CANVAS_DRAG_TYPE = "application/x-lambchat-workflow-node";' in mock_source
+    assert (
+        'const WORKFLOW_CANVAS_DRAG_TYPE = "application/x-lambchat-workflow-node";' in mock_source
+    )
     assert "window.__codexDropWorkflowNode" in mock_source
     assert 'window.__codexDropWorkflowNode("human_approval")' in mock_source
     assert "createWorkflowDropEvent" in mock_source
-    assert 'document.querySelector(\'[data-testid="workflow-canvas"]\')' in mock_source
+    assert "document.querySelector('[data-testid=\"workflow-canvas\"]')" in mock_source
     assert 'canvas.dispatchEvent(createWorkflowDropEvent("dragover"' in mock_source
     assert 'canvas.dispatchEvent(createWorkflowDropEvent("drop"' in mock_source
     assert 'data-testid": "codex-drop-answer-on-workflow-canvas"' in mock_source
@@ -272,7 +310,9 @@ def test_workflow_editor_browser_smoke_can_dispatch_canvas_drop() -> None:
 
 
 def test_workflow_editor_browser_mock_supports_human_approval_pause_and_resume() -> None:
-    mock_source = (REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs").read_text(encoding="utf-8")
+    mock_source = (
+        REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser" / "browser_workflow_mock.mjs"
+    ).read_text(encoding="utf-8")
     panel_source = read_frontend_source("plugins", "workflow", "WorkflowPanel.tsx")
 
     assert "export const pausedApprovalRun" in mock_source
@@ -286,13 +326,19 @@ def test_workflow_editor_browser_mock_supports_human_approval_pause_and_resume()
     assert 'status: "succeeded"' in mock_source
     assert "let lastWorkflowRunBody = null" in mock_source
     assert "let lastWorkflowResumeBody = null" in mock_source
-    assert 'last_workflow_run_body: lastWorkflowRunBody' in mock_source
-    assert 'last_workflow_resume_body: lastWorkflowResumeBody' in mock_source
-    assert 'approval_run_state: approvalRunState' in mock_source
+    assert "last_workflow_run_body: lastWorkflowRunBody" in mock_source
+    assert "last_workflow_resume_body: lastWorkflowResumeBody" in mock_source
+    assert "approval_run_state: approvalRunState" in mock_source
     assert 'runs: approvalRunState === "paused" ? [{ ...pausedApprovalRun' in mock_source
-    assert 'path === "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/events"' in mock_source
+    assert (
+        'path === "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/events"'
+        in mock_source
+    )
     assert 'if (lastWorkflowRunBody?.mode === "async")' in mock_source
-    assert 'path === "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume"' in mock_source
+    assert (
+        'path === "/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume"'
+        in mock_source
+    )
     assert 'lastWorkflowResumeBody?.comment ?? ""' in mock_source
     assert 'event_type: "human_approval_required"' in mock_source
     assert 'event_type: "human_approval_resumed"' in mock_source

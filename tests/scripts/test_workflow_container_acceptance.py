@@ -83,7 +83,9 @@ class FakeStreamTransport(FakeTransport):
         yield from self.stream_events
 
 
-def response(data: Any, status: int = 200, *, include_default_saved_boundary: bool = True) -> HttpResponse:
+def response(
+    data: Any, status: int = 200, *, include_default_saved_boundary: bool = True
+) -> HttpResponse:
     data = _with_default_workflow_rest_contract(
         data,
         include_default_saved_boundary=include_default_saved_boundary,
@@ -100,14 +102,30 @@ def _with_default_workflow_rest_contract(
         return data
     payload = dict(data)
     if _looks_like_workflow_rest_run(payload):
-        payload.update({key: value for key, value in workflow_output_contract_payload().items() if key not in payload})
+        payload.update(
+            {
+                key: value
+                for key, value in workflow_output_contract_payload().items()
+                if key not in payload
+            }
+        )
     if include_default_saved_boundary and _looks_like_workflow_saved_version_response(payload):
-        payload.update({key: value for key, value in workflow_saved_version_boundary_payload(payload).items() if key not in payload})
+        payload.update(
+            {
+                key: value
+                for key, value in workflow_saved_version_boundary_payload(payload).items()
+                if key not in payload
+            }
+        )
     run = payload.get("run")
     if isinstance(run, dict) and _looks_like_workflow_rest_run(run):
         payload["run"] = {
             **run,
-            **{key: value for key, value in workflow_output_contract_payload().items() if key not in run},
+            **{
+                key: value
+                for key, value in workflow_output_contract_payload().items()
+                if key not in run
+            },
         }
     return payload
 
@@ -139,9 +157,9 @@ def test_decode_json_returns_payload_for_valid_json_and_none_for_empty_or_invali
 
 def test_sse_parser_decodes_named_json_events_and_ignores_heartbeats() -> None:
     stream = io.BytesIO(
-        b': heartbeat\n\n'
-        b'event: workflow:run\n'
-        b'id: 1700000000000-0\n'
+        b": heartbeat\n\n"
+        b"event: workflow:run\n"
+        b"id: 1700000000000-0\n"
         b'data: {"plugin_id":"workflow","workflow_id":"wf-1"}\n\n'
     )
 
@@ -597,7 +615,9 @@ def test_acceptance_runs_full_live_check_sequence_with_enable_and_async_poll() -
             response(workflow_run_payload("sync-1", output={"answer": "alpha"})),
             response(workflow_events_payload()),
             response(workflow_run_payload("async-1", status="queued")),
-            response(workflow_events_payload(status="running", events=[{"event_type": "run_started"}])),
+            response(
+                workflow_events_payload(status="running", events=[{"event_type": "run_started"}])
+            ),
             response(
                 workflow_events_payload(
                     events=[{"event_type": "run_started"}, {"event_type": "run_succeeded"}],
@@ -653,7 +673,10 @@ def test_acceptance_runs_full_live_check_sequence_with_enable_and_async_poll() -
         "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1/runs/async-1/events",
     ]
     assert transport.calls[6]["json_body"]["dry_run"] is False
-    assert transport.calls[6]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"] == "list-operator"
+    assert (
+        transport.calls[6]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"]
+        == "list-operator"
+    )
     assert transport.calls[8]["json_body"] == {
         "input": {"items": ["alpha", "beta", "gamma"]},
         "mode": "sync",
@@ -734,7 +757,9 @@ def test_acceptance_optional_failed_pre_run_check_keeps_chat_successful() -> Non
         "next_action": "handle_terminal_error",
         "next_action_reason": "workflow_run_failed",
     }
-    assert transport.calls[8]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=search"
+    assert (
+        transport.calls[8]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=search"
+    )
     assert transport.calls[8]["json_body"]["plugin_options"] == {
         "workflow": {"SELECTED_WORKFLOW_ID": FAILED_PRE_RUN_WORKFLOW_ID}
     }
@@ -800,7 +825,7 @@ def test_acceptance_agent_team_failed_pre_run_check_keeps_team_chat_successful()
     assert transport.calls[0]["json_body"]["team_id"] == "team-1"
     assert transport.calls[0]["json_body"]["plugin_options"] == {
         "agent_team": {"SELECTED_TEAM_ID": "team-1"},
-        "workflow": {"SELECTED_WORKFLOW_ID": FAILED_PRE_RUN_WORKFLOW_ID}
+        "workflow": {"SELECTED_WORKFLOW_ID": FAILED_PRE_RUN_WORKFLOW_ID},
     }
     assert transport.calls[1]["url"] == (
         "http://lambchat.example.test/api/sessions/team-session/events?run_id=team-run&limit=100"
@@ -888,7 +913,9 @@ def test_acceptance_scheduled_task_trigger_timeout_uses_running_session_stream()
     transport = FakeStreamTransport(
         [
             response({"id": "task-1", "status": "active"}, status=201),
-            AcceptanceError("request_timeout:POST http://lambchat.example.test/api/scheduled-tasks/task-1/run: timed out"),
+            AcceptanceError(
+                "request_timeout:POST http://lambchat.example.test/api/scheduled-tasks/task-1/run: timed out"
+            ),
             response(
                 {
                     "items": [
@@ -947,12 +974,12 @@ def test_acceptance_scheduled_task_trigger_timeout_uses_running_session_stream()
         "status": "running",
         "session_id": "scheduled-session",
         "trace_id": "scheduled-trace",
-            "workflow_run_id": "wfr-scheduled",
-            "next_action": "use_output",
-            "next_action_reason": "workflow_run_succeeded",
-            "workflow_input_keys": ["items"],
-            "workflow_event_count": len(workflow_success_events()),
-        }
+        "workflow_run_id": "wfr-scheduled",
+        "next_action": "use_output",
+        "next_action_reason": "workflow_run_succeeded",
+        "workflow_input_keys": ["items"],
+        "workflow_event_count": len(workflow_success_events()),
+    }
     assert transport.calls[0]["json_body"]["input_payload"]["plugin_options"] == {
         "workflow": {
             "WORKFLOW_ID": "wf-1",
@@ -996,7 +1023,9 @@ def test_acceptance_requires_started_event_for_sync_run() -> None:
     run = acceptance.run_workflow("wf-1", mode="sync")
 
     with pytest.raises(AcceptanceError, match="workflow_started_event_missing:sync-1"):
-        acceptance.check_run_events("wf-1", run["run_id"], require_started_event=True, require_success_event=True)
+        acceptance.check_run_events(
+            "wf-1", run["run_id"], require_started_event=True, require_success_event=True
+        )
 
 
 def test_acceptance_requires_expected_node_events_for_sync_run() -> None:
@@ -1065,7 +1094,9 @@ def test_acceptance_rest_workflow_run_requires_invalid_output_contract_details()
     transport = FakeTransport([HttpResponse(status=200, data=payload, text=json.dumps(payload))])
     acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=transport)
 
-    with pytest.raises(AcceptanceError, match="workflow_sync_run_workflow_output_contract_failure_detail_missing"):
+    with pytest.raises(
+        AcceptanceError, match="workflow_sync_run_workflow_output_contract_failure_detail_missing"
+    ):
         acceptance.run_workflow("wf-1", mode="sync")
 
 
@@ -1148,7 +1179,9 @@ def test_acceptance_nested_entry_contract_rejection_records_path_level_error() -
     acceptance = WorkflowAcceptance(
         AcceptanceSettings(
             token="token-1",
-            nested_entry_contract_fixture_path=Path("tests/fixtures/workflow/nested_entry_contract.json"),
+            nested_entry_contract_fixture_path=Path(
+                "tests/fixtures/workflow/nested_entry_contract.json"
+            ),
         ),
         transport=transport,
     )
@@ -1182,7 +1215,9 @@ def test_acceptance_nested_entry_contract_rejection_fails_when_bad_input_succeed
     acceptance = WorkflowAcceptance(
         AcceptanceSettings(
             token="token-1",
-            nested_entry_contract_fixture_path=Path("tests/fixtures/workflow/nested_entry_contract.json"),
+            nested_entry_contract_fixture_path=Path(
+                "tests/fixtures/workflow/nested_entry_contract.json"
+            ),
         ),
         transport=transport,
     )
@@ -1215,7 +1250,9 @@ def test_acceptance_requires_started_event_for_async_terminal_run() -> None:
             response({"run": {"status": "succeeded"}, "events": [{"event_type": "run_succeeded"}]}),
         ]
     )
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=transport, clock=lambda: 0)
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=transport, clock=lambda: 0
+    )
 
     with pytest.raises(AcceptanceError, match="workflow_async_started_event_missing:async-1"):
         acceptance.poll_async_run("wf-1", "async-1")
@@ -1254,7 +1291,10 @@ def test_acceptance_can_login_when_token_is_not_supplied() -> None:
 
 def test_acceptance_can_read_token_from_token_file(tmp_path: Path) -> None:
     token_file = tmp_path / "lambchat-token.json"
-    token_file.write_text(json.dumps({"access_token": "file-token", "refresh_token": "refresh-token"}), encoding="utf-8")
+    token_file.write_text(
+        json.dumps({"access_token": "file-token", "refresh_token": "refresh-token"}),
+        encoding="utf-8",
+    )
     transport = FakeTransport(
         [
             response({"status": "ok"}),
@@ -1309,7 +1349,9 @@ def test_acceptance_version_create_requires_saved_version_boundary() -> None:
     )
     acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=transport)
 
-    with pytest.raises(AcceptanceError, match="workflow_version_create_workflow_io_contract_missing"):
+    with pytest.raises(
+        AcceptanceError, match="workflow_version_create_workflow_io_contract_missing"
+    ):
         acceptance.create_workflow_version("wf-1", {"workflow": {"nodes": []}})
 
 
@@ -1374,7 +1416,9 @@ def test_acceptance_fails_when_workflow_peer_tab_is_not_after_agent_team() -> No
     tab["insert_after"] = "chat"
     transport = FakeTransport([response(payload)])
 
-    with pytest.raises(AcceptanceError, match="plugin_contribution_tab_insert_after_mismatch:workflows"):
+    with pytest.raises(
+        AcceptanceError, match="plugin_contribution_tab_insert_after_mismatch:workflows"
+    ):
         WorkflowAcceptance(
             AcceptanceSettings(token="token-1"),
             transport=transport,
@@ -1657,11 +1701,23 @@ def test_acceptance_optional_human_approval_checks_pending_inbox_and_resume() ->
     assert "pending_approvals" in check_names
     assert "workflow_resume" in check_names
     assert "human_approval_resume" in check_names
-    assert transport.calls[8]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/import"
-    assert transport.calls[8]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"] == "human-approval"
+    assert (
+        transport.calls[8]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/import"
+    )
+    assert (
+        transport.calls[8]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"]
+        == "human-approval"
+    )
     assert transport.calls[10]["json_body"] == {"input": {"name": "LambChat"}, "mode": "async"}
-    assert transport.calls[11]["url"] == "http://lambchat.example.test/api/plugins/workflow/approvals/pending?limit=20"
-    assert transport.calls[12]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-approval/runs/approval-run/resume"
+    assert (
+        transport.calls[11]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/approvals/pending?limit=20"
+    )
+    assert (
+        transport.calls[12]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-approval/runs/approval-run/resume"
+    )
     assert transport.calls[12]["json_body"] == {
         "approved": True,
         "comment": "accepted by container acceptance",
@@ -1741,8 +1797,14 @@ def test_acceptance_optional_advanced_node_checks_import_publish_run_and_events(
     check_names = [check["name"] for check in acceptance.recorder.checks]
     assert "knowledge_retrieval_run" in check_names
     assert "llm_run" in check_names
-    assert transport.calls[0]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/import"
-    assert transport.calls[0]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"] == "knowledge-retrieval"
+    assert (
+        transport.calls[0]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/import"
+    )
+    assert (
+        transport.calls[0]["json_body"]["source_payload"]["workflow"]["nodes"][1]["type"]
+        == "knowledge-retrieval"
+    )
     assert transport.calls[2]["json_body"] == {
         "input": {"items": ["alpha", "beta", "gamma"]},
         "mode": "sync",
@@ -1788,7 +1850,9 @@ def test_acceptance_advanced_node_check_requires_matching_finished_event() -> No
         WorkflowAcceptance(
             AcceptanceSettings(
                 token="token-1",
-                knowledge_retrieval_fixture_path=Path("tests/fixtures/workflow/knowledge_retrieval.json"),
+                knowledge_retrieval_fixture_path=Path(
+                    "tests/fixtures/workflow/knowledge_retrieval.json"
+                ),
             ),
             transport=transport,
         ).check_knowledge_retrieval_run()
@@ -1867,10 +1931,12 @@ def test_acceptance_human_approval_polls_until_paused_when_run_starts_running() 
     assert sleeps == []
     assert transport.calls[2]["json_body"] == {"input": {"name": "LambChat"}, "mode": "async"}
     assert transport.calls[3]["url"] == (
-        "http://127.0.0.1:8000/api/plugins/workflow/workflows/"
-        "wf-approval/runs/approval-run/events"
+        "http://127.0.0.1:8000/api/plugins/workflow/workflows/wf-approval/runs/approval-run/events"
     )
-    assert transport.calls[4]["url"] == "http://127.0.0.1:8000/api/plugins/workflow/approvals/pending?limit=20"
+    assert (
+        transport.calls[4]["url"]
+        == "http://127.0.0.1:8000/api/plugins/workflow/approvals/pending?limit=20"
+    )
 
 
 def test_acceptance_human_approval_fails_when_pending_run_is_missing() -> None:
@@ -1904,7 +1970,9 @@ def test_acceptance_human_approval_fails_when_pending_run_is_missing() -> None:
         WorkflowAcceptance(
             AcceptanceSettings(
                 token="token-1",
-                human_approval_fixture_path=Path("tests/fixtures/workflow/human_approval_resume.json"),
+                human_approval_fixture_path=Path(
+                    "tests/fixtures/workflow/human_approval_resume.json"
+                ),
             ),
             transport=transport,
         ).check_human_approval_resume()
@@ -1943,7 +2011,10 @@ def test_acceptance_optional_version_run_creates_and_runs_specific_versions() ->
                     "workflow_id": "wf-version",
                     "version_id": "wfv-one",
                     "version_number": 1,
-                    "input_schema": {"type": "object", "properties": {"message": {"type": "string"}}},
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"message": {"type": "string"}},
+                    },
                     "status": "draft",
                     "schema_source": "declared",
                     "inferred_fields": [],
@@ -1959,7 +2030,10 @@ def test_acceptance_optional_version_run_creates_and_runs_specific_versions() ->
                     "workflow_id": "wf-version",
                     "version_id": "wfv-two",
                     "version_number": 2,
-                    "input_schema": {"type": "object", "properties": {"message": {"type": "string"}}},
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {"message": {"type": "string"}},
+                    },
                     "status": "draft",
                     "schema_source": "declared",
                     "inferred_fields": [],
@@ -1969,8 +2043,12 @@ def test_acceptance_optional_version_run_creates_and_runs_specific_versions() ->
                     ),
                 }
             ),
-            response(workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-one")),
-            response(workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-two")),
+            response(
+                workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-one")
+            ),
+            response(
+                workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-two")
+            ),
             response(
                 {
                     "run_id": "run-v1",
@@ -2009,12 +2087,29 @@ def test_acceptance_optional_version_run_creates_and_runs_specific_versions() ->
     assert check_names.count("workflow_input_schema") == 2
     assert check_names.count("workflow_io_contract") == 2
     assert "version_scoped_run" in check_names
-    assert transport.calls[9]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/versions"
-    assert transport.calls[9]["json_body"]["source_payload"]["workflow"]["nodes"][1]["data"]["answer"].startswith("version-two")
-    assert transport.calls[10]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/input-schema?version_id=wfv-one"
-    assert transport.calls[11]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/input-schema?version_id=wfv-two"
-    assert transport.calls[12]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/io-contract?version_id=wfv-one"
-    assert transport.calls[13]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/io-contract?version_id=wfv-two"
+    assert (
+        transport.calls[9]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/versions"
+    )
+    assert transport.calls[9]["json_body"]["source_payload"]["workflow"]["nodes"][1]["data"][
+        "answer"
+    ].startswith("version-two")
+    assert (
+        transport.calls[10]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/input-schema?version_id=wfv-one"
+    )
+    assert (
+        transport.calls[11]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/input-schema?version_id=wfv-two"
+    )
+    assert (
+        transport.calls[12]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/io-contract?version_id=wfv-one"
+    )
+    assert (
+        transport.calls[13]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-version/io-contract?version_id=wfv-two"
+    )
     assert transport.calls[14]["json_body"] == {
         "input": {"message": "LambChat"},
         "mode": "sync",
@@ -2063,8 +2158,12 @@ def test_acceptance_version_run_fails_when_specific_version_output_does_not_matc
                     ),
                 }
             ),
-            response(workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-one")),
-            response(workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-two")),
+            response(
+                workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-one")
+            ),
+            response(
+                workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-two")
+            ),
             response(
                 {
                     "run_id": "run-v1",
@@ -2141,7 +2240,11 @@ def test_acceptance_input_schema_requires_callable_interface() -> None:
 
 def test_acceptance_io_contract_fails_when_version_id_does_not_match() -> None:
     transport = FakeTransport(
-        [response(workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-other"))]
+        [
+            response(
+                workflow_http_io_contract_payload(workflow_id="wf-version", version_id="wfv-other")
+            )
+        ]
     )
 
     with pytest.raises(AcceptanceError, match="workflow_io_contract_version_mismatch"):
@@ -2347,7 +2450,9 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
             response(internal_workflow_get_run_failure_response(workflow_id="wf-1")),
             response(internal_workflow_get_run_response(workflow_id="wf-1", run_id="wfr-chat")),
             response(internal_workflow_get_run_response(workflow_id="wf-1", run_id="wfr-team")),
-            response(internal_workflow_get_run_response(workflow_id="wf-1", run_id="wfr-scheduled")),
+            response(
+                internal_workflow_get_run_response(workflow_id="wf-1", run_id="wfr-scheduled")
+            ),
             response({"workflow_id": "wf-1", "status": "published"}),
             response({"runs": [{"run_id": "sync-1", "status": "succeeded"}]}),
             response({"run": {"status": "succeeded"}, "events": workflow_success_events()}),
@@ -2370,8 +2475,13 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
     summary = WorkflowAcceptance(settings, transport=transport).run()
 
     assert summary["status"] == "passed"
-    assert transport.calls[3]["url"] == "http://lambchat.example.test/api/extensions/plugins/workflow/disable"
-    assert transport.calls[12]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=search"
+    assert (
+        transport.calls[3]["url"]
+        == "http://lambchat.example.test/api/extensions/plugins/workflow/disable"
+    )
+    assert (
+        transport.calls[12]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=search"
+    )
     assert transport.calls[12]["json_body"]["plugin_options"] == {
         "workflow": {
             "SELECTED_WORKFLOW_ID": "wf-1",
@@ -2382,7 +2492,9 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
     assert transport.calls[14]["url"] == (
         "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1/runs/wfr-chat/events"
     )
-    assert transport.calls[15]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=team"
+    assert (
+        transport.calls[15]["url"] == "http://lambchat.example.test/api/chat/stream?agent_id=team"
+    )
     assert transport.calls[15]["json_body"]["team_id"] == "team-1"
     assert transport.calls[15]["json_body"]["plugin_options"] == {
         "agent_team": {"SELECTED_TEAM_ID": "team-1"},
@@ -2390,7 +2502,7 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
             "SELECTED_WORKFLOW_ID": "wf-1",
             "SELECTED_WORKFLOW_VERSION_ID": "wfv-1",
             "SELECTED_WORKFLOW_INPUT_JSON": {"items": ["alpha", "beta", "gamma"]},
-        }
+        },
     }
     assert transport.calls[17]["url"] == (
         "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1/runs/wfr-team/events"
@@ -2410,7 +2522,10 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
     assert transport.calls[22]["url"] == (
         "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1/runs/wfr-scheduled/events"
     )
-    assert transport.calls[23]["url"] == "http://lambchat.example.test/api/admin/mcp/lambchat_internal/tools"
+    assert (
+        transport.calls[23]["url"]
+        == "http://lambchat.example.test/api/admin/mcp/lambchat_internal/tools"
+    )
     assert transport.calls[24]["url"] == (
         "http://lambchat.example.test/api/admin/mcp/lambchat_internal/tools/workflow_list/invoke"
     )
@@ -2519,7 +2634,10 @@ def test_acceptance_optional_channels_cover_chat_team_scheduled_and_persistence(
             "next_action_reason": "workflow_run_failed",
         }
     ]
-    assert transport.calls[32]["url"] == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1"
+    assert (
+        transport.calls[32]["url"]
+        == "http://lambchat.example.test/api/plugins/workflow/workflows/wf-1"
+    )
 
 
 def test_acceptance_tool_invocation_uses_custom_fixture_inputs(tmp_path: Path) -> None:
@@ -2583,7 +2701,9 @@ def test_acceptance_tool_invocation_uses_custom_fixture_inputs(tmp_path: Path) -
                         "version_id": "wfv-message",
                         "input_schema": {
                             "type": "object",
-                            "properties": {"message": {"type": "string", "x-lambchat-source": "inferred"}},
+                            "properties": {
+                                "message": {"type": "string", "x-lambchat-source": "inferred"}
+                            },
                         },
                         "output_schema": workflow_schema_output_schema_payload(),
                         "schema_source": "inferred",
@@ -2726,7 +2846,9 @@ def test_acceptance_tool_get_run_inspects_rest_async_run(tmp_path: Path) -> None
                         "version_id": "wfv-message",
                         "input_schema": {
                             "type": "object",
-                            "properties": {"message": {"type": "string", "x-lambchat-source": "inferred"}},
+                            "properties": {
+                                "message": {"type": "string", "x-lambchat-source": "inferred"}
+                            },
                         },
                         "output_schema": workflow_schema_output_schema_payload(),
                         "schema_source": "inferred",
@@ -2757,9 +2879,15 @@ def test_acceptance_tool_get_run_inspects_rest_async_run(tmp_path: Path) -> None
                     },
                 }
             ),
-            response(internal_workflow_get_run_response(workflow_id="wf-message", run_id="wfr-message-tool")),
+            response(
+                internal_workflow_get_run_response(
+                    workflow_id="wf-message", run_id="wfr-message-tool"
+                )
+            ),
             response(internal_workflow_get_run_failure_response(workflow_id="wf-message")),
-            response(internal_workflow_get_run_response(workflow_id="wf-message", run_id="async-message")),
+            response(
+                internal_workflow_get_run_response(workflow_id="wf-message", run_id="async-message")
+            ),
         ]
     )
 
@@ -2804,7 +2932,7 @@ def test_acceptance_scheduled_task_invocation_requires_session_event_context() -
 
     with pytest.raises(AcceptanceError, match="scheduled_task_workflow_event_context_missing"):
         WorkflowAcceptance(
-            AcceptanceSettings(token="token-1", async_timeout=0, poll_interval=0),
+            AcceptanceSettings(token="token-1", async_timeout=1, poll_interval=0),
             transport=transport,
         ).check_scheduled_task_invocation("wf-1", version_id="wfv-1")
 
@@ -2870,12 +2998,12 @@ def test_acceptance_chat_invocation_reads_live_session_stream_for_workflow_event
         "session_id": "chat-session",
         "run_id": "chat-run",
         "version_id": "wfv-1",
-            "workflow_run_id": "wfr-chat",
-            "next_action": "use_output",
-            "next_action_reason": "workflow_run_succeeded",
-            "workflow_input_keys": ["items"],
-            "workflow_event_count": len(workflow_success_events()),
-        }
+        "workflow_run_id": "wfr-chat",
+        "next_action": "use_output",
+        "next_action_reason": "workflow_run_succeeded",
+        "workflow_input_keys": ["items"],
+        "workflow_event_count": len(workflow_success_events()),
+    }
 
 
 def test_acceptance_session_workflow_event_falls_back_to_stored_events_after_stream_error() -> None:
@@ -2999,7 +3127,9 @@ def test_acceptance_checks_session_workflow_run_events() -> None:
 
 
 def test_acceptance_session_workflow_event_requires_success_status() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     with pytest.raises(AcceptanceError, match="chat_workflow_run_status_unexpected"):
         acceptance.check_session_workflow_run_events(
@@ -3020,7 +3150,9 @@ def test_acceptance_session_workflow_event_requires_success_status() -> None:
 
 
 def test_acceptance_session_workflow_event_requires_interface() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     with pytest.raises(AcceptanceError, match="chat_workflow_interface_missing"):
         acceptance.check_session_workflow_run_events(
@@ -3042,7 +3174,9 @@ def test_acceptance_session_workflow_event_requires_interface() -> None:
 
 
 def test_acceptance_checks_session_workflow_failure_event_without_workflow_run_id() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     data = acceptance.check_session_workflow_failure_event(
         {
@@ -3070,7 +3204,9 @@ def test_acceptance_checks_session_workflow_failure_event_without_workflow_run_i
 
 
 def test_acceptance_failed_pre_run_event_requires_error_and_missing_run_id() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     with pytest.raises(AcceptanceError, match="chat_failed_pre_run_workflow_error_missing"):
         acceptance.check_session_workflow_failure_event(
@@ -3122,7 +3258,9 @@ def test_acceptance_failed_pre_run_event_requires_error_and_missing_run_id() -> 
 
 
 def test_acceptance_session_workflow_event_requires_workflow_run_id() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     with pytest.raises(AcceptanceError, match="agent_team_workflow_run_id_missing"):
         acceptance.check_session_workflow_run_events(
@@ -3142,7 +3280,9 @@ def test_acceptance_session_workflow_event_requires_workflow_run_id() -> None:
 
 
 def test_acceptance_session_workflow_event_requires_output_contract() -> None:
-    acceptance = WorkflowAcceptance(AcceptanceSettings(token="token-1"), transport=FakeTransport([]))
+    acceptance = WorkflowAcceptance(
+        AcceptanceSettings(token="token-1"), transport=FakeTransport([])
+    )
 
     with pytest.raises(AcceptanceError, match="chat_workflow_io_contract_missing"):
         acceptance.check_session_workflow_run_events(
@@ -3517,7 +3657,9 @@ def test_acceptance_invokes_internal_workflow_schema_tool() -> None:
     assert result["input_schema"]["properties"]["items"]["type"] == "array"
     assert result["output_schema"]["properties"]["answer"]["type"] == "string"
     schema_record = next(
-        item for item in acceptance.recorder.checks if item.get("name") == "internal_tool_schema_invocation"
+        item
+        for item in acceptance.recorder.checks
+        if item.get("name") == "internal_tool_schema_invocation"
     )
     assert schema_record["input_fields"] == ["items"]
     assert schema_record["output_fields"] == ["answer"]
@@ -3586,7 +3728,9 @@ def test_acceptance_internal_workflow_schema_tool_requires_callable_interface() 
         ]
     )
 
-    with pytest.raises(AcceptanceError, match="internal_workflow_get_schema_workflow_interface_missing"):
+    with pytest.raises(
+        AcceptanceError, match="internal_workflow_get_schema_workflow_interface_missing"
+    ):
         WorkflowAcceptance(
             AcceptanceSettings(token="token-1"),
             transport=transport,
@@ -3700,7 +3844,9 @@ def test_acceptance_internal_workflow_schema_tool_requires_fixture_inputs() -> N
         ]
     )
 
-    with pytest.raises(AcceptanceError, match="internal_workflow_get_schema_missing_fixture_inputs"):
+    with pytest.raises(
+        AcceptanceError, match="internal_workflow_get_schema_missing_fixture_inputs"
+    ):
         WorkflowAcceptance(
             AcceptanceSettings(token="token-1"),
             transport=transport,
@@ -3730,7 +3876,9 @@ def test_acceptance_internal_workflow_run_tool_requires_started_event() -> None:
         ]
     )
 
-    with pytest.raises(AcceptanceError, match="internal_workflow_run_started_event_missing:wfr-tool"):
+    with pytest.raises(
+        AcceptanceError, match="internal_workflow_run_started_event_missing:wfr-tool"
+    ):
         WorkflowAcceptance(
             AcceptanceSettings(token="token-1"),
             transport=transport,

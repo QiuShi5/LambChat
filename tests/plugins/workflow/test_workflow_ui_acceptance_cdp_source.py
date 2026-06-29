@@ -3,16 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_ui_acceptance_cdp.py"
-INTERACTION_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_editor_interaction_cdp.py"
-TOOL_APPROVAL_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_tool_approval_result_cdp.py"
-CHAT_REPLAY_APPROVAL_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_chat_replay_approval_cdp.py"
-AGENT_TEAM_APPROVAL_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_agent_team_approval_cdp.py"
-SCHEDULED_APPROVAL_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_scheduled_approval_cdp.py"
-DISABLED_CONTRIBUTIONS_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_disabled_contributions_cdp.py"
-CHAT_SELECTED_ENTRY_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_chat_selected_entry_cdp.py"
-AGENT_TEAM_SELECTED_ENTRY_CDP_SCRIPT = REPO_ROOT / "goal-1" / "workflow_agent_team_selected_entry_cdp.py"
-MOCK_SCRIPT = REPO_ROOT / "goal-1" / "browser_workflow_mock.mjs"
+BROWSER_FIXTURES = REPO_ROOT / "tests" / "fixtures" / "workflow" / "browser"
+CDP_SCRIPT = BROWSER_FIXTURES / "workflow_ui_acceptance_cdp.py"
+INTERACTION_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_editor_interaction_cdp.py"
+TOOL_APPROVAL_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_tool_approval_result_cdp.py"
+CHAT_REPLAY_APPROVAL_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_chat_replay_approval_cdp.py"
+AGENT_TEAM_APPROVAL_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_agent_team_approval_cdp.py"
+SCHEDULED_APPROVAL_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_scheduled_approval_cdp.py"
+DISABLED_CONTRIBUTIONS_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_disabled_contributions_cdp.py"
+CHAT_SELECTED_ENTRY_CDP_SCRIPT = BROWSER_FIXTURES / "workflow_chat_selected_entry_cdp.py"
+AGENT_TEAM_SELECTED_ENTRY_CDP_SCRIPT = (
+    BROWSER_FIXTURES / "workflow_agent_team_selected_entry_cdp.py"
+)
+MOCK_SCRIPT = BROWSER_FIXTURES / "browser_workflow_mock.mjs"
 
 
 def test_cdp_ui_acceptance_saves_graph_before_publish_and_run() -> None:
@@ -25,7 +28,9 @@ def test_cdp_ui_acceptance_saves_graph_before_publish_and_run() -> None:
 
     save_index = source.index('click_testid(client, "workflow-save-graph", timeout=30)')
     publish_index = source.index('click_testid(client, "workflow-publish-latest", timeout=30)')
-    run_index = source.index('click_testid(client, "workflow-run-version", timeout=30)', publish_index)
+    run_index = source.index(
+        'click_testid(client, "workflow-run-version", timeout=30)', publish_index
+    )
     assert save_index < publish_index < run_index
 
 
@@ -40,11 +45,20 @@ def test_cdp_ui_acceptance_requires_saved_version_for_publish_and_run() -> None:
     assert "humanApprovalNodeData:" in source
     assert "publishedVersionId:" in source
     assert '> after_import_evidence.get("versionCount", 0)' in source
-    assert 'evidence.get("latestVersionId") != after_import_evidence.get("latestVersionId")' in source
+    assert (
+        'evidence.get("latestVersionId") != after_import_evidence.get("latestVersionId")' in source
+    )
     assert 'and "human_approval" in evidence.get("latestVersionNodeTypes", [])' in source
-    assert '(evidence.get("humanApprovalNodeData") or {}).get("instructions") == "Approve UI acceptance {{message}}"' in source
-    assert '(evidence.get("humanApprovalNodeData") or {}).get("assignee") == "qa-reviewer"' in source
-    assert '(evidence.get("humanApprovalNodeData") or {}).get("output_key") == "qa_approval"' in source
+    assert (
+        '(evidence.get("humanApprovalNodeData") or {}).get("instructions") == "Approve UI acceptance {{message}}"'
+        in source
+    )
+    assert (
+        '(evidence.get("humanApprovalNodeData") or {}).get("assignee") == "qa-reviewer"' in source
+    )
+    assert (
+        '(evidence.get("humanApprovalNodeData") or {}).get("output_key") == "qa_approval"' in source
+    )
     assert 'and evidence.get("publishedVersionId") == saved_version_id' in source
     assert 'and evidence.get("latestRun", {}).get("version_id") == saved_version_id' in source
     assert 'and "answer" in evidence.get("eventNodeIds", [])' in source
@@ -60,7 +74,10 @@ def test_cdp_ui_acceptance_records_node_event_evidence() -> None:
     assert "counts[event.node_id] = (counts[event.node_id] || 0) + 1;" in source
     assert "eventCount: eventList.length" in source
     assert "eventTypes: eventList.map((event) => event.event_type)" in source
-    assert "eventNodeIds: Array.from(new Set(eventList.map((event) => event.node_id).filter(Boolean)))" in source
+    assert (
+        "eventNodeIds: Array.from(new Set(eventList.map((event) => event.node_id).filter(Boolean)))"
+        in source
+    )
     assert "eventNodeCounts," in source
 
 
@@ -72,10 +89,13 @@ def test_cdp_ui_acceptance_creates_and_configures_human_approval_node_before_sav
     assert "def add_human_approval_node" in source
     assert "def human_approval_editor_state" in source
     assert 'click_testid(client, "workflow-node-add-human_approval", timeout=30)' in source
-    assert 'set_form_field_by_title(client, "Approval instructions", "Approve UI acceptance {{message}}")' in source
+    assert (
+        'set_form_field_by_title(client, "Approval instructions", "Approve UI acceptance {{message}}")'
+        in source
+    )
     assert 'set_form_field_by_title(client, "Approval assignee", "qa-reviewer")' in source
     assert 'set_form_field_by_title(client, "Approval output key", "qa_approval")' in source
-    assert 'selectedNodeType: nodeTypeSelect?.value || null' in source
+    assert "selectedNodeType: nodeTypeSelect?.value || null" in source
     assert '"human_approval_editor_evidence": human_approval_editor_evidence' in source
 
     add_index = source.index("human_approval_editor_evidence = add_human_approval_node(client)")
@@ -90,7 +110,7 @@ def test_cdp_ui_acceptance_verifies_node_event_focus_and_rename_reset() -> None:
     assert "def run_events_panel_state" in source
     assert "def click_run_event_node_filter" in source
     assert "def rename_selected_workflow_node" in source
-    assert 'document.querySelector(\'[data-testid="workflow-selected-node-id"]\')' in source
+    assert "document.querySelector('[data-testid=\"workflow-selected-node-id\"]')" in source
     assert "hasFocusedAnswerCount: /Run Events\\\\s+2\\\\/\\\\d+/.test(text)" in source
     assert "hasAllEventsCount: /Run Events\\\\s+\\\\d+\\\\s+All events/.test(text)" in source
     assert 'click_run_event_node_filter(client, "answer", 2, timeout=30)' in source
@@ -120,7 +140,10 @@ def test_cdp_ui_acceptance_runs_human_approval_pause_and_resume_flow() -> None:
     assert "def run_human_approval_flow" in source
     assert 'choose_run_mode(client, "async")' in source
     assert 'click_testid(client, "workflow-run-version", timeout=30)' in source
-    assert 'set_form_field_by_placeholder(client, "Approval comment", "CDP approval comment")' in source
+    assert (
+        'set_form_field_by_placeholder(client, "Approval comment", "CDP approval comment")'
+        in source
+    )
     assert 'click_testid(client, "workflow-approval-approve", timeout=30)' in source
     assert ').get("latestRun", {}).get("status") == "paused"' in source
     assert 'evidence.get("pendingApprovalCount", 0) > 0' in source
@@ -128,15 +151,33 @@ def test_cdp_ui_acceptance_runs_human_approval_pause_and_resume_flow() -> None:
     assert ').get("latestRun", {}).get("status") == "succeeded"' in source
     assert '"human_approval_resumed" in evidence.get("eventTypes", [])' in source
     assert 'get("answer") == "Approved CDP approval comment"' in source
-    assert 'human_approval_run_evidence = run_human_approval_flow(client, approval_workflow_name)' in source
-    assert '"approval_after_import": str(out_dir / f"workflow-ui-approval-after-import-{stamp}.png")' in source
-    assert '"approval_after_resume": str(out_dir / f"workflow-ui-approval-after-resume-{stamp}.png")' in source
+    assert (
+        "human_approval_run_evidence = run_human_approval_flow(client, approval_workflow_name)"
+        in source
+    )
+    assert (
+        '"approval_after_import": str(out_dir / f"workflow-ui-approval-after-import-{stamp}.png")'
+        in source
+    )
+    assert (
+        '"approval_after_resume": str(out_dir / f"workflow-ui-approval-after-resume-{stamp}.png")'
+        in source
+    )
     assert '"human_approval_run_evidence": human_approval_run_evidence' in source
-    assert '"human_approval_run_status": human_approval_run_evidence["resumed_evidence"]["latestRun"]["status"]' in source
+    assert (
+        '"human_approval_run_status": human_approval_run_evidence["resumed_evidence"]["latestRun"]["status"]'
+        in source
+    )
 
-    baseline_run_index = source.index('click_run_event_node_filter(client, "answer", 2, timeout=30)')
-    approval_import_index = source.index("fill_import_form(client, approval_workflow_name, approval_dsl_text)")
-    approval_run_index = source.index("human_approval_run_evidence = run_human_approval_flow(client, approval_workflow_name)")
+    baseline_run_index = source.index(
+        'click_run_event_node_filter(client, "answer", 2, timeout=30)'
+    )
+    approval_import_index = source.index(
+        "fill_import_form(client, approval_workflow_name, approval_dsl_text)"
+    )
+    approval_run_index = source.index(
+        "human_approval_run_evidence = run_human_approval_flow(client, approval_workflow_name)"
+    )
     mobile_index = source.index('"workflow-ui-mobile-{stamp}.png"')
     assert baseline_run_index < approval_import_index < approval_run_index < mobile_index
 
@@ -152,17 +193,24 @@ def test_cdp_ui_acceptance_uses_stable_run_controls_and_canvas_status_selectors(
     assert "workflow-canvas-node-start" in source
     assert "workflow-canvas-node-answer" in source
     assert "canvas_run_status_evidence = wait_until" in source
-    assert '(state := canvas_run_status_state(client)).get("startStatus") in {"succeeded", "failed", "paused", "running"}' in source
+    assert (
+        '(state := canvas_run_status_state(client)).get("startStatus") in {"succeeded", "failed", "paused", "running"}'
+        in source
+    )
     assert 'state.get("answerStatus") in {"succeeded", "failed", "paused", "running"}' in source
 
     choose_index = source.index('choose_run_mode(client, "sync")')
-    run_index = source.index('click_testid(client, "workflow-run-version", timeout=30)', choose_index)
+    run_index = source.index(
+        'click_testid(client, "workflow-run-version", timeout=30)', choose_index
+    )
     canvas_index = source.index("canvas_run_status_evidence = wait_until", run_index)
     focus_index = source.index('click_run_event_node_filter(client, "answer", 2, timeout=30)')
     assert choose_index < run_index < canvas_index < focus_index
 
 
-def test_cdp_ui_acceptance_uses_stable_action_buttons_for_import_save_publish_and_approval() -> None:
+def test_cdp_ui_acceptance_uses_stable_action_buttons_for_import_save_publish_and_approval() -> (
+    None
+):
     source = CDP_SCRIPT.read_text(encoding="utf-8")
 
     assert 'click_testid(client, "workflow-import-submit", timeout=20)' in source
@@ -175,9 +223,15 @@ def test_cdp_ui_acceptance_uses_stable_action_buttons_for_import_save_publish_an
     assert 'click_button(client, "Approve", timeout=30)' not in source
 
     import_index = source.index('click_testid(client, "workflow-import-submit", timeout=20)')
-    save_index = source.index('click_testid(client, "workflow-save-graph", timeout=30)', import_index)
-    publish_index = source.index('click_testid(client, "workflow-publish-latest", timeout=30)', save_index)
-    run_index = source.index('click_testid(client, "workflow-run-version", timeout=30)', publish_index)
+    save_index = source.index(
+        'click_testid(client, "workflow-save-graph", timeout=30)', import_index
+    )
+    publish_index = source.index(
+        'click_testid(client, "workflow-publish-latest", timeout=30)', save_index
+    )
+    run_index = source.index(
+        'click_testid(client, "workflow-run-version", timeout=30)', publish_index
+    )
     assert import_index < save_index < publish_index < run_index
 
 
@@ -187,13 +241,24 @@ def test_cdp_ui_acceptance_verifies_dedicated_editor_and_run_routes() -> None:
     assert "def workflow_route_panel_state" in source
     assert "hasGraphEditor: text.includes('Graph Editor')" in source
     assert "hasRunEvents: text.includes('Run Events')" in source
-    assert "hasCanvas: Boolean(document.querySelector('[data-testid=\"workflow-canvas\"]'))" in source
-    assert "hasReactFlow: Boolean(document.querySelector('[data-testid=\"workflow-react-flow\"]'))" in source
-    assert "hasNodePalette: Boolean(document.querySelector('[data-testid=\"workflow-node-palette\"]'))" in source
-    assert 'editor_route_path = f"/workflows/{quote(workflow_id, safe=\'\')}/editor"' in source
+    assert (
+        "hasCanvas: Boolean(document.querySelector('[data-testid=\"workflow-canvas\"]'))" in source
+    )
+    assert (
+        "hasReactFlow: Boolean(document.querySelector('[data-testid=\"workflow-react-flow\"]'))"
+        in source
+    )
+    assert (
+        "hasNodePalette: Boolean(document.querySelector('[data-testid=\"workflow-node-palette\"]'))"
+        in source
+    )
+    assert "editor_route_path = f\"/workflows/{quote(workflow_id, safe='')}/editor\"" in source
     assert "navigate(client, base_url + editor_route_path)" in source
     assert "editor_route_evidence = wait_until" in source
-    assert 'run_route_path = f"/workflows/{quote(workflow_id, safe=\'\')}/runs/{quote(latest_run_id, safe=\'\')}"' in source
+    assert (
+        "run_route_path = f\"/workflows/{quote(workflow_id, safe='')}/runs/{quote(latest_run_id, safe='')}\""
+        in source
+    )
     assert "navigate(client, base_url + run_route_path)" in source
     assert "run_route_evidence = wait_until" in source
     assert '"editor_route": str(out_dir / f"workflow-ui-editor-route-{stamp}.png")' in source
@@ -203,9 +268,13 @@ def test_cdp_ui_acceptance_verifies_dedicated_editor_and_run_routes() -> None:
     assert '"editor_route_path": editor_route_evidence["path"]' in source
     assert '"run_route_path": run_route_evidence["path"]' in source
 
-    import_evidence_index = source.index("after_import_evidence = page_fetch_evidence(client, workflow_name)")
+    import_evidence_index = source.index(
+        "after_import_evidence = page_fetch_evidence(client, workflow_name)"
+    )
     editor_nav_index = source.index("navigate(client, base_url + editor_route_path)")
-    add_node_index = source.index("human_approval_editor_evidence = add_human_approval_node(client)")
+    add_node_index = source.index(
+        "human_approval_editor_evidence = add_human_approval_node(client)"
+    )
     run_index = source.index('click_testid(client, "workflow-run-version", timeout=30)')
     run_nav_index = source.index("navigate(client, base_url + run_route_path)")
     focus_index = source.index('click_run_event_node_filter(client, "answer", 2, timeout=30)')
@@ -225,9 +294,18 @@ def test_browser_workflow_mock_uses_real_workflow_frontend_contribution_shape() 
     assert 'id: "workflow:workflow-run-tab"' in source
     assert 'path: "/workflows/:workflowId/runs/:runId"' in source
     assert 'panel: "workflow:workflow-run-panel"' in source
-    assert 'id: "workflow:workflows-panel", tab: "workflows", renderer: "workflow.WorkflowPanel"' in source
-    assert 'id: "workflow:workflow-editor-panel", tab: "workflows-editor", renderer: "workflow.WorkflowPanel"' in source
-    assert 'id: "workflow:workflow-run-panel", tab: "workflows-run", renderer: "workflow.WorkflowPanel"' in source
+    assert (
+        'id: "workflow:workflows-panel", tab: "workflows", renderer: "workflow.WorkflowPanel"'
+        in source
+    )
+    assert (
+        'id: "workflow:workflow-editor-panel", tab: "workflows-editor", renderer: "workflow.WorkflowPanel"'
+        in source
+    )
+    assert (
+        'id: "workflow:workflow-run-panel", tab: "workflows-run", renderer: "workflow.WorkflowPanel"'
+        in source
+    )
     assert 'id: "workflow:workflows-nav"' in source
 
 
@@ -238,25 +316,37 @@ def test_browser_workflow_mock_can_script_drop_connect_and_save_editor_graph() -
     assert 'schema_tool: "workflow_get_schema"' in source
     assert 'schema_field: "input_schema"' in source
     assert 'schema_field: "output_schema"' in source
-    assert "interface: workflowCallableInterface(\"wf-browser\", \"wfv-browser-2\")" in source
+    assert 'interface: workflowCallableInterface("wf-browser", "wfv-browser-2")' in source
     assert "function ioContractForVersion" in source
-    assert "interface: workflowCallableInterface(\"wf-browser\", activeVersion.version_id)" in source
+    assert 'interface: workflowCallableInterface("wf-browser", activeVersion.version_id)' in source
     assert "jsonReply(res, ioContractForVersion(currentWorkflowVersion()))" in source
     assert 'window.__codexDropWorkflowNode = (nodeType = "answer", presetId) =>' in source
-    assert 'window.__codexConnectWorkflowNodes = async (sourceNodeId = "start", targetNodeId = "node_5") =>' in source
-    assert 'sourceCard.click();' in source
+    assert (
+        'window.__codexConnectWorkflowNodes = async (sourceNodeId = "start", targetNodeId = "node_5") =>'
+        in source
+    )
+    assert "sourceCard.click();" in source
     assert "requestAnimationFrame(() => requestAnimationFrame(resolve))" in source
-    assert "document.querySelector('[data-testid=\"workflow-add-edge-target-' + sourceNodeId + '\"]')" in source
-    assert 'setter.call(targetSelect, targetNodeId);' in source
+    assert (
+        "document.querySelector('[data-testid=\"workflow-add-edge-target-' + sourceNodeId + '\"]')"
+        in source
+    )
+    assert "setter.call(targetSelect, targetNodeId);" in source
     assert 'targetSelect.dispatchEvent(new Event("change", { bubbles: true }));' in source
     assert "window.__codexWorkflowEditorEvidence = () =>" in source
     assert 'nodeCards.includes("workflow-node-card-node_5")' in source
-    assert 'edgeCards.some((edge) => edge.text.includes("start") && edge.text.includes("node_5"))' in source
+    assert (
+        'edgeCards.some((edge) => edge.text.includes("start") && edge.text.includes("node_5"))'
+        in source
+    )
     assert "function savedInternalModelFromVersionBody(body)" in source
     assert "body?.source_payload?.workflow" in source
     assert 'format: "lambchat.workflow.v1"' in source
     assert "internal_model: savedInternalModelFromVersionBody(lastWorkflowVersionBody)" in source
-    assert "source_payload: lastWorkflowVersionBody?.source_payload ?? version.source_payload" in source
+    assert (
+        "source_payload: lastWorkflowVersionBody?.source_payload ?? version.source_payload"
+        in source
+    )
     assert 'data-testid": "codex-connect-start-to-dropped-node"' in source
     assert 'window.__codexConnectWorkflowNodes("start", "node_5");' in source
     assert "last_workflow_version_body: lastWorkflowVersionBody" in source
@@ -290,16 +380,24 @@ def test_editor_interaction_cdp_replays_drop_connect_save_smoke() -> None:
     assert '"interface_evidence": interface_evidence' in source
     assert "def click_editor_testid" in source
     assert ".find((item) => item.getAttribute('data-testid') === {testid_json})" in source
-    assert 'click_editor_testid(client, "codex-drop-answer-on-workflow-canvas", timeout=30)' in source
-    assert 'click_editor_testid(client, "codex-connect-start-to-dropped-node", timeout=30)' in source
+    assert (
+        'click_editor_testid(client, "codex-drop-answer-on-workflow-canvas", timeout=30)' in source
+    )
+    assert (
+        'click_editor_testid(client, "codex-connect-start-to-dropped-node", timeout=30)' in source
+    )
     assert 'click_editor_testid(client, "workflow-save-graph", timeout=30)' in source
     assert 'f"workflow-editor-interaction-{stamp}.png"' in source
     assert 'f"workflow-editor-interaction-{stamp}.json"' in source
 
     navigate_index = source.index("navigate(client, base_url + WORKFLOW_EDITOR_SMOKE_PATH)")
     interface_index = source.index("interface_evidence = wait_until", navigate_index)
-    drop_index = source.index('click_editor_testid(client, "codex-drop-answer-on-workflow-canvas", timeout=30)')
-    connect_index = source.index('click_editor_testid(client, "codex-connect-start-to-dropped-node", timeout=30)')
+    drop_index = source.index(
+        'click_editor_testid(client, "codex-drop-answer-on-workflow-canvas", timeout=30)'
+    )
+    connect_index = source.index(
+        'click_editor_testid(client, "codex-connect-start-to-dropped-node", timeout=30)'
+    )
     save_index = source.index('click_editor_testid(client, "workflow-save-graph", timeout=30)')
     log_index = source.index("saved_log_evidence = wait_until")
     assert navigate_index < interface_index < drop_index < connect_index < save_index < log_index
@@ -323,7 +421,10 @@ def test_tool_approval_result_cdp_resumes_paused_workflow_from_result_card() -> 
     assert "navigate(client, base_url + TOOL_APPROVAL_SMOKE_PATH)" in source
     assert "click_workflow_result_pill(client)" in source
     assert 'click_button(client, "Approve", timeout=30)' in source
-    assert '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"' in source
+    assert (
+        '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"'
+        in source
+    )
     assert '(evidence.get("last_workflow_resume_body") or {}).get("approved") is True' in source
     assert 'f"workflow-tool-approval-result-{stamp}.png"' in source
     assert 'f"workflow-tool-approval-result-{stamp}.json"' in source
@@ -340,7 +441,10 @@ def test_tool_approval_result_cdp_resumes_paused_workflow_from_result_card() -> 
 def test_chat_replay_approval_cdp_resumes_replayed_paused_workflow_tool_result() -> None:
     source = CHAT_REPLAY_APPROVAL_CDP_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'CHAT_REPLAY_APPROVAL_SMOKE_PATH = "/codex/chat-session-replay-workflow-approval-tool-smoke"' in source
+    assert (
+        'CHAT_REPLAY_APPROVAL_SMOKE_PATH = "/codex/chat-session-replay-workflow-approval-tool-smoke"'
+        in source
+    )
     assert "from workflow_tool_approval_result_cdp import" in source
     assert "approval_card_evidence" in source
     assert "click_workflow_result_pill" in source
@@ -357,7 +461,10 @@ def test_chat_replay_approval_cdp_resumes_replayed_paused_workflow_tool_result()
     assert "click_workflow_tool_pill(client)" in source
     assert "click_workflow_result_pill(client)" in source
     assert 'click_button(client, "Approve", timeout=30)' in source
-    assert '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"' in source
+    assert (
+        '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"'
+        in source
+    )
     assert 'f"workflow-chat-replay-approval-{stamp}.png"' in source
     assert 'f"workflow-chat-replay-approval-{stamp}.json"' in source
 
@@ -368,13 +475,24 @@ def test_chat_replay_approval_cdp_resumes_replayed_paused_workflow_tool_result()
     before_index = source.index("before_evidence = wait_until", result_index)
     approve_index = source.index('click_button(client, "Approve", timeout=30)')
     after_index = source.index("after_evidence = wait_until", approve_index)
-    assert navigate_index < replay_index < tool_index < result_index < before_index < approve_index < after_index
+    assert (
+        navigate_index
+        < replay_index
+        < tool_index
+        < result_index
+        < before_index
+        < approve_index
+        < after_index
+    )
 
 
 def test_agent_team_approval_cdp_resumes_nested_paused_workflow_run() -> None:
     source = AGENT_TEAM_APPROVAL_CDP_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'AGENT_TEAM_APPROVAL_SMOKE_PATH = "/codex/agent-team-replay-workflow-approval-smoke"' in source
+    assert (
+        'AGENT_TEAM_APPROVAL_SMOKE_PATH = "/codex/agent-team-replay-workflow-approval-smoke"'
+        in source
+    )
     assert "from workflow_tool_approval_result_cdp import" in source
     assert "approval_card_evidence" in source
     assert "click_workflow_result_pill" in source
@@ -399,7 +517,10 @@ def test_agent_team_approval_cdp_resumes_nested_paused_workflow_run() -> None:
     assert "click_agent_team_processing_section(client)" in source
     assert "click_workflow_result_pill(client)" in source
     assert 'click_button(client, "Approve", timeout=30)' in source
-    assert '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"' in source
+    assert (
+        '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"'
+        in source
+    )
     assert 'f"workflow-agent-team-approval-{stamp}.png"' in source
     assert 'f"workflow-agent-team-approval-{stamp}.json"' in source
 
@@ -411,18 +532,33 @@ def test_agent_team_approval_cdp_resumes_nested_paused_workflow_run() -> None:
     before_index = source.index("before_evidence = wait_until", result_index)
     approve_index = source.index('click_button(client, "Approve", timeout=30)')
     after_index = source.index("after_evidence = wait_until", approve_index)
-    assert navigate_index < replay_index < member_index < section_index < result_index < before_index < approve_index < after_index
+    assert (
+        navigate_index
+        < replay_index
+        < member_index
+        < section_index
+        < result_index
+        < before_index
+        < approve_index
+        < after_index
+    )
 
 
 def test_scheduled_approval_cdp_exposes_resume_handoff_and_run_route() -> None:
     source = SCHEDULED_APPROVAL_CDP_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'SCHEDULED_APPROVAL_SMOKE_PATH = "/codex/scheduled-workflow-approval-result-smoke"' in source
+    assert (
+        'SCHEDULED_APPROVAL_SMOKE_PATH = "/codex/scheduled-workflow-approval-result-smoke"'
+        in source
+    )
     assert "def scheduled_approval_evidence" in source
     assert "bodyText.includes('Workflow results')" in source
     assert "bodyText.includes('Browser approval')" in source
     assert "bodyText.includes('workflow_resume')" in source
-    assert "bodyText.includes('/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume')" in source
+    assert (
+        "bodyText.includes('/api/plugins/workflow/workflows/wf-browser/runs/run-approval-browser/resume')"
+        in source
+    )
     assert "bodyText.includes('/api/plugins/workflow/approvals/pending')" in source
     assert "window.__scheduledWorkflowApprovalSmokeLocation" in source
     assert "def workflow_run_page_approval_evidence" in source
@@ -436,7 +572,10 @@ def test_scheduled_approval_cdp_exposes_resume_handoff_and_run_route() -> None:
     assert "click_scheduled_workflow_card(client)" in source
     assert '== "/workflows/wf-browser/runs/run-approval-browser"' in source
     assert 'click_button(client, "Approve", timeout=30)' in source
-    assert '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"' in source
+    assert (
+        '(evidence := request_log_evidence(client)).get("approval_run_state") == "resumed"'
+        in source
+    )
     assert '(evidence.get("last_workflow_resume_body") or {}).get("approved") is True' in source
     assert 'f"workflow-scheduled-approval-{stamp}.png"' in source
     assert 'f"workflow-scheduled-approval-{stamp}.json"' in source
@@ -448,14 +587,25 @@ def test_scheduled_approval_cdp_exposes_resume_handoff_and_run_route() -> None:
     run_page_index = source.index("run_page_before = wait_until", route_index)
     approve_index = source.index('click_button(client, "Approve", timeout=30)', run_page_index)
     after_index = source.index("run_page_after = wait_until", approve_index)
-    assert navigate_index < before_index < click_index < route_index < run_page_index < approve_index < after_index
+    assert (
+        navigate_index
+        < before_index
+        < click_index
+        < route_index
+        < run_page_index
+        < approve_index
+        < after_index
+    )
 
 
 def test_disabled_workflow_contributions_cdp_proves_runtime_filtering() -> None:
     source = DISABLED_CONTRIBUTIONS_CDP_SCRIPT.read_text(encoding="utf-8")
     mock_source = MOCK_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'DISABLED_CONTRIBUTIONS_SMOKE_PATH = "/codex/disabled-workflow-contributions-smoke"' in source
+    assert (
+        'DISABLED_CONTRIBUTIONS_SMOKE_PATH = "/codex/disabled-workflow-contributions-smoke"'
+        in source
+    )
     assert "def disabled_contribution_evidence" in source
     assert "window.__codexDisabledWorkflowContributionEvidence" in source
     assert "enabledHasWorkflowRoutes" in source
@@ -508,9 +658,9 @@ def test_chat_selected_entry_cdp_proves_chat_uses_workflow_entry_exit() -> None:
     assert "runExitField: runBody.interface?.exit?.field" in source
     assert "def assert_selected_entry" in source
     assert "SELECTED_WORKFLOW_INPUT_JSON" in source
-    assert "runSource\") != \"chat_selected_workflow\"" in source
-    assert "runEntryTool\") != \"workflow_run\"" in source
-    assert "runExitField\") != \"output\"" in source
+    assert 'runSource") != "chat_selected_workflow"' in source
+    assert 'runEntryTool") != "workflow_run"' in source
+    assert 'runExitField") != "output"' in source
     assert "def run_chat_selected_entry" in source
     assert "navigate(client, base_url + CHAT_SELECTED_ENTRY_SMOKE_PATH)" in source
     assert 'click_testid(client, "codex-send-selected-workflow-chat", timeout=30)' in source
@@ -519,27 +669,34 @@ def test_chat_selected_entry_cdp_proves_chat_uses_workflow_entry_exit() -> None:
     assert 'f"workflow-chat-selected-entry-{stamp}.json"' in source
 
     navigate_index = source.index("navigate(client, base_url + CHAT_SELECTED_ENTRY_SMOKE_PATH)")
-    click_index = source.index('click_testid(client, "codex-send-selected-workflow-chat", timeout=30)')
+    click_index = source.index(
+        'click_testid(client, "codex-send-selected-workflow-chat", timeout=30)'
+    )
     evidence_index = source.index("evidence = wait_until", click_index)
     log_index = source.index("request_log = wait_until", evidence_index)
     assert_index = source.index("assert_selected_entry(evidence, request_log)", log_index)
     screenshot_index = source.index("screenshot_path = out_dir", assert_index)
-    assert navigate_index < click_index < evidence_index < log_index < assert_index < screenshot_index
+    assert (
+        navigate_index < click_index < evidence_index < log_index < assert_index < screenshot_index
+    )
 
     assert "function workflowChatSelectedEntrySmokeHtml" in mock_source
     assert "/codex/workflow-chat-selected-entry-smoke" in mock_source
-    assert "SELECTED_WORKFLOW_ID: \"wf-browser\"" in mock_source
-    assert "SELECTED_WORKFLOW_VERSION_ID: \"wfv-browser-2\"" in mock_source
+    assert 'SELECTED_WORKFLOW_ID: "wf-browser"' in mock_source
+    assert 'SELECTED_WORKFLOW_VERSION_ID: "wfv-browser-2"' in mock_source
     assert "SELECTED_WORKFLOW_INPUT_JSON" in mock_source
-    assert 'const buttonTestId = agentTeamMode' in mock_source
+    assert "const buttonTestId = agentTeamMode" in mock_source
     assert '"codex-send-selected-workflow-chat"' in mock_source
     assert '"data-testid": buttonTestId' in mock_source
     assert "processMessageEvent" in mock_source
     assert "MessagePartRenderer" in mock_source
-    assert 'const evidenceHook = agentTeamMode' in mock_source
+    assert "const evidenceHook = agentTeamMode" in mock_source
     assert '"__workflowChatSelectedEntryEvidence"' in mock_source
     assert "window[evidenceHook]" in mock_source
-    assert 'source: selectedTeamId ? "agent_team_selected_workflow" : "chat_selected_workflow"' in mock_source
+    assert (
+        'source: selectedTeamId ? "agent_team_selected_workflow" : "chat_selected_workflow"'
+        in mock_source
+    )
     assert "interface: workflowCallableInterface(" in mock_source
 
 
@@ -547,7 +704,10 @@ def test_agent_team_selected_entry_cdp_proves_live_team_uses_workflow_entry_exit
     source = AGENT_TEAM_SELECTED_ENTRY_CDP_SCRIPT.read_text(encoding="utf-8")
     mock_source = MOCK_SCRIPT.read_text(encoding="utf-8")
 
-    assert 'AGENT_TEAM_SELECTED_ENTRY_SMOKE_PATH = "/codex/workflow-agent-team-selected-entry-smoke"' in source
+    assert (
+        'AGENT_TEAM_SELECTED_ENTRY_SMOKE_PATH = "/codex/workflow-agent-team-selected-entry-smoke"'
+        in source
+    )
     assert "def agent_team_selected_entry_evidence" in source
     assert "window.__workflowAgentTeamSelectedEntryEvidence" in source
     assert "hasSubagentPart" in source
@@ -566,31 +726,41 @@ def test_agent_team_selected_entry_cdp_proves_live_team_uses_workflow_entry_exit
     assert "callerPluginId: runBody.caller_plugin_id" in source
     assert "runEntryTool: runBody.interface?.entry?.tool" in source
     assert "def assert_agent_team_selected_entry" in source
-    assert "runSource\") != \"agent_team_selected_workflow\"" in source
-    assert "callerPluginId\") != \"agent_team\"" in source
-    assert "runEntryTool\") != \"workflow_run\"" in source
-    assert "runExitField\") != \"output\"" in source
+    assert 'runSource") != "agent_team_selected_workflow"' in source
+    assert 'callerPluginId") != "agent_team"' in source
+    assert 'runEntryTool") != "workflow_run"' in source
+    assert 'runExitField") != "output"' in source
     assert "def run_agent_team_selected_entry" in source
     assert "navigate(client, base_url + AGENT_TEAM_SELECTED_ENTRY_SMOKE_PATH)" in source
-    assert 'click_testid(client, "codex-send-agent-team-selected-workflow-chat", timeout=30)' in source
+    assert (
+        'click_testid(client, "codex-send-agent-team-selected-workflow-chat", timeout=30)' in source
+    )
     assert "assert_agent_team_selected_entry(evidence, request_log)" in source
     assert 'f"workflow-agent-team-selected-entry-{stamp}.png"' in source
     assert 'f"workflow-agent-team-selected-entry-{stamp}.json"' in source
 
-    navigate_index = source.index("navigate(client, base_url + AGENT_TEAM_SELECTED_ENTRY_SMOKE_PATH)")
-    click_index = source.index('click_testid(client, "codex-send-agent-team-selected-workflow-chat", timeout=30)')
+    navigate_index = source.index(
+        "navigate(client, base_url + AGENT_TEAM_SELECTED_ENTRY_SMOKE_PATH)"
+    )
+    click_index = source.index(
+        'click_testid(client, "codex-send-agent-team-selected-workflow-chat", timeout=30)'
+    )
     evidence_index = source.index("evidence = wait_until", click_index)
     log_index = source.index("request_log = wait_until", evidence_index)
-    assert_index = source.index("assert_agent_team_selected_entry(evidence, request_log)", log_index)
+    assert_index = source.index(
+        "assert_agent_team_selected_entry(evidence, request_log)", log_index
+    )
     screenshot_index = source.index("screenshot_path = out_dir", assert_index)
-    assert navigate_index < click_index < evidence_index < log_index < assert_index < screenshot_index
+    assert (
+        navigate_index < click_index < evidence_index < log_index < assert_index < screenshot_index
+    )
 
     assert "workflowChatSelectedEntrySmokeHtml({ agentTeamMode: true })" in mock_source
     assert "/codex/workflow-agent-team-selected-entry-smoke" in mock_source
-    assert "SELECTED_TEAM_ID: \"team-browser\"" in mock_source
+    assert 'SELECTED_TEAM_ID: "team-browser"' in mock_source
     assert "agent_team_selected_workflow" in mock_source
-    assert "caller_plugin_id: selectedTeamId ? \"agent_team\" : \"chat\"" in mock_source
-    assert "event: \"agent:call\"" in mock_source
-    assert "event: \"agent:result\"" in mock_source
+    assert 'caller_plugin_id: selectedTeamId ? "agent_team" : "chat"' in mock_source
+    assert 'event: "agent:call"' in mock_source
+    assert 'event: "agent:result"' in mock_source
     assert "run-agent-team-live-browser" in mock_source
     assert "Agent Team workflow saw" in mock_source
