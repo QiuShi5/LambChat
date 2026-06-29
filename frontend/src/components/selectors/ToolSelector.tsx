@@ -11,6 +11,7 @@ import {
   Container,
   Info,
   Plus,
+  Workflow,
 } from "lucide-react";
 import { Checkbox } from "../common/Checkbox";
 import type { ToolState, ToolCategory, ToolParamInfo } from "../../types";
@@ -45,6 +46,7 @@ const categoryIcons: Record<ToolCategory, typeof Bot> = {
   human: MessageCircle,
   mcp: Globe,
   sandbox: Container,
+  internal: Workflow,
 };
 
 export function ToolSelector({
@@ -166,6 +168,7 @@ export function ToolSelector({
             ).length;
             const allEnabled = enabledInCategory === allCategoryTools.length;
             const isExpanded = expandedCategories.has(cat);
+            const isToggleableCategory = cat === "mcp";
 
             return (
               <div
@@ -200,6 +203,7 @@ export function ToolSelector({
                   <Checkbox
                     checked={allEnabled}
                     onChange={() => onToggleCategory(cat, !allEnabled)}
+                    disabled={!isToggleableCategory}
                   />
                 </div>
 
@@ -211,17 +215,27 @@ export function ToolSelector({
                         const isToolExpanded = expandedTools.has(tool.name);
                         const hasParams =
                           tool.parameters && tool.parameters.length > 0;
+                        const isToggleableTool =
+                          tool.category === "mcp" && !tool.system_disabled;
 
                         return (
                           <div key={tool.name} className="group">
                             {/* Tool Row */}
                             <div
-                              className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-2 sm:py-2 rounded-lg cursor-pointer transition-all duration-150 ${
+                              className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-2 sm:py-2 rounded-lg transition-all duration-150 ${
+                                isToggleableTool
+                                  ? "cursor-pointer"
+                                  : "cursor-default"
+                              } ${
                                 tool.enabled
-                                  ? "hover:bg-stone-50 dark:hover:bg-stone-700/30 active:bg-stone-100/80 dark:active:bg-stone-600/40"
+                                  ? isToggleableTool
+                                    ? "hover:bg-stone-50 dark:hover:bg-stone-700/30 active:bg-stone-100/80 dark:active:bg-stone-600/40"
+                                    : ""
                                   : "bg-[var(--theme-primary)]/[0.06] dark:bg-[var(--theme-primary)]/[0.08] hover:bg-[var(--theme-primary)]/[0.12] dark:hover:bg-[var(--theme-primary)]/[0.14] active:bg-[var(--theme-primary)]/[0.18] dark:active:bg-[var(--theme-primary)]/[0.20]"
                               }`}
-                              onClick={() => onToggleTool(tool.name)}
+                              onClick={() => {
+                                if (isToggleableTool) onToggleTool(tool.name);
+                              }}
                             >
                               {/* Expand button for tools with params */}
                               <button
@@ -273,7 +287,7 @@ export function ToolSelector({
                               <Checkbox
                                 checked={tool.enabled}
                                 onChange={() => onToggleTool(tool.name)}
-                                disabled={tool.system_disabled}
+                                disabled={!isToggleableTool}
                               />
                             </div>
 

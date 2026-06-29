@@ -226,6 +226,11 @@ class AgentEventProcessor(SubagentEventMixin, StreamEventMixin, ToolEventMixin):
 
         if evt_type == "on_chat_model_end":
             await self.flush()
+            metadata = event.get("metadata", {})
+            checkpoint_ns = self._get_checkpoint_ns(metadata)
+            current_agent_id, current_depth = self._get_agent_context(checkpoint_ns)
+            await self._handle_chat_model_end_output(event, current_agent_id, current_depth)
+            await self.flush()
             self._handle_token_usage(event)
             return
 

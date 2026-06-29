@@ -99,7 +99,10 @@ docs/.vitepress/cache/
 # YubbChat (external project, not part of this repo)
 YubbChat/
 .codex
-/scripts/
+/scripts/*
+!/scripts/create_daytona_snapshot.py
+!/scripts/create_e2b_template.py
+!/scripts/dify_workflow_container_acceptance.py
 docs/docs/.vitepress/
 .gitignore
 k8s/lambchat-secret.yaml

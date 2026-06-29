@@ -67,6 +67,7 @@ export { ProjectRevealItem } from "./items/ProjectRevealItem";
 export { ImageGenerateItem } from "./items/ImageGenerateItem";
 export { AudioTranscribeItem } from "./items/AudioTranscribeItem";
 export { ScheduledTaskItem } from "./items/ScheduledTaskItem";
+export { WorkflowItem } from "./items/WorkflowItem";
 export { EnvVarItem } from "./items/EnvVarItem";
 export { PersonaItem } from "./items/PersonaItem";
 export { TeamItem } from "./items/TeamItem";

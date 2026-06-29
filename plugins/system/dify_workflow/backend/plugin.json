@@ -1,0 +1,61 @@
+{
+  "schema": "lambchat.plugin.backend.v1",
+  "plugin_id": "dify_workflow",
+  "backend": {
+    "routes": [
+      {
+        "name": "dify_workflow-api",
+        "prefix": "/api/plugins/dify-workflow",
+        "module": "src.plugins.dify_workflow.routes",
+        "required_permissions": ["workflow:read", "workflow:write", "workflow:run"],
+        "tags": ["difyWorkflow.nav.label"]
+      }
+    ],
+    "tools": [
+      {
+        "name": "dify_workflow_run",
+        "module": "src.plugins.dify_workflow.tools",
+        "required_permissions": ["workflow:run"],
+        "legacy_ids": ["workflow_run"]
+      },
+      {
+        "name": "dify_workflow_list",
+        "module": "src.plugins.dify_workflow.tools",
+        "required_permissions": ["workflow:read"],
+        "legacy_ids": ["workflow_list"]
+      },
+      {
+        "name": "dify_workflow_get_schema",
+        "module": "src.plugins.dify_workflow.tools",
+        "required_permissions": ["workflow:read"],
+        "legacy_ids": ["workflow_get_schema"]
+      },
+      {
+        "name": "dify_workflow_get_run",
+        "module": "src.plugins.dify_workflow.tools",
+        "required_permissions": ["workflow:read"],
+        "legacy_ids": ["workflow_get_run"]
+      },
+      {
+        "name": "dify_workflow_resume",
+        "module": "src.plugins.dify_workflow.tools",
+        "required_permissions": ["workflow:run"],
+        "legacy_ids": ["workflow_resume"]
+      }
+    ],
+    "lifespan_hooks": [
+      {
+        "name": "dify_workflow:startup",
+        "module": "src.plugins.dify_workflow.lifecycle:startup",
+        "phase": "startup",
+        "order": 50
+      },
+      {
+        "name": "dify_workflow:shutdown",
+        "module": "src.plugins.dify_workflow.lifecycle:shutdown",
+        "phase": "shutdown",
+        "order": 50
+      }
+    ]
+  }
+}

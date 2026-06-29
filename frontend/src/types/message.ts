@@ -34,6 +34,7 @@ export interface Message {
 export type MessagePart =
   | TextPart
   | ToolPart
+  | WorkflowPart
   | SubagentPart
   | ThinkingPart
   | SandboxPart
@@ -138,6 +139,48 @@ export interface ToolPart {
   agent_id?: string;
   startedAt?: string;
   completedAt?: string;
+}
+
+export interface WorkflowInterfaceContract {
+  entry?: {
+    type?: string;
+    tool?: string;
+    argument?: string;
+    workflow_id?: string | null;
+    version_id?: string | null;
+    schema_tool?: string;
+    schema_field?: string;
+  };
+  exit?: {
+    type?: string;
+    field?: string;
+    schema_tool?: string;
+    schema_field?: string;
+  };
+  debug?: {
+    tool?: string;
+    workflow_id?: string | null;
+    run_id?: string | null;
+    events_field?: string;
+  };
+}
+
+export interface WorkflowPart {
+  type: "workflow";
+  plugin_id?: string;
+  workflow_id?: string | null;
+  run_id?: string | null;
+  version_id?: string | null;
+  status?: string;
+  output?: Record<string, unknown>;
+  error?: string | null;
+  interface?: WorkflowInterfaceContract | null;
+  next_action?: Record<string, unknown> | null;
+  io_contract?: Record<string, unknown> | null;
+  output_contract?: Record<string, unknown> | null;
+  depth?: number;
+  agent_id?: string;
+  timestamp?: string;
 }
 
 export interface SubagentPart {

@@ -24,6 +24,7 @@ export type EventType =
   | "followup:questions"
   | "agent:call"
   | "agent:result"
+  | "workflow:run"
   | "approval_required"
   | "sandbox:starting"
   | "sandbox:ready"
@@ -92,6 +93,15 @@ export interface EventData {
   // user:cancel event fields
   user_id?: string;
   run_id?: string;
+  // workflow:run event fields
+  plugin_id?: string;
+  workflow_id?: string | null;
+  version_id?: string | null;
+  output?: Record<string, unknown>;
+  io_contract?: Record<string, unknown> | null;
+  interface?: import("../../types").WorkflowInterfaceContract | null;
+  next_action?: Record<string, unknown> | null;
+  output_contract?: Record<string, unknown> | null;
   // skills:changed event fields
   action?: string;
   skill_name?: string;
@@ -221,6 +231,14 @@ export interface HistoryEventData {
     url: string;
   }>;
   message_id?: string;
+  plugin_id?: string;
+  workflow_id?: string | null;
+  version_id?: string | null;
+  status?: string;
+  output?: Record<string, unknown>;
+  io_contract?: Record<string, unknown> | null;
+  interface?: import("../../types").WorkflowInterfaceContract | null;
+  output_contract?: Record<string, unknown> | null;
 }
 
 // History event from backend

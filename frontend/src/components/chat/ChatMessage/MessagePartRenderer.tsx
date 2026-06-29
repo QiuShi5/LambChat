@@ -17,6 +17,7 @@ import {
   ImageGenerateItem,
   AudioTranscribeItem,
   ScheduledTaskItem,
+  WorkflowItem,
   EnvVarItem,
   PersonaItem,
   TeamItem,
@@ -398,6 +399,10 @@ export function MessagePartRenderer({
         completedAt={part.completedAt}
       />
     );
+  }
+
+  if (part.type === "workflow") {
+    return <WorkflowItem part={part} />;
   }
 
   if (part.type === "thinking") {

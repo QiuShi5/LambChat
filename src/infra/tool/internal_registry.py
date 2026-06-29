@@ -30,6 +30,7 @@ from src.kernel.schemas.mcp import (
     MCPTransport,
 )
 from src.kernel.types import Permission
+from src.plugins.dify_workflow.tools import get_workflow_tools
 from src.plugins.feedback.tools import get_feedback_tools
 
 INTERNAL_MCP_SERVER_NAME = "lambchat_internal"
@@ -39,6 +40,11 @@ _SCHEDULED_TASK_TOOL_PERMISSIONS = {
     "scheduled_task_list": Permission.SCHEDULED_TASK_READ.value,
     "scheduled_task_update": Permission.SCHEDULED_TASK_WRITE.value,
     "scheduled_task_delete": Permission.SCHEDULED_TASK_DELETE.value,
+    "workflow_run": Permission.WORKFLOW_RUN.value,
+    "workflow_list": Permission.WORKFLOW_READ.value,
+    "workflow_get_schema": Permission.WORKFLOW_READ.value,
+    "workflow_get_run": Permission.WORKFLOW_READ.value,
+    "workflow_resume": Permission.WORKFLOW_RUN.value,
 }
 
 _plugin_runtime: PluginRuntime | None = None
@@ -140,6 +146,7 @@ def build_internal_tools() -> list[BaseTool]:
 
     tools.extend(get_env_var_tools())
     tools.extend(get_feedback_tools())
+    tools.extend(get_workflow_tools())
     tools.extend(get_persona_preset_tools())
     tools.extend(get_team_tools())
 

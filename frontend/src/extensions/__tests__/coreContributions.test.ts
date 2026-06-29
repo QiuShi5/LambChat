@@ -446,6 +446,106 @@ function enabledAgentTeamPlugin(): PluginRuntimeContributionState {
   };
 }
 
+function enabledDifyWorkflowPlugin(): PluginRuntimeContributionState {
+  return {
+    plugin_id: "dify_workflow",
+    enabled: true,
+    executable: true,
+    status: "enabled",
+    frontend: {
+      app_tabs: [
+        {
+          id: "dify_workflow:workflows-tab",
+          tab: "workflows",
+          path: "/workflows",
+          label: "difyWorkflow.nav.label",
+          panel: "dify_workflow:workflows-panel",
+          insert_after: "agent-team",
+          order: 700,
+          permissions: [Permission.WORKFLOW_READ],
+        },
+        {
+          id: "dify_workflow:workflow-editor-tab",
+          tab: "workflows-editor",
+          path: "/workflows/:workflowId/editor",
+          label: "difyWorkflow.nav.editorLabel",
+          panel: "dify_workflow:workflow-editor-panel",
+          insert_after: "workflows",
+          order: 701,
+          permissions: [Permission.WORKFLOW_READ],
+        },
+        {
+          id: "dify_workflow:workflow-run-tab",
+          tab: "workflows-run",
+          path: "/workflows/:workflowId/runs/:runId",
+          label: "difyWorkflow.nav.runLabel",
+          panel: "dify_workflow:workflow-run-panel",
+          insert_after: "workflows-editor",
+          order: 702,
+          permissions: [Permission.WORKFLOW_READ],
+        },
+      ],
+      app_panels: [
+        {
+          id: "dify_workflow:workflows-panel",
+          tab: "workflows",
+          renderer: "dify_workflow.WorkflowPanel",
+        },
+        {
+          id: "dify_workflow:workflow-editor-panel",
+          tab: "workflows-editor",
+          renderer: "dify_workflow.WorkflowPanel",
+        },
+        {
+          id: "dify_workflow:workflow-run-panel",
+          tab: "workflows-run",
+          renderer: "dify_workflow.WorkflowPanel",
+        },
+      ],
+      sidebar_items: [
+        {
+          id: "dify_workflow:workflows-nav",
+          path: "/workflows",
+          label: "difyWorkflow.nav.label",
+          icon: "Workflow",
+          order: 30,
+          permissions: [Permission.WORKFLOW_READ],
+        },
+      ],
+      chat_input_options: [
+        {
+          id: "dify_workflow:select-workflow",
+          slot: "enhance",
+          label: "difyWorkflow.chat.selectWorkflow",
+          icon: "Workflow",
+          panel: "dify_workflow:workflow-picker",
+          selected_renderer: "dify_workflow.SelectedWorkflowChip",
+          shortcut: "mod+w",
+          order: 30,
+          option_binding: {
+            plugin_id: "dify_workflow",
+            key: "SELECTED_WORKFLOW_ID",
+            scope: "session",
+          },
+        },
+      ],
+      chat_input_panels: [
+        {
+          id: "dify_workflow:workflow-picker",
+          renderer: "dify_workflow.WorkflowPickerModal",
+          create_path: "/workflows?create=blank",
+          manage_path: "/workflows",
+          option_binding: {
+            plugin_id: "dify_workflow",
+            key: "SELECTED_WORKFLOW_ID",
+            scope: "session",
+          },
+        },
+      ],
+    },
+  };
+}
+
 test("core app routes preserve legacy paths, SEO paths, and permissions", () => {
   const routes = new Map(CORE_APP_ROUTES.map((route) => [route.id, route]));
 
@@ -592,6 +692,40 @@ test("structured plugin app tab and panel declarations drive runtime routes", ()
   assert.equal(findAppRouteContribution("usage", runtimePlugins)?.path, "/usage");
   assert.equal(panels.get("usage")?.renderer, "usage_reports.UsagePanel");
   assert.equal(findPanelContribution("usage", runtimePlugins)?.renderer, "usage_reports.UsagePanel");
+});
+
+test("Dify workflow registers as an Agent Team peer with dedicated editor and run routes", () => {
+  const runtimePlugins: PluginRuntimeContributionState[] = [
+    enabledAgentTeamPlugin(),
+    enabledDifyWorkflowPlugin(),
+  ];
+
+  const routes = buildAppRouteContributions(runtimePlugins);
+  const routeIds = routes.map((route) => route.id);
+  const routeById = new Map(routes.map((route) => [route.id, route]));
+  const panels = new Map(buildPanelContributions(runtimePlugins).map((panel) => [panel.id, panel]));
+  const pluginNavItems = buildSidebarMoreNavContributions(runtimePlugins).filter(
+    (item) => item.pluginId === "agent_team" || item.pluginId === "dify_workflow",
+  );
+
+  assert.equal(routeIds.indexOf("workflows"), routeIds.indexOf("agent-team") + 1);
+  assert.equal(routeIds.indexOf("workflows-editor"), routeIds.indexOf("workflows") + 1);
+  assert.equal(routeIds.indexOf("workflows-run"), routeIds.indexOf("workflows-editor") + 1);
+
+  assert.equal(routeById.get("workflows")?.pluginId, "dify_workflow");
+  assert.equal(routeById.get("workflows")?.path, "/workflows");
+  assert.equal(routeById.get("workflows")?.insertAfterId, "agent-team");
+  assert.deepEqual(routeById.get("workflows")?.permissions, [Permission.WORKFLOW_READ]);
+  assert.equal(routeById.get("workflows-editor")?.path, "/workflows/:workflowId/editor");
+  assert.equal(routeById.get("workflows-editor")?.insertAfterId, "workflows");
+  assert.equal(routeById.get("workflows-run")?.path, "/workflows/:workflowId/runs/:runId");
+  assert.equal(routeById.get("workflows-run")?.insertAfterId, "workflows-editor");
+
+  assert.equal(panels.get("workflows")?.renderer, "dify_workflow.WorkflowPanel");
+  assert.equal(panels.get("workflows-editor")?.renderer, "dify_workflow.WorkflowPanel");
+  assert.equal(panels.get("workflows-run")?.renderer, "dify_workflow.WorkflowPanel");
+  assert.deepEqual(pluginNavItems.map((item) => item.path), ["/agent-team", "/workflows"]);
+  assert.equal(pluginNavItems[1]?.labelKey, "difyWorkflow.nav.label");
 });
 
 test("runtime route and panel lookup respects disabled plugin state", () => {
@@ -775,6 +909,133 @@ test("runtime app tab declarations can add new plugin-owned pages", () => {
     buildUserMenuContributions(runtimePlugins).find((item) => item.path === "/reviews")?.pluginId,
     "review_center",
   );
+});
+
+test("runtime app tab declarations can insert after another plugin route", () => {
+  const runtimePlugins: PluginRuntimeContributionState[] = [
+    enabledAgentTeamPlugin(),
+    enabledDifyWorkflowPlugin(),
+  ];
+
+  const routes = buildAppRouteContributions(runtimePlugins);
+  const routeIds = routes.map((route) => route.id);
+
+  assert.equal(routes.find((route) => route.id === "workflows")?.path, "/workflows");
+  assert.equal(
+    routes.find((route) => route.id === "workflows-editor")?.path,
+    "/workflows/:workflowId/editor",
+  );
+  assert.equal(
+    routes.find((route) => route.id === "workflows-run")?.path,
+    "/workflows/:workflowId/runs/:runId",
+  );
+  assert.equal(
+    routeIds.indexOf("workflows"),
+    routeIds.indexOf("agent-team") + 1,
+  );
+  assert.equal(
+    routeIds.indexOf("workflows-editor"),
+    routeIds.indexOf("workflows") + 1,
+  );
+  assert.equal(
+    routeIds.indexOf("workflows-run"),
+    routeIds.indexOf("workflows-editor") + 1,
+  );
+  assert.equal(
+    buildPanelContributions(runtimePlugins).find((panel) => panel.id === "workflows")?.renderer,
+    "dify_workflow.WorkflowPanel",
+  );
+  assert.equal(
+    buildPanelContributions(runtimePlugins).find((panel) => panel.id === "workflows-editor")?.renderer,
+    "dify_workflow.WorkflowPanel",
+  );
+  assert.equal(
+    buildPanelContributions(runtimePlugins).find((panel) => panel.id === "workflows-run")?.renderer,
+    "dify_workflow.WorkflowPanel",
+  );
+  const workflowNav = buildSidebarMoreNavContributions(runtimePlugins).find(
+    (item) => item.id === "workflows",
+  );
+  assert.equal(workflowNav?.path, "/workflows");
+  assert.equal(workflowNav?.labelKey, "difyWorkflow.nav.label");
+  assert.deepEqual(workflowNav?.requiredAnyPermissions, [Permission.WORKFLOW_READ]);
+});
+
+test("Dify workflow route panel and nav follow plugin runtime state", () => {
+  const enabledRuntimePlugins: PluginRuntimeContributionState[] = [
+    enabledAgentTeamPlugin(),
+    enabledDifyWorkflowPlugin(),
+  ];
+  const disabledRuntimePlugins: PluginRuntimeContributionState[] = [
+    enabledAgentTeamPlugin(),
+    disabledPlugin(enabledDifyWorkflowPlugin()),
+  ];
+
+  assert.deepEqual(
+    buildAppRouteContributions(enabledRuntimePlugins)
+      .filter((route) => route.pluginId === "dify_workflow")
+      .map((route) => `${route.id}:${route.path}`),
+    [
+      "workflows:/workflows",
+      "workflows-editor:/workflows/:workflowId/editor",
+      "workflows-run:/workflows/:workflowId/runs/:runId",
+    ],
+  );
+  assert.deepEqual(
+    buildPanelContributions(enabledRuntimePlugins)
+      .filter((panel) => panel.pluginId === "dify_workflow")
+      .map((panel) => `${panel.id}:${panel.renderer}`),
+    [
+      "workflows:dify_workflow.WorkflowPanel",
+      "workflows-editor:dify_workflow.WorkflowPanel",
+      "workflows-run:dify_workflow.WorkflowPanel",
+    ],
+  );
+  assert.deepEqual(
+    buildSidebarMoreNavContributions(enabledRuntimePlugins)
+      .filter((item) => item.pluginId === "dify_workflow")
+      .map((item) => `${item.id}:${item.path}:${item.labelKey}`),
+    ["workflows:/workflows:difyWorkflow.nav.label"],
+  );
+  assert.equal(
+    buildAppRouteContributions(disabledRuntimePlugins).some(
+      (route) => route.pluginId === "dify_workflow",
+    ),
+    false,
+  );
+  assert.equal(
+    buildPanelContributions(disabledRuntimePlugins).some(
+      (panel) => panel.pluginId === "dify_workflow",
+    ),
+    false,
+  );
+  assert.equal(
+    buildSidebarMoreNavContributions(disabledRuntimePlugins).some(
+      (item) => item.pluginId === "dify_workflow",
+    ),
+    false,
+  );
+});
+
+test("Dify workflow chat input picker contributes a session workflow binding", () => {
+  const runtimePlugins: PluginRuntimeContributionState[] = [
+    enabledDifyWorkflowPlugin(),
+  ];
+
+  assert.deepEqual(
+    buildChatInputOptionContributions(runtimePlugins, { agentId: "default" }).map(
+      (option) => `${option.id}:${option.optionBinding?.pluginId}.${option.optionBinding?.key}:${option.selectedRenderer}:${option.suppressesCorePersonaSelector}:${option.shortcut}`,
+    ),
+    ["dify_workflow:select-workflow:dify_workflow.SELECTED_WORKFLOW_ID:dify_workflow.SelectedWorkflowChip:false:mod+w"],
+  );
+  assert.deepEqual(
+    buildChatInputPanelContributions(runtimePlugins, { agentId: "default" }).map(
+      (panel) => `${panel.id}:${panel.optionBinding?.pluginId}.${panel.optionBinding?.key}:${panel.renderer}:${panel.createPath}:${panel.managePath}`,
+    ),
+    ["dify_workflow:workflow-picker:dify_workflow.SELECTED_WORKFLOW_ID:dify_workflow.WorkflowPickerModal:/workflows?create=blank:/workflows"],
+  );
+  assert.deepEqual(buildChatInputOptionContributions([disabledPlugin(runtimePlugins[0])]), []);
+  assert.deepEqual(buildChatInputPanelContributions([disabledPlugin(runtimePlugins[0])]), []);
 });
 
 test("runtime app tab declarations cannot replace the core chat tab", () => {

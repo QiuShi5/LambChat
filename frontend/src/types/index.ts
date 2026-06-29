@@ -20,6 +20,8 @@ export type {
   TextPart,
   ThinkingPart,
   ToolPart,
+  WorkflowPart,
+  WorkflowInterfaceContract,
   SubagentPart,
   TodoPart,
   TodoItem,

@@ -4,16 +4,25 @@ import { useTranslation } from "react-i18next";
 import { UsersRound } from "lucide-react";
 import { Select } from "../../common";
 import { teamApi } from "../../../services/api/team";
+import {
+  DifyWorkflowInputOption,
+  DifyWorkflowSelectOption,
+  DifyWorkflowVersionSelectOption,
+  resolveDifyWorkflowLabels,
+  resolveDifyWorkflowVersionLabels,
+} from "../../../plugins/dify_workflow/WorkflowSelectOption";
 import type { ExtensionScopedOption } from "../../../types";
 import type { Team } from "../../../types/team";
 
 interface ScheduledTaskOptionRendererProps {
   option: ExtensionScopedOption;
   value: unknown;
+  pluginValues?: Record<string, unknown>;
   disabled?: boolean;
   inactive?: boolean;
   triggerClassName?: string;
   onChange: (value: unknown) => void;
+  onPluginValueChange?: (key: string, value: unknown) => void;
 }
 
 type ScheduledTaskOptionRenderer = (
@@ -93,6 +102,21 @@ function AgentTeamScheduledTaskTeamSelect({
 
 const SCHEDULED_TASK_OPTION_RENDERERS: Record<string, ScheduledTaskOptionRenderer> = {
   "agent_team.TeamSelectOption": AgentTeamScheduledTaskTeamSelect,
+  "dify_workflow.WorkflowSelectOption": (props) => (
+    <DifyWorkflowSelectOption
+      {...props}
+      placeholder="No workflow"
+    />
+  ),
+  "dify_workflow.WorkflowVersionSelectOption": (props) => (
+    <DifyWorkflowVersionSelectOption
+      {...props}
+      placeholder="No version"
+    />
+  ),
+  "dify_workflow.WorkflowInputOption": (props) => (
+    <DifyWorkflowInputOption {...props} />
+  ),
 };
 
 const SCHEDULED_TASK_OPTION_LABEL_RESOLVERS: Record<
@@ -109,6 +133,8 @@ const SCHEDULED_TASK_OPTION_LABEL_RESOLVERS: Record<
         .map((team) => [team.id, team.name]),
     );
   },
+  "dify_workflow.WorkflowSelectOption": resolveDifyWorkflowLabels,
+  "dify_workflow.WorkflowVersionSelectOption": resolveDifyWorkflowVersionLabels,
 };
 
 export function findScheduledTaskOptionRenderer(
