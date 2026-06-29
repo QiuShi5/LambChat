@@ -95,7 +95,6 @@ LambChat 插件页面当前支持导入本地插件包，入口在 Extension Cen
   resources/resources.yaml
   plugin-data-template/config/defaults.json
   plugin-data-template/config/current.json
-  plugin-data-template/state/audit.jsonl
 ```
 
 ## 根 manifest 示例
@@ -392,8 +391,6 @@ demo_notes/plugin-data-template/
   config/
     defaults.json
     current.json
-  state/
-    audit.jsonl
 ```
 
 导入或运行后，运行时数据目录是：

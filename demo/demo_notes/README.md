@@ -36,7 +36,6 @@ demo_notes.MAX_NOTE_LENGTH
 ```text
 plugin-data-template/config/defaults.json
 plugin-data-template/config/current.json
-plugin-data-template/state/audit.jsonl
 ```
 
 运行时数据：
