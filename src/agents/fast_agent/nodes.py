@@ -34,6 +34,7 @@ from src.agents.fast_agent.context import FastAgentContext
 from src.agents.fast_agent.prompt import FAST_SYSTEM_PROMPT
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    ArtifactDeliveryMiddleware,
     ImageUrlToBase64Middleware,
     PromptCachingMiddleware,
     SectionPromptMiddleware,
@@ -145,8 +146,11 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
 
     # 创建 backend（无沙箱，PostgreSQL 或 MongoDB 由 store 决定）
     backend_start = time.time()
+    session_id = state.get("session_id", str(uuid.uuid4()))
     backend_factory = create_persistent_backend_factory(
-        assistant_id=assistant_id, user_id=context.user_id
+        assistant_id=assistant_id,
+        user_id=context.user_id,
+        session_id=session_id,
     )
     backend = backend_factory(None) if callable(backend_factory) else backend_factory
     logger.info(f"[FastAgent] Using PersistentBackend for assistant: {assistant_id}")
@@ -198,6 +202,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
     subagent_middleware = [
         *create_retry_middleware(fallback_model=fallback_model_value, thinking=thinking_config),
         ToolResultBinaryMiddleware(base_url=subagent_base_url),
+        ArtifactDeliveryMiddleware(),
         SubagentActivityMiddleware(backend=backend),
     ]
     if image_url_to_base64:
@@ -233,6 +238,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
         fallback_model=fallback_model_value, thinking=thinking_config
     )
     user_middleware.append(ToolResultBinaryMiddleware(base_url=subagent_base_url))
+    user_middleware.append(ArtifactDeliveryMiddleware())
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())
     # Skills + memory guide: session-static (one SectionPromptMiddleware, multiple blocks)
@@ -299,6 +305,7 @@ async def fast_agent_node(state: Dict[str, Any], config: RunnableConfig) -> Dict
             disabled_skills=configurable.get("disabled_skills"),
             enabled_skills=configurable.get("enabled_skills"),
             base_url=configurable.get("base_url", ""),
+            session_id=state.get("session_id"),
             trace_id=getattr(presenter, "trace_id", None),
             presenter=presenter,  # 传递 presenter 给工具调用
         ),

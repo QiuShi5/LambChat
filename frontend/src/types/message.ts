@@ -34,6 +34,7 @@ export interface Message {
 export type MessagePart =
   | TextPart
   | ToolPart
+  | ArtifactPart
   | WorkflowPart
   | SubagentPart
   | ThinkingPart
@@ -138,6 +139,47 @@ export interface ToolPart {
   depth?: number;
   agent_id?: string;
   startedAt?: string;
+  completedAt?: string;
+}
+
+export type ArtifactPartArtifact =
+  | {
+      kind: "file";
+      id: string;
+      name: string;
+      path: string;
+      description?: string;
+      fileSize?: number;
+      preview: {
+        kind: "file";
+        previewKey: string;
+        filePath: string;
+        s3Key?: string;
+        signedUrl?: string;
+        fileSize?: number;
+      };
+    }
+  | {
+      kind: "project";
+      id: string;
+      name: string;
+      mode: "project" | "folder";
+      fileCount: number;
+      template: string;
+      preview: {
+        kind: "project";
+        previewKey: string;
+        project: Record<string, unknown>;
+      };
+    };
+
+export interface ArtifactPart {
+  type: "artifact";
+  artifact: ArtifactPartArtifact;
+  success?: boolean;
+  error?: string;
+  depth?: number;
+  agent_id?: string;
   completedAt?: string;
 }
 

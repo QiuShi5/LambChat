@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 import types
@@ -74,10 +75,31 @@ def mock_lock():
         yield
 
 
+@pytest.fixture
+def mock_spawn_monitor():
+    """Replace _spawn_monitor so the detached monitor is collected and awaited inline."""
+    spawned: list[asyncio.Task] = []
+
+    def _collect(coro):
+        t = asyncio.create_task(coro)
+        spawned.append(t)
+        return t
+
+    with patch("src.infra.scheduler.runner._spawn_monitor", side_effect=_collect):
+        yield spawned
+
+
+async def _await_spawned(spawned: list[asyncio.Task]) -> None:
+    """Wait for all spawned monitor tasks to complete."""
+    if spawned:
+        await asyncio.gather(*spawned, return_exceptions=True)
+
+
 @pytest.mark.asyncio
 async def test_runner_loads_task_with_execution_projection(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task()
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -87,15 +109,19 @@ async def test_runner_loads_task_with_execution_projection(
     )
 
     result = await runner.run("task_1")
-
-    assert result["status"] == RunStatus.SUCCESS.value
+    assert result["status"] == "submitted"
     mock_storage.get_task_for_execution.assert_awaited_once_with("task_1")
     mock_storage.get_task.assert_not_awaited()
+
+    # Wait for the detached monitor to finish
+    await _await_spawned(mock_spawn_monitor)
+    assert mock_storage.update_task_run_stats.await_count == 1
 
 
 @pytest.mark.asyncio
 async def test_runner_lock_ttl_covers_all_attempts(
     mock_storage: AsyncMock,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task(timeout_seconds=60, max_retries=2)
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -116,10 +142,12 @@ async def test_runner_lock_ttl_covers_all_attempts(
             return_value={"session_status": "completed", "session_id": "session_1"}
         )
 
-        await runner.run("task_1")
+        result = await runner.run("task_1")
+        assert result["status"] == "submitted"
 
     acquire_lock.assert_awaited_once()
     assert acquire_lock.call_args.kwargs["ttl"] >= 180
+    await _await_spawned(mock_spawn_monitor)
 
 
 @pytest.mark.asyncio
@@ -153,6 +181,7 @@ async def test_runner_skips_when_distributed_schedule_slot_is_claimed(
 @pytest.mark.asyncio
 async def test_runner_manual_run_bypasses_distributed_schedule_slot(
     mock_storage: AsyncMock,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task()
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -174,14 +203,16 @@ async def test_runner_manual_run_bypasses_distributed_schedule_slot(
     ):
         result = await runner.run("task_1", trigger_type="manual")
 
-    assert result["status"] == RunStatus.SUCCESS.value
+    assert result["status"] == "submitted"
     acquire_slot.assert_not_awaited()
+    await _await_spawned(mock_spawn_monitor)
 
 
 @pytest.mark.asyncio
 async def test_runner_allows_first_run_on_start_before_interval_due(
     mock_storage: AsyncMock,
     monkeypatch: pytest.MonkeyPatch,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     now = datetime(2026, 6, 8, 5, 0, tzinfo=timezone.utc)
     task = _make_task(run_on_start=True, total_runs=0, created_at=now)
@@ -205,14 +236,16 @@ async def test_runner_allows_first_run_on_start_before_interval_due(
     ):
         result = await runner.run("task_1", trigger_type="interval")
 
-    assert result["status"] == RunStatus.SUCCESS.value
+    assert result["status"] == "submitted"
     assert acquire_slot.call_args.args[1].startswith("run_on_start:")
+    await _await_spawned(mock_spawn_monitor)
 
 
 @pytest.mark.asyncio
 async def test_runner_records_failed_agent_status_as_failed(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task()
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -226,8 +259,9 @@ async def test_runner_records_failed_agent_status_as_failed(
     )
 
     result = await runner.run("task_1")
+    assert result["status"] == "submitted"
 
-    assert result["status"] == RunStatus.FAILED.value
+    await _await_spawned(mock_spawn_monitor)
     final_update = mock_storage.update_run.call_args_list[-1].args[1]
     assert final_update["status"] == RunStatus.FAILED
     assert final_update["error_message"] == "Agent run ended with status: failed"
@@ -239,6 +273,7 @@ async def test_runner_records_failed_agent_status_as_failed(
 async def test_runner_retries_until_success(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task(max_retries=1)
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -255,8 +290,9 @@ async def test_runner_retries_until_success(
     )
 
     result = await runner.run("task_1")
+    assert result["status"] == "submitted"
 
-    assert result["status"] == RunStatus.SUCCESS.value
+    await _await_spawned(mock_spawn_monitor)
     assert runner._execute_agent.call_count == 2
     retry_updates = [
         call.args[1]["retry_count"]
@@ -300,13 +336,29 @@ async def test_runner_sends_success_result_to_configured_channel(
     coordinator = AsyncMock()
     coordinator.send_message = AsyncMock(return_value=True)
 
+    spawned: list[asyncio.Task] = []
+
+    def _collect(coro):
+        t = asyncio.create_task(coro)
+        spawned.append(t)
+        return t
+
+    with (
+        patch("src.infra.scheduler.runner.get_trace_storage", return_value=trace_storage),
+        patch("src.infra.scheduler.runner.get_channel_coordinator", return_value=coordinator),
+        patch("src.infra.scheduler.runner._spawn_monitor", side_effect=_collect),
+    ):
+        result = await runner.run("task_1")
+
+    assert result["status"] == "submitted"
+
+    # Re-enter patches while the monitor tasks execute
     with (
         patch("src.infra.scheduler.runner.get_trace_storage", return_value=trace_storage),
         patch("src.infra.scheduler.runner.get_channel_coordinator", return_value=coordinator),
     ):
-        result = await runner.run("task_1")
+        await _await_spawned(spawned)
 
-    assert result["status"] == RunStatus.SUCCESS.value
     trace_storage.get_run_events.assert_awaited_once()
     assert trace_storage.get_run_events.call_args.args[0] == "session_1"
     sent_run_id = trace_storage.get_run_events.call_args.args[1]
@@ -332,6 +384,7 @@ async def test_runner_sends_success_result_to_configured_channel(
 async def test_runner_records_workflow_result_from_trace_events(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task(
         input_payload={
@@ -403,7 +456,10 @@ async def test_runner_records_workflow_result_from_trace_events(
     with patch("src.infra.scheduler.runner.get_trace_storage", return_value=trace_storage):
         result = await runner.run("task_1")
 
-    assert result["status"] == RunStatus.SUCCESS.value
+    assert result["status"] == "submitted"
+    with patch("src.infra.scheduler.runner.get_trace_storage", return_value=trace_storage):
+        await _await_spawned(mock_spawn_monitor)
+
     trace_storage.get_run_events.assert_awaited_once()
     assert trace_storage.get_run_events.call_args.args == ("session_1", result["run_id"])
     assert trace_storage.get_run_events.call_args.kwargs == {"event_types": ["workflow:run"]}
@@ -430,6 +486,7 @@ async def test_runner_records_workflow_result_from_trace_events(
 async def test_runner_delivers_workflow_output_to_channel(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task(
         input_payload={
@@ -492,7 +549,13 @@ async def test_runner_delivers_workflow_output_to_channel(
     ):
         result = await runner.run("task_1")
 
-    assert result["status"] == RunStatus.SUCCESS.value
+    assert result["status"] == "submitted"
+    with (
+        patch("src.infra.scheduler.runner.get_trace_storage", return_value=trace_storage),
+        patch("src.infra.scheduler.runner.get_channel_coordinator", return_value=coordinator),
+    ):
+        await _await_spawned(mock_spawn_monitor)
+
     coordinator.send_message.assert_awaited_once_with(
         "user_1",
         ChannelType.FEISHU,
@@ -810,6 +873,7 @@ def test_extract_channel_delivery_text_reads_serialized_workflow_output() -> Non
 async def test_runner_does_not_retry_timeout(
     mock_storage: AsyncMock,
     mock_lock: None,
+    mock_spawn_monitor: list[asyncio.Task],
 ) -> None:
     task = _make_task(max_retries=1)
     mock_storage.get_task_for_execution = AsyncMock(return_value=task)
@@ -819,8 +883,9 @@ async def test_runner_does_not_retry_timeout(
     )
 
     result = await runner.run("task_1")
+    assert result["status"] == "submitted"
 
-    assert result["status"] == RunStatus.TIMEOUT.value
+    await _await_spawned(mock_spawn_monitor)
     assert runner._execute_agent.call_count == 1
     final_update = mock_storage.update_run.call_args_list[-1].args[1]
     assert final_update["status"] == RunStatus.TIMEOUT

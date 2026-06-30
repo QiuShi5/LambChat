@@ -49,6 +49,7 @@ from src.agents.team_agent.prompt import (
 )
 from src.infra.agent import AgentEventProcessor
 from src.infra.agent.middleware import (
+    ArtifactDeliveryMiddleware,
     EnvVarPromptMiddleware,
     ImageUrlToBase64Middleware,
     PromptCachingMiddleware,
@@ -58,6 +59,7 @@ from src.infra.agent.middleware import (
     TaskDelegationEnvelopeMiddleware,
     TeamRouterDelegationGuardMiddleware,
     ToolResultBinaryMiddleware,
+    create_code_interpreter_middleware,
     create_retry_middleware,
 )
 from src.infra.agent.middleware_subagent import SubagentActivityMiddleware
@@ -436,8 +438,11 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
     sandbox_work_dir = None
 
     if not sandbox_active:
+        session_id = state.get("session_id", str(uuid.uuid4()))
         backend_factory = create_persistent_backend_factory(
-            assistant_id=assistant_id, user_id=context.user_id
+            assistant_id=assistant_id,
+            user_id=context.user_id,
+            session_id=session_id,
         )
         logger.info(
             "[TeamAgent] Sandbox inactive, using PersistentBackend for assistant: %s "
@@ -533,6 +538,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         mw = [
             *create_retry_middleware(fallback_model=fallback_model, thinking=thinking_config),
             ToolResultBinaryMiddleware(base_url=subagent_base_url),
+            ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir),
             SubagentActivityMiddleware(backend=backend),
         ]
         if team:
@@ -706,6 +712,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         user_middleware.append(TeamRouterDelegationGuardMiddleware())
         user_middleware.append(TaskDelegationEnvelopeMiddleware())
     user_middleware.append(ToolResultBinaryMiddleware(base_url=subagent_base_url))
+    user_middleware.append(ArtifactDeliveryMiddleware(workspace_path=sandbox_work_dir))
     if image_url_to_base64:
         user_middleware.append(ImageUrlToBase64Middleware())
     _prompt_sections = [
@@ -753,6 +760,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
         fallback_model=fallback_model_value,
         thinking=thinking_config,
     )
+    user_middleware.extend(create_code_interpreter_middleware(agent_options))
     if rubric_middleware is not None:
         user_middleware.append(rubric_middleware)
 
@@ -781,6 +789,7 @@ async def team_router_node(state: Dict[str, Any], config: RunnableConfig) -> Dic
             disabled_skills=configurable.get("disabled_skills"),
             enabled_skills=runtime_enabled_skills,
             base_url=configurable.get("base_url", ""),
+            session_id=state.get("session_id"),
             trace_id=getattr(presenter, "trace_id", None),
             presenter=presenter,
         ),

@@ -18,6 +18,7 @@ import type {
   TodoPart,
   SummaryPart,
   RecommendQuestion,
+  ArtifactPartArtifact,
   WorkflowPart,
 } from "../../types";
 import i18n from "../../i18n";
@@ -354,6 +355,37 @@ export function processMessageEvent(
           result: resultContent,
           success: isSuccess,
         };
+      }
+      break;
+    }
+
+    // ---- Artifact events ----
+
+    case "artifact:result": {
+      const artifact = data.artifact as ArtifactPartArtifact | undefined;
+      if (!artifact) break;
+
+      const artifactPart = {
+        type: "artifact" as const,
+        artifact,
+        success: data.success !== false,
+        error: data.error as string | undefined,
+        depth,
+        agent_id: agentId,
+        completedAt: data.timestamp as string | undefined,
+      };
+
+      if (depth > 0) {
+        result.parts = addPartToDepth(
+          parts,
+          artifactPart,
+          depth,
+          subagentStack,
+          agentId,
+          messageId,
+        );
+      } else {
+        result.parts = [...parts, artifactPart];
       }
       break;
     }

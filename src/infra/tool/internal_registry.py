@@ -13,6 +13,7 @@ from src.infra.mcp.storage import MCPStorage
 from src.infra.role.storage import RoleStorage
 from src.infra.tool.audio_transcribe_tool import get_audio_transcribe_tool
 from src.infra.tool.env_var_tool import get_env_var_tools
+from src.infra.tool.image_analysis_tool import get_image_analysis_tool
 from src.infra.tool.image_generation_tool import (
     get_image_generation_tool,
     get_reference_image_generation_tool,
@@ -124,9 +125,15 @@ def build_internal_tools() -> list[BaseTool]:
     logger = get_logger(__name__)
     tools: list[BaseTool] = []
 
-    tools.append(get_image_generation_tool())
-    tools.append(get_reference_image_generation_tool())
-    tools.append(get_audio_transcribe_tool())
+    if settings.ENABLE_IMAGE_ANALYSIS:
+        tools.append(get_image_analysis_tool())
+
+    if settings.ENABLE_IMAGE_GENERATION:
+        tools.append(get_image_generation_tool())
+        tools.append(get_reference_image_generation_tool())
+
+    if settings.ENABLE_AUDIO_TRANSCRIPTION:
+        tools.append(get_audio_transcribe_tool())
 
     if settings.ENABLE_SCHEDULED_TASK:
         try:
@@ -380,6 +387,7 @@ async def get_internal_tool_infos(
                 allowed_roles=list(policy.allowed_roles) if policy else [],
                 role_quotas=dict(policy.role_quotas) if policy else {},
                 policy_configured=policy is not None,
+                inline_exposure=bool(policy.inline_exposure) if policy else False,
             )
         )
     return infos

@@ -9,6 +9,7 @@ from src.api.routes.chat import (
     CHAT_SSE_DATA_MAX_BYTES,
     _execute_agent_stream,
     _format_sse_event,
+    append_required_skills_prompt,
     apply_agent_team_plugin_session_option,
     apply_declared_plugin_session_options,
     apply_existing_session_plugin_options,
@@ -1010,6 +1011,24 @@ def test_resolve_goal_for_request_does_not_restore_session_goal_for_follow_up() 
     assert active_goal is None
     assert agent_message == "keep going"
     assert request.goal is None
+
+
+def test_append_required_skills_prompt_requires_explicit_enabled_skills() -> None:
+    message = append_required_skills_prompt(
+        "Write the release notes.",
+        ["writer", "reviewer"],
+    )
+
+    assert "Write the release notes." in message
+    assert "Required skills for this message" in message
+    assert "/skills/writer/SKILL.md" in message
+    assert "/skills/reviewer/SKILL.md" in message
+    assert "must read and follow" in message
+
+
+def test_append_required_skills_prompt_keeps_message_without_explicit_skills() -> None:
+    assert append_required_skills_prompt("hello", None) == "hello"
+    assert append_required_skills_prompt("hello", []) == "hello"
 
 
 def test_format_sse_event_adds_timestamp_without_mutating_event_data() -> None:

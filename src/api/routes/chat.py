@@ -61,6 +61,27 @@ _WORKFLOW_PLUGIN_ID_KEY = "SELECTED_WORKFLOW_ID"
 _WORKFLOW_PLUGIN_VERSION_KEY = "SELECTED_WORKFLOW_VERSION_ID"
 
 
+def append_required_skills_prompt(message: str, enabled_skills: list[str] | None) -> str:
+    """Append a run-scoped instruction for explicitly selected skills."""
+    if not enabled_skills:
+        return message
+
+    skill_paths = "\n".join(f"- {name}: /skills/{name}/SKILL.md" for name in enabled_skills if name)
+    if not skill_paths:
+        return message
+
+    return (
+        f"{message}\n\n"
+        "<required_skills>\n"
+        "Required skills for this message:\n"
+        f"{skill_paths}\n\n"
+        "You must read and follow the SKILL.md instructions for each required skill "
+        "before answering. Use these skills for this message unless the request is "
+        "impossible or unsafe, and clearly say so if you cannot use them.\n"
+        "</required_skills>"
+    )
+
+
 def _model_profile_dict(model: ModelConfig) -> dict | None:
     if not model.profile:
         return None
@@ -871,10 +892,6 @@ async def chat_stream(
 
     active_goal, agent_message = resolve_goal_for_request(request, existing_metadata)
     active_goal_data = active_goal.model_dump() if active_goal else None
-    formatted_message = format_user_message_with_timestamp(
-        agent_message,
-        request.user_timezone,
-    )
     write_user_message = not request.retry_user_message
     user_message_written = request.retry_user_message
 
@@ -890,6 +907,15 @@ async def chat_stream(
         raise HTTPException(status_code=404, detail="角色预设不存在")
     except AuthorizationError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+    formatted_message = format_user_message_with_timestamp(
+        agent_message,
+        request.user_timezone,
+    )
+    formatted_message = append_required_skills_prompt(
+        formatted_message,
+        request.enabled_skills,
+    )
 
     # 生成 run_id（不管是否排队都需要唯一 ID）
     run_id = _generate_run_id()

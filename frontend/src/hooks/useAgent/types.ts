@@ -18,6 +18,7 @@ export type EventType =
   | "thinking"
   | "tool:start"
   | "tool:result"
+  | "artifact:result"
   | "todo:updated"
   | "summary"
   | "recommend:questions"
@@ -52,6 +53,7 @@ export interface EventData {
   tool_call_id?: string;
   args?: Record<string, unknown>;
   result?: string | Record<string, unknown>;
+  artifact?: Record<string, unknown>;
   success?: boolean;
   content?: string;
   thinking_id?: string;

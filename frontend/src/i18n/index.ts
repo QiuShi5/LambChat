@@ -61,6 +61,7 @@ i18n.use(initReactI18next).init({
   },
   lng: initialLanguage,
   fallbackLng: "en",
+  showSupportNotice: false,
   interpolation: {
     escapeValue: false,
   },
