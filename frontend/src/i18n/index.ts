@@ -7,13 +7,13 @@ import ja from "./locales/ja.json";
 import ko from "./locales/ko.json";
 import ru from "./locales/ru.json";
 import {
-  loadBundledPluginLocaleResources,
+  loadPluginLocaleResources,
   mergeLocaleResource,
   type PluginLocaleResource,
 } from "./pluginLocales";
 
 const SUPPORTED_LANGUAGES = ["en", "zh", "ja", "ko", "ru"];
-const pluginLocaleResources = loadBundledPluginLocaleResources();
+const pluginLocaleResources = loadPluginLocaleResources();
 
 function translationWithPluginLocales(
   language: string,

@@ -60,3 +60,33 @@ export function loadBundledPluginLocaleResources(): Record<string, PluginLocaleR
     }),
   );
 }
+
+export function mergePluginLocaleResourceSets(
+  base: Record<string, PluginLocaleResource>,
+  next: Record<string, PluginLocaleResource>,
+): Record<string, PluginLocaleResource> {
+  const merged: Record<string, PluginLocaleResource> = { ...base };
+  for (const [language, locale] of Object.entries(next)) {
+    merged[language] = mergeLocaleResource(merged[language] ?? {}, locale);
+  }
+  return merged;
+}
+
+export function loadSupplementalPluginLocaleResources(): Record<string, PluginLocaleResource> {
+  return collectPluginLocaleResources(
+    import.meta.glob<PluginLocaleResource>(
+      "../../../plugin-data/*/frontend/locales/*.json",
+      {
+        eager: true,
+        import: "default",
+      },
+    ),
+  );
+}
+
+export function loadPluginLocaleResources(): Record<string, PluginLocaleResource> {
+  return mergePluginLocaleResourceSets(
+    loadBundledPluginLocaleResources(),
+    loadSupplementalPluginLocaleResources(),
+  );
+}

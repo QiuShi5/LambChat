@@ -10,6 +10,7 @@ CONTRACT_UTILS_SOURCE = (
     REPO_ROOT / "frontend" / "src" / "plugins" / "workflow" / "contractUtils.ts"
 )
 PLUGIN_LOCALES_DIR = REPO_ROOT / "plugins" / "system" / "workflow" / "frontend" / "locales"
+PLUGIN_DATA_LOCALES_DIR = REPO_ROOT / "plugin-data" / "workflow" / "frontend" / "locales"
 
 
 def test_workflow_panel_uses_plugin_owned_i18n_resources() -> None:
@@ -21,10 +22,13 @@ def test_workflow_panel_uses_plugin_owned_i18n_resources() -> None:
 
     assert 'from "react-i18next"' in source
     assert "useTranslation()" in source
-    assert "loadBundledPluginLocaleResources" in i18n_source
+    assert "loadPluginLocaleResources" in i18n_source
     assert "mergeLocaleResource(base, pluginLocaleResources[language] ?? {})" in i18n_source
     assert "../../../plugins/system/*/frontend/locales/*.json" in plugin_locale_source
     assert "../../../plugins/preinstalled/*/frontend/locales/*.json" in plugin_locale_source
+    assert "../../../plugin-data/*/frontend/locales/*.json" in plugin_locale_source
+    assert "loadSupplementalPluginLocaleResources" in plugin_locale_source
+    assert "loadPluginLocaleResources" in plugin_locale_source
 
     required_locale_keys = [
         ("workflowPlugin", "nav", "label"),
@@ -40,7 +44,11 @@ def test_workflow_panel_uses_plugin_owned_i18n_resources() -> None:
         ("workflowPlugin", "editor", "toast", "invalidWorkflowInput"),
     ]
     for language in ("en", "zh", "ja", "ko", "ru"):
-        locale_file = PLUGIN_LOCALES_DIR / f"{language}.json"
+        locale_file = (
+            PLUGIN_LOCALES_DIR / f"{language}.json"
+            if language == "en"
+            else PLUGIN_DATA_LOCALES_DIR / f"{language}.json"
+        )
         locale = json.loads(locale_file.read_text(encoding="utf-8"))
         for key_path in required_locale_keys:
             value: object = locale
