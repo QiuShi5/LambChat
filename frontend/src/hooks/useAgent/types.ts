@@ -6,6 +6,8 @@ import type {
   MessageAttachment,
   PersonaPresetSnapshot,
 } from "../../types";
+import type { PluginRuntimeContributionStates } from "../../extensions/coreContributions";
+import type { PluginOptionsMetadata } from "../../extensions/pluginOptions";
 
 // Event types from backend
 export type EventType =
@@ -23,6 +25,7 @@ export type EventType =
   | "followup:questions"
   | "agent:call"
   | "agent:result"
+  | "workflow:run"
   | "approval_required"
   | "sandbox:starting"
   | "sandbox:ready"
@@ -92,6 +95,15 @@ export interface EventData {
   // user:cancel event fields
   user_id?: string;
   run_id?: string;
+  // workflow:run event fields
+  plugin_id?: string;
+  workflow_id?: string | null;
+  version_id?: string | null;
+  output?: Record<string, unknown>;
+  io_contract?: Record<string, unknown> | null;
+  interface?: import("../../types").WorkflowInterfaceContract | null;
+  next_action?: Record<string, unknown> | null;
+  output_contract?: Record<string, unknown> | null;
   // skills:changed event fields
   action?: string;
   skill_name?: string;
@@ -130,6 +142,7 @@ export interface EventData {
 }
 
 export interface UseAgentOptions {
+  runtimePlugins?: PluginRuntimeContributionStates;
   onApprovalRequired?: (approval: {
     id: string;
     message: string;
@@ -161,6 +174,13 @@ export interface ActiveGoalSpec {
   runId?: string;
   started_at?: string;
   ended_at?: string;
+}
+
+export interface SendMessageOptions {
+  retryUserMessage?: boolean;
+  retryAssistantMessageId?: string;
+  retryAfterUserMessageId?: string;
+  enabledSkills?: string[];
 }
 
 // Subagent tracking item
@@ -213,6 +233,14 @@ export interface HistoryEventData {
     url: string;
   }>;
   message_id?: string;
+  plugin_id?: string;
+  workflow_id?: string | null;
+  version_id?: string | null;
+  status?: string;
+  output?: Record<string, unknown>;
+  io_contract?: Record<string, unknown> | null;
+  interface?: import("../../types").WorkflowInterfaceContract | null;
+  output_contract?: Record<string, unknown> | null;
 }
 
 // History event from backend
@@ -248,15 +276,20 @@ export interface UseAgentReturn {
     content: string,
     agentOptions?: Record<string, boolean | string | number>,
     attachments?: MessageAttachment[],
-    runOptions?: { enabledSkills?: string[] },
+    options?: SendMessageOptions,
   ) => Promise<void>;
   clearActiveGoal: () => void;
   stopGeneration: () => Promise<void>;
   clearMessages: () => void;
   selectAgent: (agentId: string) => void;
   switchAgent: (agentId: string) => void;
-  selectTeam: (teamId: string | null) => void;
   selectedTeamId: string | null;
+  sessionPluginOptions: PluginOptionsMetadata;
+  setSessionPluginOption: (
+    pluginId: string,
+    key: string,
+    value: unknown,
+  ) => void;
   refreshAgents: () => Promise<void>;
   loadHistory: (
     targetSessionId: string,
@@ -280,6 +313,7 @@ export interface SessionConfig {
   persona_snapshot?: PersonaPresetSnapshot;
   disabled_mcp_tools?: string[];
   team_id?: string;
+  plugin_options?: Record<string, Record<string, unknown>>;
 }
 
 // Backend session type (simplified)
