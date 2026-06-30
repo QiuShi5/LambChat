@@ -46,6 +46,20 @@ def test_dockerfile_bundles_system_plugins_for_container_runtime() -> None:
     assert "COPY plugins/ ./plugins/" in dockerfile
 
 
+def test_dockerfile_exposes_plugin_locale_sources_to_frontend_build() -> None:
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "COPY frontend/ ./" in dockerfile
+    assert "COPY plugins/ ../plugins/" in dockerfile
+    assert "COPY plugin-data/ ../plugin-data/" in dockerfile
+    assert dockerfile.index("COPY plugins/ ../plugins/") < dockerfile.index(
+        "RUN pnpm run build"
+    )
+    assert dockerfile.index("COPY plugin-data/ ../plugin-data/") < dockerfile.index(
+        "RUN pnpm run build"
+    )
+
+
 def test_python_wheel_bundles_plugin_backend_namespace() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 

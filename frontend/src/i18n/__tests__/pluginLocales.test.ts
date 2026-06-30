@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   collectPluginLocaleResources,
+  mergePluginLocaleResourceSets,
   mergeLocaleResource,
 } from "../pluginLocales";
 
@@ -18,6 +19,7 @@ test("plugin locale loader uses a direct literal glob for Vite production builds
   assert.match(source, /import\.meta\.glob<PluginLocaleResource>\(\s*\[/);
   assert.match(source, /"\.\.\/\.\.\/\.\.\/plugins\/system\/\*\/frontend\/locales\/\*\.json"/);
   assert.match(source, /"\.\.\/\.\.\/\.\.\/plugins\/preinstalled\/\*\/frontend\/locales\/\*\.json"/);
+  assert.match(source, /"\.\.\/\.\.\/\.\.\/plugin-data\/\*\/frontend\/locales\/\*\.json"/);
 });
 
 test("plugin locale resources are collected by language and deeply merged", () => {
@@ -68,7 +70,54 @@ test("plugin locale resources override base locale keys while preserving sibling
   );
 });
 
-test("workflow workflow plugin ships locale files for every supported app language", () => {
+test("plugin-data supplemental locale resources override bundled plugin defaults", () => {
+  const bundled = collectPluginLocaleResources({
+    "../../../plugins/system/workflow/frontend/locales/en.json": {
+      workflowPlugin: {
+        editor: {
+          route: {
+            listTitle: "Workflows",
+            listSubtitle: "Bundled subtitle",
+          },
+        },
+      },
+    },
+  });
+  const supplemental = collectPluginLocaleResources({
+    "../../../plugin-data/workflow/frontend/locales/en.json": {
+      workflowPlugin: {
+        editor: {
+          route: {
+            listTitle: "Supplemental workflows",
+          },
+        },
+      },
+    },
+    "../../../plugin-data/workflow/frontend/locales/zh.json": {
+      workflowPlugin: {
+        editor: {
+          route: {
+            listTitle: "工作流",
+          },
+        },
+      },
+    },
+  });
+
+  const resources = mergePluginLocaleResourceSets(bundled, supplemental);
+  const en = resources.en as {
+    workflowPlugin: { editor: { route: { listTitle: string; listSubtitle: string } } };
+  };
+  const zh = resources.zh as {
+    workflowPlugin: { editor: { route: { listTitle: string } } };
+  };
+
+  assert.equal(en.workflowPlugin.editor.route.listTitle, "Supplemental workflows");
+  assert.equal(en.workflowPlugin.editor.route.listSubtitle, "Bundled subtitle");
+  assert.equal(zh.workflowPlugin.editor.route.listTitle, "工作流");
+});
+
+test("workflow plugin ships a default locale and supplemental locales for every other app language", () => {
   const pluginLocalesDir = resolve(
     repoRoot,
     "plugins",
@@ -77,9 +126,21 @@ test("workflow workflow plugin ships locale files for every supported app langua
     "frontend",
     "locales",
   );
+  const pluginDataLocalesDir = resolve(
+    repoRoot,
+    "plugin-data",
+    "workflow",
+    "frontend",
+    "locales",
+  );
+  const localePath = (language: string) =>
+    language === "en"
+      ? resolve(pluginLocalesDir, "en.json")
+      : resolve(pluginDataLocalesDir, `${language}.json`);
+
   for (const language of ["en", "zh", "ja", "ko", "ru"]) {
     const locale = JSON.parse(
-      readFileSync(resolve(pluginLocalesDir, `${language}.json`), "utf8"),
+      readFileSync(localePath(language), "utf8"),
     );
     assert.equal(typeof locale.workflowPlugin.nav.label, "string");
     assert.equal(typeof locale.workflowPlugin.editor.graph.title, "string");
