@@ -68,6 +68,7 @@ import {
   shouldExpandSubagentProcessByDefault,
 } from "./subagentPanelControl";
 import { formatDateTime, formatDuration } from "../../../utils/datetime";
+import type { PluginRuntimeContributionStates } from "../../../extensions/coreContributions";
 
 function useSubagentPanelData(agentId: string): SubagentPanelData | undefined {
   const [, forceRender] = useState(0);
@@ -549,6 +550,7 @@ function SubagentPanelContent({ agentId }: { agentId: string }) {
                   partIndex={index}
                   isStreaming={data.isPending}
                   isLast={index === data.parts!.length - 1}
+                  runtimePlugins={data.runtimePlugins}
                 />
               ))}
             </div>
@@ -672,6 +674,7 @@ export function SubagentBlock({
   completedAt,
   status,
   error,
+  runtimePlugins,
 }: {
   agent_id: string;
   agent_name: string;
@@ -685,6 +688,7 @@ export function SubagentBlock({
   completedAt?: number;
   status?: "pending" | "running" | "complete" | "error" | "cancelled";
   error?: string;
+  runtimePlugins?: PluginRuntimeContributionStates;
 }) {
   const {
     effectiveStatus,
@@ -704,6 +708,7 @@ export function SubagentBlock({
     startedAt,
     completedAt,
     status,
+    runtimePlugins,
   });
   const { t } = useTranslation();
   const roleIconMeta = getSubagentRoleIconMeta(formattedAgentName);
@@ -727,6 +732,7 @@ export function SubagentBlock({
       startedAt,
       completedAt,
       status: effectiveStatus as SubagentPanelData["status"],
+      runtimePlugins,
     });
 
     // Auto-open only when no panel is open; multiple running subagents should not steal focus.
@@ -775,6 +781,7 @@ export function SubagentBlock({
     formattedAgentName,
     RoleIcon,
     panelKey,
+    runtimePlugins,
   ]);
 
   useEffect(() => {
