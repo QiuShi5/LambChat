@@ -177,28 +177,28 @@ test("team avatar image containers constrain absolute avatar images", () => {
   assertCssDeclaration(".team-toolbar-avatar", "height", "1\\.125rem");
 });
 
-test("team member card exposes collapsible member mode and model selectors", () => {
-  assert.match(memberCardSource, /availableAgents/);
-  assert.match(memberCardSource, /onAgentChange/);
-  assert.match(memberCardSource, /followTeamMode/);
-  assert.match(memberCardSource, /value=\{member\.agent_id \?\? ""\}/);
-  assert.match(
-    memberCardSource,
-    /onAgentChange\?\.\(e\.target\.value \|\| null\)/,
-  );
+test("team editor exposes team sandbox selection instead of member agent modes", () => {
+  assert.match(builderSource, /runInSandbox/);
+  assert.match(builderSource, /run_in_sandbox:\s*runInSandbox/);
+  assert.match(builderSource, /team-sandbox-option/);
+  assert.match(builderSource, /team\.run_in_sandbox/);
+  assert.doesNotMatch(builderSource, /agentApi\s*\.\s*list\(\)/);
+  assert.doesNotMatch(builderSource, /handleAgentChange/);
+  assert.doesNotMatch(memberCardSource, /availableAgents/);
+  assert.doesNotMatch(memberCardSource, /onAgentChange/);
+  assert.doesNotMatch(memberCardSource, /followTeamMode/);
+  assert.doesNotMatch(memberCardSource, /value=\{member\.agent_id \?\? ""\}/);
   assert.match(memberCardSource, /availableModels/);
   assert.match(memberCardSource, /onModelChange/);
   assert.match(memberCardSource, /team-member-card__model/);
   assert.match(memberCardSource, /followSessionModel/);
-  assert.match(memberCardSource, /<select/);
   assert.match(memberCardSource, /value=\{member\.model_id \?\? ""\}/);
-  assert.match(
-    memberCardSource,
-    /onModelChange\?\.\(e\.target\.value \|\| null\)/,
-  );
+  assert.match(memberCardSource, /onModelChange\?\.\(v \|\| null\)/);
   assert.match(teamCss, /\.team-member-card__model\s*\{/);
   assert.match(
     teamCss,
     /\.team-member-card__model span\s*\{[\s\S]*?text-overflow:\s*ellipsis;/,
   );
+  assert.match(teamCss, /\.team-sandbox-option\s*\{/);
+  assert.match(teamCss, /\.team-sandbox-option__title\s*\{/);
 });
