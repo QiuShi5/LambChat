@@ -1037,11 +1037,14 @@ async def test_team_agent_node_adds_code_interpreter_middleware_when_enabled(
         ),
     )
 
+    async def get_tools():
+        return []
+
     context = SimpleNamespace(
         user_id="user-1",
         skills=[],
         deferred_manager=None,
-        get_tools=lambda: [],
+        get_tools=get_tools,
         filter_tools=lambda: [],
     )
     config = {
