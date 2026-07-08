@@ -586,32 +586,32 @@ test("reconstructMessagesFromEvents treats assistant-only run after cancel as re
   assert.equal(messages[1]?.cancelled, undefined);
 });
 
-test("reconstructMessagesFromEvents preserves workflow tool result outlet from persisted events", () => {
-  const runId = "run_workflow_tool_history";
-  const workflowOutlet = {
-    plugin_id: "workflow",
-    workflow_id: "wf-chat",
+test("reconstructMessagesFromEvents preserves plugin tool result outlet from persisted events", () => {
+  const runId = "run_plugin_tool_history";
+  const pluginOutlet = {
+    plugin_id: "review_center",
+    review_id: "review-chat",
     run_id: "run-debug-1",
-    version_id: "wfv-1",
+    version_id: "review-v1",
     status: "failed",
-    error: "workflow_run_not_found",
+    error: "review_run_not_found",
     interface: {
       entry: {
         type: "tool",
-        tool: "workflow_run",
+        tool: "review_run",
         argument: "input",
-        schema_tool: "workflow_get_schema",
+        schema_tool: "review_get_schema",
         schema_field: "input_schema",
       },
       exit: {
         type: "object",
         field: "output",
-        schema_tool: "workflow_get_schema",
+        schema_tool: "review_get_schema",
         schema_field: "output_schema",
       },
       debug: {
-        tool: "workflow_get_run",
-        workflow_id: "wf-chat",
+        tool: "review_get_run",
+        review_id: "review-chat",
         run_id: "run-debug-1",
         events_field: "events",
       },
@@ -619,8 +619,8 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
     next_action: {
       type: "handle_terminal_error",
       field: "error",
-      reason: "workflow_run_failed",
-      tool: "workflow_get_run",
+      reason: "review_run_failed",
+      tool: "review_get_run",
     },
   };
 
@@ -632,7 +632,7 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
         run_id: runId,
         timestamp: "2026-06-28T08:00:00.000Z",
         data: {
-          content: "inspect failed workflow",
+          content: "inspect failed plugin run",
           message_id: `${runId}:user`,
           attachments: [],
         },
@@ -643,9 +643,9 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
         run_id: runId,
         timestamp: "2026-06-28T08:00:01.000Z",
         data: {
-          tool: "workflow_get_run",
-          tool_call_id: "tool-call-workflow-debug",
-          args: { workflow_id: "wf-chat", run_id: "run-debug-1" },
+          tool: "review_get_run",
+          tool_call_id: "tool-call-review-debug",
+          args: { review_id: "review-chat", run_id: "run-debug-1" },
         },
       },
       {
@@ -654,11 +654,11 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
         run_id: runId,
         timestamp: "2026-06-28T08:00:02.000Z",
         data: {
-          tool: "workflow_get_run",
-          tool_call_id: "tool-call-workflow-debug",
-          result: workflowOutlet,
+          tool: "review_get_run",
+          tool_call_id: "tool-call-review-debug",
+          result: pluginOutlet,
           success: false,
-          error: "workflow_run_not_found",
+          error: "review_run_not_found",
         },
       },
       {
@@ -666,7 +666,7 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
         event_type: "message:chunk",
         run_id: runId,
         timestamp: "2026-06-28T08:00:03.000Z",
-        data: { content: "Workflow debug lookup failed." },
+        data: { content: "Plugin debug lookup failed." },
       },
     ] satisfies HistoryEvent[],
     new Set<string>(),
@@ -676,21 +676,21 @@ test("reconstructMessagesFromEvents preserves workflow tool result outlet from p
   assert.equal(messages.length, 2);
   const assistant = messages[1];
   assert.equal(assistant?.role, "assistant");
-  assert.equal(assistant?.content, "Workflow debug lookup failed.");
+  assert.equal(assistant?.content, "Plugin debug lookup failed.");
   const toolPart = assistant?.parts?.find((part) => part.type === "tool");
   assert.ok(toolPart);
   assert.equal(toolPart.type, "tool");
-  assert.equal(toolPart.name, "workflow_get_run");
+  assert.equal(toolPart.name, "review_get_run");
   assert.equal(toolPart.success, false);
-  assert.equal(toolPart.error, "workflow_run_not_found");
-  assert.deepEqual(toolPart.result, workflowOutlet);
-  assert.deepEqual(assistant?.toolResults?.[0]?.result, workflowOutlet);
+  assert.equal(toolPart.error, "review_run_not_found");
+  assert.deepEqual(toolPart.result, pluginOutlet);
+  assert.deepEqual(assistant?.toolResults?.[0]?.result, pluginOutlet);
   assert.equal(
     (
       assistant?.toolResults?.[0]?.result as {
         interface?: { debug?: { tool?: string } };
       }
     ).interface?.debug?.tool,
-    "workflow_get_run",
+    "review_get_run",
   );
 });

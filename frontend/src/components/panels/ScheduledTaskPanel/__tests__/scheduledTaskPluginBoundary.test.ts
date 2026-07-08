@@ -46,42 +46,12 @@ test("scheduled task team surfaces depend on Agent Team scheduled task option de
   assert.match(formSource, /agentOptions\.push\(\{ value: agentId, label: agentId \}\)/);
   assert.match(rendererSource, /teamApi[\s\S]*\.list/);
   assert.match(rendererSource, /"agent_team\.TeamSelectOption"/);
-  assert.match(rendererSource, /WorkflowPluginSelectOption/);
-  assert.match(rendererSource, /WorkflowPluginVersionSelectOption/);
-  assert.match(rendererSource, /WorkflowPluginInputOption/);
-  assert.match(rendererSource, /resolveWorkflowPluginLabels/);
-  assert.match(rendererSource, /resolveWorkflowPluginVersionLabels/);
-  assert.match(rendererSource, /"workflow\.WorkflowSelectOption"/);
-  assert.match(rendererSource, /"workflow\.WorkflowVersionSelectOption"/);
-  assert.match(rendererSource, /"workflow\.WorkflowInputOption"/);
   assert.match(rendererSource, /SCHEDULED_TASK_OPTION_RENDERERS/);
   assert.match(rendererSource, /SCHEDULED_TASK_OPTION_LABEL_RESOLVERS/);
-  assert.match(taskSessionListSource, /function workflowOutputContractStatus/);
-  assert.match(taskSessionListSource, /function workflowOutputContractFailureSummary/);
-  assert.match(taskSessionListSource, /contract\.valid !== false/);
-  assert.match(taskSessionListSource, /Workflow output contract failed/);
-  assert.match(taskSessionListSource, /asRecord\(result\.output_contract\)/);
-  assert.match(taskSessionListSource, /Contract ok/);
-  assert.match(taskSessionListSource, /Contract issue/);
-  assert.match(taskSessionListSource, /missing_required/);
-  assert.match(taskSessionListSource, /type_mismatches/);
-  assert.match(taskSessionListSource, /AlertTriangle/);
-  assert.match(taskSessionListSource, /CheckCircle2/);
-  assert.match(taskSessionListSource, /function workflowNextActionEntries/);
-  assert.match(taskSessionListSource, /asRecord\(result\.next_action\)/);
-  assert.match(taskSessionListSource, /scheduledTask\.workflowNextAction/);
-  assert.match(taskSessionListSource, /ListChecks/);
-  const previewStart = taskSessionListSource.indexOf("function workflowResultPreview");
-  const failureSummaryIndex = taskSessionListSource.indexOf(
-    "const contractFailure = workflowOutputContractFailureSummary(result);",
-    previewStart,
-  );
-  const outputPreviewIndex = taskSessionListSource.indexOf(
-    "const output = asRecord(result.output);",
-    previewStart,
-  );
-  assert.ok(failureSummaryIndex > previewStart);
-  assert.ok(outputPreviewIndex > failureSummaryIndex);
+  assert.doesNotMatch(rendererSource, /WorkflowPlugin/);
+  assert.doesNotMatch(rendererSource, /workflow\.Workflow/);
+  assert.doesNotMatch(taskSessionListSource, /workflowResult|workflowOutput|workflowNextAction/);
+  assert.doesNotMatch(taskSessionListSource, /\/workflows\//);
   assert.doesNotMatch(panelSource, /if \(teamAgentAvailable\) \{[\s\S]*teamApi[\s\S]*\.list/);
   assert.doesNotMatch(panelSource, /teamApi/);
   assert.doesNotMatch(panelSource, /hasAgentTeamScheduledTaskOption\(/);

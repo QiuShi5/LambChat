@@ -59,10 +59,7 @@ test("agent team project default team uses a controlled renderer", () => {
   assert.match(rendererSource, /if \(!option\.effective\) \{[\s\S]*return;[\s\S]*\}/);
 });
 
-test("workflow workflow project and session options use a controlled workflow renderer", () => {
-  assert.match(rendererSource, /WorkflowPluginSelectOption/);
-  assert.match(rendererSource, /WorkflowPluginVersionSelectOption/);
-  assert.match(rendererSource, /"workflow\.WorkflowSelectOption"/);
-  assert.match(rendererSource, /"workflow\.WorkflowVersionSelectOption"/);
-  assert.match(rendererSource, /inactive=\{!props\.option\.effective\}/);
+test("project option renderers do not keep workflow-specific controls", () => {
+  assert.doesNotMatch(rendererSource, /WorkflowPlugin/);
+  assert.doesNotMatch(rendererSource, /workflow\.Workflow/);
 });

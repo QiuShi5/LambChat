@@ -50,6 +50,11 @@ settings:
 frontend:
   nav_items:
     - demo_plugin:nav
+  message_renderers:
+    - id: demo_plugin:run-card
+      renderer: demo_plugin.RunCard
+      message_types:
+        - run_result
 backend:
   tools:
     - name: demo_plugin_tool
@@ -66,6 +71,9 @@ backend:
     manifest = scan.manifests[0]
     assert manifest.id == "demo_plugin"
     assert manifest.install_type.value == "user_installed"
+    assert manifest.frontend.message_renderers[0].id == "demo_plugin:run-card"
+    assert manifest.frontend.message_renderers[0].renderer == "demo_plugin.RunCard"
+    assert manifest.frontend.message_renderers[0].message_types == ["run_result"]
     assert manifest.package_source_type == "installed"
     assert manifest.package_manifest_authority == "folder_package"
     assert manifest.package_static_fallback_used is False
@@ -774,38 +782,23 @@ def test_controlled_frontend_references_include_builtin_plugin_renderers() -> No
     )
     assert CONTROLLED_FRONTEND_REFERENCES[
         "chat_input_options.selected_renderer"
-    ] == frozenset(
-        {"agent_team.SelectedTeamChip", "workflow.SelectedWorkflowChip"}
-    )
+    ] == frozenset({"agent_team.SelectedTeamChip"})
     assert CONTROLLED_FRONTEND_REFERENCES["chat_input_panels.renderer"] == frozenset(
-        {"agent_team.TeamPickerModal", "workflow.WorkflowPickerModal"}
+        {"agent_team.TeamPickerModal"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["mention_providers.provider"] == frozenset(
         {"agent_team.searchTeams"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["project_options.renderer"] == frozenset(
-        {
-            "agent_team.TeamSelectOption",
-            "workflow.WorkflowSelectOption",
-            "workflow.WorkflowVersionSelectOption",
-        }
+        {"agent_team.TeamSelectOption"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["session_options.renderer"] == frozenset(
-        {
-            "agent_team.TeamSelectOption",
-            "workflow.WorkflowInputOption",
-            "workflow.WorkflowSelectOption",
-            "workflow.WorkflowVersionSelectOption",
-        }
+        {"agent_team.TeamSelectOption"}
     )
     assert CONTROLLED_FRONTEND_REFERENCES["scheduled_task_options.renderer"] == frozenset(
-        {
-            "agent_team.TeamSelectOption",
-            "workflow.WorkflowInputOption",
-            "workflow.WorkflowSelectOption",
-            "workflow.WorkflowVersionSelectOption",
-        }
+        {"agent_team.TeamSelectOption"}
     )
+    assert CONTROLLED_FRONTEND_REFERENCES["scheduled_task_sections.renderer"] == frozenset()
     assert CONTROLLED_FRONTEND_REFERENCES["channel_connectors.panel_renderer"] == frozenset(
         {"feishu_connector.FeishuPanel"}
     )
@@ -1675,7 +1668,7 @@ def test_builtin_folder_packages_are_complete_runtime_contracts() -> None:
 def test_migrated_system_plugins_do_not_use_legacy_frontend_route_fields() -> None:
     scan = PluginPackageScanner(plugin_root=Path("plugins"), data_root=Path("plugin-data")).scan()
     descriptors = scan.by_plugin_id()
-    migrated_plugin_ids = {"feedback", "agent_team", "workflow", "usage_reports"}
+    migrated_plugin_ids = {"feedback", "agent_team", "usage_reports"}
 
     assert scan.errors == ()
     assert migrated_plugin_ids <= set(descriptors)
